@@ -162,6 +162,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
       Map<String, dynamic> payload, String idempotencyKey) async {
     final user = SessionScope.maybeOf(context)?.user;
     if (user == null) throw StateError('Cần đăng nhập để đồng bộ kiểm kê');
+    // AppShell mirrors the signed-in session into OfflineHub on login. When
+    // this screen runs without the shell (deep link, widget tests), adopt the
+    // session identity on first use; a hub already bound to a DIFFERENT user
+    // still throws, so a stale screen can never queue under someone else's
+    // outbox identity.
+    if (OfflineHub.instance.currentUserId == null) {
+      OfflineHub.instance.currentUserId = user.id;
+      OfflineHub.instance.currentBranch = user.branch;
+    }
     if (OfflineHub.instance.currentUserId != user.id ||
         OfflineHub.instance.currentBranch != user.branch) {
       throw StateError('Phiên đăng nhập đã thay đổi; mở lại ca kiểm kê');

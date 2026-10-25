@@ -5,6 +5,7 @@ import 'package:kho_tra_sua/src/data/repositories/fake_repository.dart';
 import 'package:kho_tra_sua/src/features/inventory/inventory_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
@@ -15,6 +16,9 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       final repo = FakeBankOpsRepository(latency: Duration.zero);
+
+      // The stocktake outbox persists to SharedPreferences; mock the plugin.
+      SharedPreferences.setMockInitialValues({});
 
       // Pre-seed a stock level where min_qty > current balance
       final locs = await repo.getLocations();
