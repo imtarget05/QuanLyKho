@@ -10,15 +10,15 @@ resources:
 images:
 - name: ghcr.io/imtarget05/bankops-api
   newName: ghcr.io/imtarget05/bankops-api
-  newTag: sha-fde9570
+  newTag: sha-aebfd70
 - name: ghcr.io/imtarget05/bankops-frontend
   newName: ghcr.io/imtarget05/bankops-frontend
   newTag: v1.0.0
 
 replicas:
-- name: bankops-api
-  count: 1
-- name: bankops-frontend
-  count: 0
-- name: cloudflare-tunnel
-  count: 0
+- count: 1
+  name: bankops-api
+- count: 0
+  name: bankops-frontend
+- count: 0
+  name: cloudflare-tunnel
