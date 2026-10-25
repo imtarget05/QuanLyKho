@@ -22,3 +22,5 @@ replicas:
   name: bankops-frontend
 - count: 0
   name: cloudflare-tunnel
+- count: 0
+  name: bankops-postgres
