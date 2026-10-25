@@ -92,7 +92,7 @@ class ApprovalPdf {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'HỆ THỐNG CỬA HÀNG TRÀ SỮA & F&B BANKOPS',
+                      'HỆ THỐNG CỬA HÀNG TRÀ SỮA & F&B QUẢN LÝ KHO',
                       style: pw.TextStyle(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
@@ -326,7 +326,7 @@ class ApprovalPdf {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  'Hệ thống Quản trị BankOps · Chứng từ điện tử chuẩn quy định.',
+                  'Hệ thống QuanLyKho · Chứng từ điện tử chuẩn quy định.',
                   style:
                       const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
                 ),

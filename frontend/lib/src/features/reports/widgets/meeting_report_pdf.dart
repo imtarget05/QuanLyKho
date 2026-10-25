@@ -401,7 +401,7 @@ class MeetingReportPdf {
             pw.SizedBox(height: 6),
             pw.Center(
               child: pw.Text(
-                'Biểu mẫu Báo cáo Xuất Nhập Tồn & Quỹ Tiền Mặt · Trích xuất từ Hệ thống Quản trị Doanh nghiệp BankOps',
+                'Biểu mẫu Báo cáo Xuất Nhập Tồn & Quỹ Tiền Mặt · Trích xuất từ hệ thống QuanLyKho',
                 style: const pw.TextStyle(fontSize: 7, color: PdfColors.black),
               ),
             ),
