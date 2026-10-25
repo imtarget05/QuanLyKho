@@ -168,4 +168,37 @@ void main() {
       );
     },
   );
+
+  // ---------------------------------------------------------------------------
+  // Test 5 – Quick increment stepper buttons and quick reason chips
+  // ---------------------------------------------------------------------------
+  testWidgets(
+    'quick_stepper_and_reason_chips_update_inputs',
+    (WidgetTester tester) async {
+      await pumpStockDialog(tester);
+
+      // Verify quick presets +1, +5, +10 are visible
+      expect(find.text('+5'), findsOneWidget);
+      expect(find.text('+10'), findsOneWidget);
+
+      // Tap +5 to increase quantity
+      await tester.tap(find.text('+5'));
+      await tester.pump();
+
+      // Quantity input now should reflect 5 (0 default + 5)
+      final qtyFinder = find.byKey(const Key('stock-qty-input'));
+      final textField = tester.widget<TextField>(qtyFinder);
+      expect(textField.controller?.text, '5');
+
+      // Verify quick reason chips
+      final reasonChip = find.text('Nhập nguyên liệu định kỳ từ nhà cung cấp');
+      expect(reasonChip, findsOneWidget);
+      await tester.tap(reasonChip);
+      await tester.pump();
+
+      final reasonFinder = find.byKey(const Key('stock-reason-input'));
+      final reasonField = tester.widget<TextField>(reasonFinder);
+      expect(reasonField.controller?.text, 'Nhập nguyên liệu định kỳ từ nhà cung cấp');
+    },
+  );
 }

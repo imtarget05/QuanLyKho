@@ -218,38 +218,195 @@ class _ReconciliationTable extends StatelessWidget {
     final isVi = context.isVietnamese;
     const headerStyle = TextStyle(fontWeight: FontWeight.w800);
     return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-              minWidth:
-                  constraints.maxWidth < 1080 ? 1080 : constraints.maxWidth),
-          child: DataTable(
-            headingRowColor: WidgetStatePropertyAll(
-                theme.colorScheme.surfaceContainerHighest),
-            columns: [
-              DataColumn(label: Text(isVi ? 'Nguyên liệu' : 'Ingredient', style: headerStyle)),
-              DataColumn(label: Text(isVi ? 'ĐVT' : 'Unit', style: headerStyle)),
-              DataColumn(
-                  label: Text(isVi ? 'Tồn đầu' : 'Opening', style: headerStyle), numeric: true),
-              DataColumn(
-                  label: Text(isVi ? 'Nhập' : 'Inbound', style: headerStyle), numeric: true),
-              DataColumn(
-                  label: Text(isVi ? 'Sử dụng' : 'Usage', style: headerStyle), numeric: true),
-              DataColumn(
-                  label: Text(isVi ? 'Tồn lý thuyết' : 'Theoretical', style: headerStyle),
-                  numeric: true),
-              DataColumn(
-                  label: Text(isVi ? 'Kiểm thực tế' : 'Physical Count', style: headerStyle),
-                  numeric: true),
-              DataColumn(
-                  label: Text(isVi ? 'Độ lệch' : 'Variance', style: headerStyle), numeric: true),
-              DataColumn(label: Text(isVi ? 'Trạng thái' : 'Status', style: headerStyle)),
-              DataColumn(label: Text(isVi ? 'Lý do' : 'Reason', style: headerStyle)),
-            ],
-            rows: lines.map((line) => _row(context, line)).toList(),
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 640) {
+          return Column(
+            children: lines.map((line) => _buildCard(context, line)).toList(),
+          );
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                minWidth:
+                    constraints.maxWidth < 1080 ? 1080 : constraints.maxWidth),
+            child: DataTable(
+              headingRowColor: WidgetStatePropertyAll(
+                  theme.colorScheme.surfaceContainerHighest),
+              columns: [
+                DataColumn(label: Text(isVi ? 'Nguyên liệu' : 'Ingredient', style: headerStyle)),
+                DataColumn(label: Text(isVi ? 'ĐVT' : 'Unit', style: headerStyle)),
+                DataColumn(
+                    label: Text(isVi ? 'Tồn đầu' : 'Opening', style: headerStyle), numeric: true),
+                DataColumn(
+                    label: Text(isVi ? 'Nhập' : 'Inbound', style: headerStyle), numeric: true),
+                DataColumn(
+                    label: Text(isVi ? 'Sử dụng' : 'Usage', style: headerStyle), numeric: true),
+                DataColumn(
+                    label: Text(isVi ? 'Tồn lý thuyết' : 'Theoretical', style: headerStyle),
+                    numeric: true),
+                DataColumn(
+                    label: Text(isVi ? 'Kiểm thực tế' : 'Physical Count', style: headerStyle),
+                    numeric: true),
+                DataColumn(
+                    label: Text(isVi ? 'Độ lệch' : 'Variance', style: headerStyle), numeric: true),
+                DataColumn(label: Text(isVi ? 'Trạng thái' : 'Status', style: headerStyle)),
+                DataColumn(label: Text(isVi ? 'Lý do' : 'Reason', style: headerStyle)),
+              ],
+              rows: lines.map((line) => _row(context, line)).toList(),
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(BuildContext context, ShiftStocktakeLine line) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isVi = context.isVietnamese;
+    final color = line.hasVariance
+        ? Theme.of(context).colorScheme.error
+        : const Color(0xFF15803D);
+    final status = line.hasVariance
+        ? (isVi ? 'Cần đối soát' : 'Review')
+        : (isVi ? 'Khớp' : 'Matched');
+    final diff = line.varianceQty;
+    final diffPrefix = isVi ? 'Lệch' : 'Var';
+    final diffText = '${diff > 0 ? '+' : ''}${_qty(diff)}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: line.hasVariance
+              ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  line.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$status ($diffPrefix $diffText ${line.unit})',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  isVi ? 'Tồn đầu' : 'Opening',
+                  '${_qty(line.openingQty)} ${line.unit}',
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  isVi ? 'Nhập/Dùng' : 'In/Out',
+                  '+${_qty(line.receivedQty)}/-${_qty(line.usedQty)}',
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  isVi ? 'Tồn lý thuyết' : 'Theoretical',
+                  '${_qty(line.theoreticalQty)} ${line.unit}',
+                  isHighlight: true,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  isVi ? 'Kiểm thực tế' : 'Counted',
+                  '${_qty(line.countedQty)} ${line.unit}',
+                  isHighlight: true,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          if (line.reason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${isVi ? "Lý do" : "Reason"}: ${line.reason}',
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile(BuildContext context, String label, String value,
+      {bool isHighlight = false, Color? color}) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isHighlight ? FontWeight.w800 : FontWeight.w600,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

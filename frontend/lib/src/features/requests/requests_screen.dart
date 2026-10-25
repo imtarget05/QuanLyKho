@@ -345,6 +345,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       builder: (ctx) => StockRequestDialog(
         locations: data.locations,
         items: data.items,
+        balances: data.balances,
         initialKind: defaultKind,
         isSpoilage: isSpoilage,
         initialLocationId: initialLocationId,
@@ -1596,6 +1597,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       repo.getLocations(),
       repo.getItems(),
       repo.getCashboxes(),
+      repo.getBalances().catchError((_) => <StockBalance>[]),
     ]);
     return _RequestsData(
       stockRequests: results[0] as List<StockRequest>,
@@ -1603,6 +1605,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       locations: results[2] as List<InventoryLocation>,
       items: results[3] as List<InventoryItem>,
       cashboxes: results[4] as List<Cashbox>,
+      balances: results[5] as List<StockBalance>,
     );
   }
 }
@@ -1614,6 +1617,7 @@ class _RequestsData {
     required this.locations,
     required this.items,
     required this.cashboxes,
+    this.balances = const [],
   });
 
   final List<StockRequest> stockRequests;
@@ -1621,4 +1625,5 @@ class _RequestsData {
   final List<InventoryLocation> locations;
   final List<InventoryItem> items;
   final List<Cashbox> cashboxes;
+  final List<StockBalance> balances;
 }

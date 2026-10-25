@@ -40,4 +40,47 @@ void main() {
     await tester.pump();
     expect(find.text('Ca Chiều · 15:00 – 23:00'), findsOneWidget);
   });
+
+  testWidgets('counter desk renders mobile card view on compact screens without overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ShiftStocktakeDesk(
+              lines: [
+                ShiftStocktakeLine(
+                  name: 'Trà Đen Phúc Long',
+                  unit: 'gói',
+                  openingQty: 10,
+                  receivedQty: 5,
+                  usedQty: 3,
+                  countedQty: 12,
+                  reason: 'Kiểm khớp ca sáng',
+                ),
+                ShiftStocktakeLine(
+                  name: 'Sữa tươi DalatMilk',
+                  unit: 'hộp',
+                  openingQty: 20,
+                  receivedQty: 0,
+                  usedQty: 6,
+                  countedQty: 12,
+                  reason: 'Đổ vỡ 2 hộp khi pha chế',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Trà Đen Phúc Long'), findsOneWidget);
+    expect(find.text('Sữa tươi DalatMilk'), findsOneWidget);
+    expect(find.textContaining('Khớp'), findsOneWidget);
+    expect(find.textContaining('Cần đối soát'), findsOneWidget);
+  });
 }
