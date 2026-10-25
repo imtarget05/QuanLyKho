@@ -143,6 +143,18 @@ class ReleaseWorkflowGateTests(unittest.TestCase):
         assert "test" in ci["jobs"]
         assert "frontend-web" in ci["jobs"]
 
+    def test_cloudflare_assets_use_the_azure_edge(self) -> None:
+        workflow = yaml.load(
+            (WORKFLOWS / "deploy-pages.yml").read_text(), Loader=yaml.BaseLoader
+        )
+        edge_url = "https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho"
+        self.assertEqual(workflow["env"]["API_BASE_URL"], edge_url)
+
+        auth_service = (
+            ROOT / "frontend/lib/src/features/auth/auth_service.dart"
+        ).read_text()
+        self.assertIn(f"'{edge_url}'", auth_service)
+
 
 if __name__ == "__main__":
     unittest.main()
