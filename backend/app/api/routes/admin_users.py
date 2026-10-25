@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.errors import AppError
 from app.api.routes.auth_utils import (
     get_password_hash,
+    get_user_capabilities,
     get_user_roles,
     get_user_scope_grants,
     require_any_capability,
@@ -33,6 +34,7 @@ from app.models.iam import (
     Branch,
     Capability,
     Role,
+    RoleCapability,
     ScopeGrant,
     User,
     UserRole,
@@ -101,6 +103,26 @@ class UpdateScopesRequest(BaseModel):
 
 
 # --- Helper Methods ---
+
+async def _validated_roles(db: AsyncSession, requested: list[str]) -> list[str]:
+    """Validate against the IAM catalog so migrated roles are assignable."""
+    roles = sorted({role.strip().lower() for role in requested if role.strip()})
+    if not roles:
+        raise AppError(422, "EMPTY_ROLES", "Người dùng phải có ít nhất một vai trò hợp lệ.")
+    found = set((await db.execute(select(Role.code).where(Role.code.in_(roles)))).scalars().all())
+    unknown = sorted(set(roles) - found)
+    if unknown:
+        raise AppError(422, "INVALID_ROLES", f"Vai trò không tồn tại: {', '.join(unknown)}.")
+    return roles
+
+
+async def _require_root_for_role_change(
+    db: AsyncSession, actor: User, before: set[str], after: set[str]
+) -> None:
+    if "root_admin" in before or "root_admin" in after:
+        caps = await get_user_capabilities(db, actor.id)
+        if "iam:root" not in caps:
+            raise AppError(403, "ROOT_ROLE_FORBIDDEN", "Chỉ quản trị viên root mới được thay đổi vai trò root.")
 
 async def _audit(
     db: AsyncSession,
@@ -322,6 +344,9 @@ async def create_user(
         except ValueError:
             raise AppError(422, "INVALID_BRANCH_ID", "Định dạng branch_id không hợp lệ.") from None
 
+    assigned_roles = await _validated_roles(db, body.roles)
+    await _require_root_for_role_change(db, current_user, set(), set(assigned_roles))
+
     new_user_id = uuid.uuid4()
     now = _now()
     temp_password = None
@@ -373,11 +398,8 @@ async def create_user(
     await db.flush()
 
     # Assign roles
-    valid_roles = {"admin", "staff", "maker", "approver", "checker", "auditor"}
-    for r in body.roles:
-        r_clean = r.strip().lower()
-        if r_clean in valid_roles:
-            db.add(UserRole(user_id=new_user_id, role_code=r_clean))
+    for role in assigned_roles:
+        db.add(UserRole(user_id=new_user_id, role_code=role))
 
     # Assign scope grants
     for s in body.scopes:
@@ -405,7 +427,7 @@ async def create_user(
         metadata={
             "username": clean_username,
             "onboarding_method": body.onboarding_method,
-            "roles": body.roles,
+            "roles": assigned_roles,
         },
     )
     await _outbox(
@@ -428,7 +450,6 @@ async def create_user(
     )
     if invite_token and clean_email:
         try:
-            assigned_roles = [r.strip().lower() for r in body.roles if r.strip().lower() in valid_roles]
             res = await send_invite_email(
                 to_email=clean_email,
                 username=clean_username,
@@ -586,24 +607,30 @@ async def update_user_roles(
     if not user:
         raise AppError(404, "USER_NOT_FOUND", "Không tìm thấy người dùng.")
 
-    valid_roles = {"admin", "staff", "maker", "approver", "checker", "auditor"}
-    cleaned_roles = list({r.strip().lower() for r in body.roles if r.strip().lower() in valid_roles})
-    if not cleaned_roles:
-        raise AppError(422, "EMPTY_ROLES", "Người dùng phải có ít nhất một vai trò hợp lệ.")
+    cleaned_roles = await _validated_roles(db, body.roles)
+    existing_roles_res = await db.execute(select(UserRole).where(UserRole.user_id == u_uuid))
+    existing_roles = {role.role_code: role for role in existing_roles_res.scalars().all()}
+    before = set(existing_roles)
+    after = set(cleaned_roles)
+    await _require_root_for_role_change(db, current_user, before, after)
 
     # Invariant: Self-modification check
     if current_user.id == user.id:
-        if "admin" not in cleaned_roles:
+        if after - before:
+            raise AppError(403, "CANNOT_ESCALATE_SELF", "Không thể tự cấp thêm vai trò cho chính mình.")
+        retained_caps = set((await db.execute(
+            select(RoleCapability.capability_code).where(RoleCapability.role_code.in_(after))
+        )).scalars().all())
+        if not retained_caps.intersection(_ADMIN_CAPS):
             raise AppError(400, "CANNOT_DEMOTE_SELF", "Quản trị viên không thể tự gỡ vai trò admin của chính mình.")
 
-    # Remove existing roles
-    existing_roles_res = await db.execute(select(UserRole).where(UserRole.user_id == u_uuid))
-    for r in existing_roles_res.scalars().all():
-        await db.delete(r)
+    # Apply a set difference. Deleting and reinserting an unchanged composite
+    # primary key in one flush can trigger a uniqueness error on a retry.
+    for role_code in before - after:
+        await db.delete(existing_roles[role_code])
 
-    # Insert new roles
-    for r in cleaned_roles:
-        db.add(UserRole(user_id=u_uuid, role_code=r))
+    for role_code in after - before:
+        db.add(UserRole(user_id=u_uuid, role_code=role_code))
 
     # Invalidate token version so user gets refreshed permissions
     user.auth_version = getattr(user, "auth_version", 1) + 1
@@ -640,6 +667,9 @@ async def update_user_scopes(
     user = (await db.execute(select(User).where(User.id == u_uuid))).scalar_one_or_none()
     if not user:
         raise AppError(404, "USER_NOT_FOUND", "Không tìm thấy người dùng.")
+
+    if current_user.id == user.id:
+        raise AppError(403, "CANNOT_CHANGE_OWN_SCOPES", "Không thể tự thay đổi phạm vi dữ liệu của chính mình.")
 
     # Remove existing scopes
     existing_scopes_res = await db.execute(select(ScopeGrant).where(ScopeGrant.user_id == u_uuid))

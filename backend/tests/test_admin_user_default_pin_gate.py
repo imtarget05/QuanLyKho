@@ -86,7 +86,7 @@ class TestAdminCreateUserDefaultPin:
             json={
                 "username": username,
                 "display_name": "Nguoi Dung Khong PIN",
-                "roles": ["teller"],
+                "roles": ["staff"],
                 "onboarding_method": "temporary_password",
             },
         )
@@ -108,7 +108,7 @@ class TestAdminCreateUserDefaultPin:
             json={
                 "username": username,
                 "display_name": "Nguoi Dung Demo",
-                "roles": ["teller"],
+                "roles": ["staff"],
                 "onboarding_method": "temporary_password",
             },
         )

@@ -405,6 +405,12 @@ async def get_user_roles(db: AsyncSession, user_id: str) -> list[str]:
 
 
 async def get_user_capabilities(db: AsyncSession, user_id: str) -> list[str]:
+    roles = await get_user_roles(db, user_id)
+    if "root_admin" in roles:
+        # root_admin is the explicit superuser role. Resolve against the live
+        # catalog so capabilities introduced after migration 019 are included.
+        result = await db.execute(select(Capability.code))
+        return sorted(set(result.scalars().all()))
     result = await db.execute(
         select(Capability.code)
         .join(RoleCapability, RoleCapability.capability_code == Capability.code)
@@ -515,7 +521,7 @@ async def check_user_scope(
 ) -> bool:
     """Checks if user has permission in the given branch or location."""
     roles = await get_user_roles(db, user.id)
-    if any(r in ("admin", "system_admin") for r in roles):
+    if any(r in ("admin", "system_admin", "root_admin") for r in roles):
         return True
 
     # User primary branch
@@ -540,7 +546,7 @@ async def get_accessible_location_ids(
     on the caller to supply a location that happens to be in their scope.
     """
     roles = await get_user_roles(db, user.id)
-    if any(role in ("admin", "system_admin") for role in roles):
+    if any(role in ("admin", "system_admin", "root_admin") for role in roles):
         return None
 
     from app.models.inventory import Location
@@ -577,7 +583,7 @@ async def get_accessible_cashbox_ids(
     from app.models.cash_sim import CashBox
 
     roles = await get_user_roles(db, user.id)
-    if any(role in ("admin", "system_admin") for role in roles):
+    if any(role in ("admin", "system_admin", "root_admin") for role in roles):
         return None
 
     branch_ids: set[str] = set()
