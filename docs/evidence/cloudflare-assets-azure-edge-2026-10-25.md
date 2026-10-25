@@ -30,4 +30,4 @@ Cloudflare deployment and API smoke, but a public read of `/` still returned
 same legacy product name. A second regression test now asserts both static
 assets use `Kho Trà Sữa · QuanLyKho`.
 
-RED: `python3 -m unittest scripts.test_release_workflow_gates.ReleaseWorkflowGateTests.test_cloudflare_assets_use_quanlykho_name -v` failed because the title was old (`e383b29`). GREEN: all five release workflow tests passed after updating both assets (`7fbf831`). This follow-up has not been republished to Cloudflare yet.
+RED: `python3 -m unittest scripts.test_release_workflow_gates.ReleaseWorkflowGateTests.test_cloudflare_assets_use_quanlykho_name -v` failed because the title was old (`e383b29`). GREEN: all five release workflow tests passed after updating both assets (`7fbf831`). The follow-up was published by [run 40200251829](https://github.com/imtarget05/QuanLyKho/actions/runs/40200251829) from merge commit `a098d32`. Public `/version.json` returned `a098d32`; `/` returned `<title>Kho Trà Sữa · QuanLyKho</title>` and `/manifest.json` named the PWA `Kho Trà Sữa · QuanLyKho`.
