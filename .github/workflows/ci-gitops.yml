@@ -1,23 +1,12 @@
-name: CI/CD & GitOps ArgoCD Pipeline
+name: Manual AKS Image Publication
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
-      target_env:
-        description: 'Target environment to deploy'
+      confirm:
+        description: 'Type PUBLISH_AKS_IMAGES to publish immutable images after CI'
         required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
-
-permissions:
-  contents: write
-  packages: write
-  security-events: write
+        type: string
 
 env:
   PYTHON_VERSION: "3.11"
@@ -33,6 +22,8 @@ jobs:
   test:
     name: Lint, Test & Secret Guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     services:
       postgres:
         image: postgres:16-alpine
@@ -106,7 +97,12 @@ jobs:
   build-and-push:
     name: Build & Push Images
     needs: test
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm == 'PUBLISH_AKS_IMAGES'
+    environment: aks-promotion-manual
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_tag: ${{ steps.vars.outputs.tag }}
     steps:
@@ -116,7 +112,7 @@ jobs:
       - name: Compute Image Tag
         id: vars
         run: |
-          TAG="sha-${GITHUB_SHA::7}"
+          TAG="sha-${GITHUB_SHA}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -130,26 +126,24 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push Backend API Image
+        id: api-build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build & Push Frontend Image
+        id: frontend-build
         uses: docker/build-push-action@v5
         with:
           context: frontend
           file: frontend/Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -163,36 +157,7 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-  # =========================================================================
-  # 3. GitOps Tag Update for ArgoCD
-  # =========================================================================
-  gitops-deploy:
-    name: Update GitOps Manifests for ArgoCD
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code with write access
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update Kustomize Image Tags
+      - name: Record immutable publication digests
         run: |
-          TARGET_DIR="infra/k8s/overlays/${{ github.event.inputs.target_env || 'production' }}"
-          echo "Updating image tag to ${{ needs.build-and-push.outputs.image_tag }} in ${TARGET_DIR}"
-          
-          cd "${TARGET_DIR}"
-          kustomize edit set image "ghcr.io/imtarget05/bankops-api=ghcr.io/${{ env.API_IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}" || \
-          sed -i 's/newTag: .*/newTag: '"${{ needs.build-and-push.outputs.image_tag }}"'/g' kustomization.yaml
-
-      - name: Commit & Push GitOps Changes
-        run: |
-          git config --global user.name "bankops-gitops-bot"
-          git config --global user.email "bot@bankops.internal"
-          git add infra/k8s/overlays/
-          if git diff --staged --quiet; then
-            echo "No manifest changes detected."
-          else
-            git commit -m "chore(gitops): bump release image to ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
-            git push origin main
-          fi
+          printf 'API: `%s@%s`\n' "${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}" "${{ steps.api-build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Frontend: `%s@%s`\n' "${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}" "${{ steps.frontend-build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
