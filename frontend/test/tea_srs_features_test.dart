@@ -6,6 +6,7 @@ import 'package:kho_tra_sua/src/data/models/dtos.dart';
 import 'package:kho_tra_sua/src/data/repositories/fake_repository.dart';
 import 'package:kho_tra_sua/src/features/inventory/inventory_screen.dart';
 import 'package:kho_tra_sua/src/features/reports/reports_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   const user = AppUser(
@@ -24,6 +25,9 @@ void main() {
 
       final repo = FakeBankOpsRepository(latency: Duration.zero);
       final locs = await repo.getLocations();
+
+      // The stocktake outbox persists to SharedPreferences; mock the plugin.
+      SharedPreferences.setMockInitialValues({});
 
       // Create an open shift stocktake
       await repo.createStocktake(
