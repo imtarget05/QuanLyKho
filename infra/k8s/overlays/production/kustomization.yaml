@@ -16,6 +16,8 @@ images:
   newTag: v1.0.0
 
 replicas:
+- name: bankops-api
+  count: 1
 - name: bankops-frontend
   count: 0
 - name: cloudflare-tunnel
