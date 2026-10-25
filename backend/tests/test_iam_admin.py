@@ -167,7 +167,7 @@ class TestIamAdmin:
                 "username": username,
                 "email": f"{username}@bankops.vn",
                 "display_name": "Nhân viên Mới",
-                "roles": ["teller"],
+                "roles": ["staff"],
                 "onboarding_method": "temporary_password",
             },
         )
@@ -208,7 +208,7 @@ class TestIamAdmin:
                 "username": username,
                 "email": f"{username}@bankops.vn",
                 "display_name": "Nhân viên Mời",
-                "roles": ["teller"],
+                "roles": ["staff"],
                 "onboarding_method": "invite_email",
             },
         )

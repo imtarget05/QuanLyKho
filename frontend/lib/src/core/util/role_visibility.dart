@@ -13,12 +13,14 @@ class RoleVisibility {
     'staff',
     'maker',
     'admin',
+    'root_admin',
     'integration_admin',
   };
   static const _approvers = {
     'approver',
     'checker',
     'admin',
+    'root_admin',
     'system_admin',
     'supervisor',
   };
@@ -26,6 +28,7 @@ class RoleVisibility {
     'staff',
     'maker',
     'admin',
+    'root_admin',
     'integration_admin',
     'approver',
     'checker',
@@ -49,10 +52,14 @@ class RoleVisibility {
       roles.isEmpty || roles.intersection(_approvers).isNotEmpty;
 
   static bool canManageCatalog(Set<String> roles) =>
-      roles.isEmpty || roles.contains('admin') || roles.contains('inventory_manager');
+      roles.isEmpty ||
+      roles.contains('admin') ||
+      roles.contains('root_admin') ||
+      roles.contains('inventory_manager');
 
   static bool isAdmin(Set<String> roles) =>
       roles.contains('admin') ||
+      roles.contains('root_admin') ||
       roles.contains('system_admin') ||
       roles.contains('manager') ||
       roles.contains('owner');
@@ -62,7 +69,9 @@ class RoleVisibility {
     if (user == null) return true; // dev default
     final email = user.email?.trim().toLowerCase() ?? '';
     final username = user.username.trim().toLowerCase();
-    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) return true;
+    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) {
+      return true;
+    }
     final roles = rolesOf(user);
     return isAdmin(roles) || canManageEmployees(user);
   }
@@ -79,9 +88,12 @@ class RoleVisibility {
     if (user == null) return false;
     final email = user.email?.trim().toLowerCase() ?? '';
     final username = user.username.trim().toLowerCase();
-    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) return true;
+    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) {
+      return true;
+    }
     final roles = rolesOf(user);
     if (roles.contains('admin') ||
+        roles.contains('root_admin') ||
         roles.contains('system_admin') ||
         roles.contains('manager') ||
         roles.contains('owner')) {
@@ -95,7 +107,11 @@ class RoleVisibility {
   static bool canAccessEtlStudio(AppUser? user) {
     if (user == null) return false;
     final roles = rolesOf(user);
-    if (roles.contains('admin') || roles.contains('system_admin')) return true;
+    if (roles.contains('admin') ||
+        roles.contains('root_admin') ||
+        roles.contains('system_admin')) {
+      return true;
+    }
     final caps = user.capabilities.map((e) => e.toLowerCase()).toSet();
     return caps.contains('etl:admin') || caps.contains('etl:design');
   }
@@ -104,7 +120,11 @@ class RoleVisibility {
   static bool canRunEtl(AppUser? user) {
     if (user == null) return false;
     final roles = rolesOf(user);
-    if (roles.contains('admin') || roles.contains('system_admin')) return true;
+    if (roles.contains('admin') ||
+        roles.contains('root_admin') ||
+        roles.contains('system_admin')) {
+      return true;
+    }
     final caps = user.capabilities.map((e) => e.toLowerCase()).toSet();
     return caps.contains('etl:run') || caps.contains('etl:admin');
   }
@@ -118,6 +138,7 @@ class RoleVisibility {
   /// capability (phiên offline / test).
   static const _cashAdjustmentRoles = {
     'admin',
+    'root_admin',
     'system_admin',
     'approver',
     'cash_sim_operator',
@@ -157,6 +178,7 @@ class RoleVisibility {
     list.addAll([6, 7, 8]);
     if ((user != null && canManageEmployees(user)) ||
         roles.contains('admin') ||
+        roles.contains('root_admin') ||
         roles.contains('system_admin')) {
       list.add(9);
     }
@@ -169,6 +191,8 @@ class RoleVisibility {
       case 'admin':
       case 'system_admin':
         return 'Chủ Quán (Admin)';
+      case 'root_admin':
+        return 'Quản trị gốc (Root)';
       case 'inventory_manager':
         return 'Quản Lý Kho / Cửa Hàng';
       case 'approver':

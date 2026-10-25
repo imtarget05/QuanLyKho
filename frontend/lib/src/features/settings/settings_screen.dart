@@ -757,8 +757,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             sectionGap,
             if (RoleVisibility.canManageEmployees(user) ||
-                RoleVisibility.rolesOf(user).contains('admin') ||
-                RoleVisibility.rolesOf(user).contains('system_admin')) ...[
+                RoleVisibility.isAdmin(RoleVisibility.rolesOf(user))) ...[
               SectionHeader(
                 title: isVi ? 'IAM & Quản trị Hệ thống' : 'IAM & System Administration',
                 showCount: false,
@@ -788,8 +787,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                         },
                       ),
-                    if (RoleVisibility.rolesOf(user).contains('admin') ||
-                        RoleVisibility.rolesOf(user).contains('system_admin')) ...[
+                    if (RoleVisibility.isAdmin(RoleVisibility.rolesOf(user))) ...[
                       const Divider(height: 1),
                       ListTile(
                         key: const Key('btn-manage-cashboxes'),

@@ -92,6 +92,7 @@ class StockRequestDialog extends StatefulWidget {
     super.key,
     required this.locations,
     required this.items,
+    this.balances,
     this.initialKind = RequestKind.receipt,
     this.initialLocationId,
     this.initialItemId,
@@ -102,6 +103,7 @@ class StockRequestDialog extends StatefulWidget {
 
   final List<InventoryLocation> locations;
   final List<InventoryItem> items;
+  final List<StockBalance>? balances;
   final RequestKind initialKind;
   final String? initialLocationId;
   final String? initialItemId;
@@ -325,6 +327,34 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
         'transfer' => 'Chuyển kho',
         _ => 'Bán hàng / Pha chế',
       };
+
+  double _availableStockForItem(String itemId, String? locationId) {
+    if (widget.balances == null) return 0.0;
+    return widget.balances!
+        .where((b) =>
+            b.itemId == itemId &&
+            (locationId == null || b.locationId == locationId))
+        .fold<double>(
+            0.0, (sum, b) => sum + (double.tryParse(b.quantity) ?? 0.0));
+  }
+
+  List<String> get _relevantReasonSuggestions {
+    if (_subKind == 'spoilage') return _spoilageReasons;
+    if (_subKind == 'internal') return _internalReasons;
+    if (_subKind == 'transfer') return _transferReasons;
+    if (_kind == RequestKind.receipt) {
+      return const [
+        'Nhập nguyên liệu định kỳ từ nhà cung cấp',
+        'Bổ sung nguyên liệu chuẩn bị ca cao điểm',
+        'Nhập hàng mẫu kiểm tra chất lượng',
+      ];
+    }
+    return const [
+      'Xuất nguyên liệu phục vụ quầy pha chế',
+      'Xuất bổ sung ca làm việc',
+      'Xuất nguyên liệu quầy bar',
+    ];
+  }
 
   Future<bool?> _showReviewDialog() {
     final theme = Theme.of(context);
@@ -1098,6 +1128,51 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
             ],
           ],
         ),
+        if (!isReceipt && widget.balances != null) ...[
+          const SizedBox(height: 6),
+          Builder(
+            builder: (_) {
+              final avail = _availableStockForItem(line.itemId, _sourceLocationId);
+              final isOver = line.quantity > avail && avail >= 0;
+              return Row(
+                children: [
+                  Icon(
+                    avail > 0 ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                    size: 14,
+                    color: avail > 0 ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Tồn khả dụng: ${avail.toStringAsFixed(1)} $unitLabel',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: avail > 0 ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                    ),
+                  ),
+                  if (isOver && line.quantity > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Vượt tồn',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFDC2626),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
         const SizedBox(height: 10),
         Row(
           children: [
@@ -1111,6 +1186,34 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
                   labelText: 'Số lượng ($unitLabel) *',
                   isDense: true,
                   border: const OutlineInputBorder(),
+                  prefixIcon: IconButton(
+                    icon: const Icon(Icons.remove, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    tooltip: 'Giảm 1',
+                    onPressed: () {
+                      final cur = line.quantity;
+                      final next = (cur - 1) < 0 ? 0.0 : (cur - 1);
+                      line.qtyCtrl.text = next == next.roundToDouble()
+                          ? next.toInt().toString()
+                          : next.toStringAsFixed(1);
+                      setState(() {});
+                    },
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    tooltip: 'Tăng 1',
+                    onPressed: () {
+                      final cur = line.quantity;
+                      final next = cur + 1;
+                      line.qtyCtrl.text = next == next.roundToDouble()
+                          ? next.toInt().toString()
+                          : next.toStringAsFixed(1);
+                      setState(() {});
+                    },
+                  ),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -1133,6 +1236,48 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
                 ),
               ),
             ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Text(
+              'Thêm nhanh: ',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            for (final inc in [1, 5, 10])
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InkWell(
+                  onTap: () {
+                    final cur = line.quantity;
+                    final next = cur + inc;
+                    line.qtyCtrl.text = next == next.roundToDouble()
+                        ? next.toInt().toString()
+                        : next.toStringAsFixed(1);
+                    setState(() {});
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '+$inc',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
         if (isReceipt) ...[
@@ -1216,153 +1361,229 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
     String unitLabel,
     ThemeData theme,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 12,
-          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-          child: Text(
-            '${index + 1}',
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 4,
-          child: DropdownButtonFormField<String>(
-            key: Key('stock-dialog-item-select-$index'),
-            isExpanded: true,
-            initialValue: line.itemId,
-            decoration: const InputDecoration(
-              labelText: 'Nguyên vật liệu *',
-              isDense: true,
-              border: OutlineInputBorder(),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+              child: Text(
+                '${index + 1}',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary),
+              ),
             ),
-            items: [
-              for (final itm in widget.items)
-                DropdownMenuItem(
-                  value: itm.id,
-                  child: Text(
-                    '${itm.name} (${itm.sku})',
-                    overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 4,
+              child: DropdownButtonFormField<String>(
+                key: Key('stock-dialog-item-select-$index'),
+                isExpanded: true,
+                initialValue: line.itemId,
+                decoration: const InputDecoration(
+                  labelText: 'Nguyên vật liệu *',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final itm in widget.items)
+                    DropdownMenuItem(
+                      value: itm.id,
+                      child: Text(
+                        '${itm.name} (${itm.sku})',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      line.itemId = v;
+                      final selectedItem = _findItem(v);
+                      if (selectedItem != null &&
+                          selectedItem.costPrice != null &&
+                          selectedItem.costPrice! > 0) {
+                        line.priceCtrl.text =
+                            selectedItem.costPrice!.toStringAsFixed(0);
+                      }
+                    });
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                key: index == 0 ? const Key('stock-qty-input') : Key('stock-qty-input-$index'),
+                controller: line.qtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'SL ($unitLabel) *',
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: IconButton(
+                    icon: const Icon(Icons.remove, size: 14),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    tooltip: 'Giảm 1',
+                    onPressed: () {
+                      final cur = line.quantity;
+                      final next = (cur - 1) < 0 ? 0.0 : (cur - 1);
+                      line.qtyCtrl.text = next == next.roundToDouble()
+                          ? next.toInt().toString()
+                          : next.toStringAsFixed(1);
+                      setState(() {});
+                    },
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add, size: 14),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    tooltip: 'Tăng 1',
+                    onPressed: () {
+                      final cur = line.quantity;
+                      final next = cur + 1;
+                      line.qtyCtrl.text = next == next.roundToDouble()
+                          ? next.toInt().toString()
+                          : next.toStringAsFixed(1);
+                      setState(() {});
+                    },
                   ),
                 ),
-            ],
-            onChanged: (v) {
-              if (v != null) {
-                setState(() {
-                  line.itemId = v;
-                  final selectedItem = _findItem(v);
-                  if (selectedItem != null &&
-                      selectedItem.costPrice != null &&
-                      selectedItem.costPrice! > 0) {
-                    line.priceCtrl.text =
-                        selectedItem.costPrice!.toStringAsFixed(0);
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                key: index == 0 ? const Key('stock-price-input') : Key('stock-price-input-$index'),
+                controller: line.priceCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Đơn giá *',
+                  isDense: true,
+                  suffixText: 'đ',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                key: index == 0 ? const Key('stock-lot-input') : Key('stock-lot-input-$index'),
+                controller: line.lotCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Số lô *',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: line.expiryDate,
+                    firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                    lastDate: DateTime.now().add(const Duration(days: 730)),
+                  );
+                  if (picked != null) {
+                    setState(() => line.expiryDate = picked);
                   }
-                });
-              }
-            },
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            key: index == 0 ? const Key('stock-qty-input') : Key('stock-qty-input-$index'),
-            controller: line.qtyCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'SL ($unitLabel) *',
-              isDense: true,
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            key: index == 0 ? const Key('stock-price-input') : Key('stock-price-input-$index'),
-            controller: line.priceCtrl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Đơn giá *',
-              isDense: true,
-              suffixText: 'đ',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            key: index == 0 ? const Key('stock-lot-input') : Key('stock-lot-input-$index'),
-            controller: line.lotCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Số lô *',
-              isDense: true,
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: line.expiryDate,
-                firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                lastDate: DateTime.now().add(const Duration(days: 730)),
-              );
-              if (picked != null) {
-                setState(() => line.expiryDate = picked);
-              }
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'HSD *',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-              child: Text(
-                '${line.expiryDate.day.toString().padLeft(2, '0')}/${line.expiryDate.month.toString().padLeft(2, '0')}',
-                style: const TextStyle(fontSize: 12),
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'HSD *',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(
+                    '${line.expiryDate.day.toString().padLeft(2, '0')}/${line.expiryDate.month.toString().padLeft(2, '0')}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 90,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text('Thành tiền', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text(
-                AppFormat.money(line.lineTotal.toStringAsFixed(0)),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-                overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 90,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('Thành tiền', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text(
+                    AppFormat.money(line.lineTotal.toStringAsFixed(0)),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (_lines.length > 1) ...[
+              IconButton(
+                key: Key('stock-dialog-delete-line-$index'),
+                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                tooltip: 'Xoá dòng',
+                onPressed: () => _removeLine(index),
               ),
             ],
-          ),
+          ],
         ),
-        if (_lines.length > 1) ...[
-          IconButton(
-            key: Key('stock-dialog-delete-line-$index'),
-            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-            tooltip: 'Xoá dòng',
-            onPressed: () => _removeLine(index),
-          ),
-        ],
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const SizedBox(width: 32),
+            Text(
+              'Thêm nhanh: ',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            for (final inc in [1, 5, 10])
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InkWell(
+                  onTap: () {
+                    final cur = line.quantity;
+                    final next = cur + inc;
+                    line.qtyCtrl.text = next == next.roundToDouble()
+                        ? next.toInt().toString()
+                        : next.toStringAsFixed(1);
+                    setState(() {});
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '+$inc',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -1401,6 +1622,47 @@ class _StockRequestDialogState extends State<StockRequestDialog> {
               ),
             );
           },
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final suggestion in _relevantReasonSuggestions.take(3))
+              InkWell(
+                onTap: () {
+                  _reasonCtrl.text = suggestion;
+                  _autocompleteReasonCtrl?.text = suggestion;
+                  setState(() {});
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.bolt, size: 13, color: Color(0xFFD97706)),
+                      const SizedBox(width: 4),
+                      Text(
+                        suggestion,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );
