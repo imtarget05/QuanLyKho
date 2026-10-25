@@ -207,6 +207,11 @@ if [[ "${DB_URL}" =~ ^postgresql:// ]]; then
     DB_URL="postgresql+asyncpg://${DB_URL#postgresql://}"
 fi
 
+DB_PASS="${DB_PASSWORD:-}"
+if [ -z "${DB_PASS}" ] && [[ "${DB_URL}" =~ ://[^:]+:([^@]+)@ ]]; then
+    DB_PASS="${BASH_REMATCH[1]}"
+fi
+
 # ---------------------------------------------------------------------------
 # 3. Generate GPG Passphrase if not set (optional secret).
 #    Ghi chú: chạy lại script khi đã có backup cũ sẽ đổi passphrase => phải
@@ -240,6 +245,7 @@ metadata:
 type: Opaque
 stringData:
   DATABASE_URL: "${DB_URL}"
+  DB_PASSWORD: "${DB_PASS}"
   BANKOPS_SIGNING_KEY: "${SIGNING_KEY}"
   BANKOPS_SESSION_SECRET: "${SESSION_SECRET}"
   SMTP_USER: "${SMTP_USER_VALUE}"

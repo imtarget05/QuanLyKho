@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
   - configmap.yaml
+  - postgres.yaml
+  - migration-job.yaml
   - services.yaml
   - deployment-api.yaml
   - deployment-worker.yaml
