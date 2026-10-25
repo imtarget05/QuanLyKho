@@ -15,6 +15,7 @@ class RoleVisibility {
     'admin',
     'root_admin',
     'integration_admin',
+    'inventory_manager',
   };
   static const _approvers = {
     'approver',
@@ -23,6 +24,7 @@ class RoleVisibility {
     'root_admin',
     'system_admin',
     'supervisor',
+    'inventory_manager',
   };
   static const _privileged = {
     'staff',

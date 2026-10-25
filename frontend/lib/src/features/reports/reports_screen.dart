@@ -96,9 +96,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
       repo.getConsumptionTop(),
       repo.getShiftHistory(),
     ]);
+
+    // Validate cashflow data - ensure it's a proper list, default to empty if malformed
+    final rawCashflow = results[1] as List?;
+    final cashflowBuckets = rawCashflow?.whereType<CashflowBucket>().toList() ?? [];
+
+    // Validate inventory data similarly
+    final rawInventory = results[0] as List?;
+    final inventoryBuckets = rawInventory?.whereType<InventoryBucket>().toList() ?? [];
+
     return _ReportsData(
-      inventoryBuckets: results[0] as List<InventoryBucket>,
-      cashflowBuckets: results[1] as List<CashflowBucket>,
+      inventoryBuckets: inventoryBuckets,
+      cashflowBuckets: cashflowBuckets,
       stagnationItems: results[2] as List<StagnationItem>,
       reconciliations: results[3] as List<ReconciliationRun>,
       consumptionTop: results[4] as List<ConsumptionTopItem>,

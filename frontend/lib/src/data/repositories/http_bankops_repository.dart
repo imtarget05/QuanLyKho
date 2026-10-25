@@ -855,6 +855,7 @@ class HttpBankOpsRepository implements BankOpsRepository {
       lines: lines,
       shiftCode: _nullableStr(m, 'shift_code'),
       businessDate: _nullableStr(m, 'business_date'),
+      version: (m['version'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -882,6 +883,7 @@ class HttpBankOpsRepository implements BankOpsRepository {
     String? note,
     String? shiftCode,
     String? businessDate,
+    String? idempotencyKey,
   }) async {
     final res = await _post(
       '/inventory/stocktakes',
@@ -891,28 +893,36 @@ class HttpBankOpsRepository implements BankOpsRepository {
         if (shiftCode != null) 'shift_code': shiftCode,
         if (businessDate != null) 'business_date': businessDate,
       },
-      extraHeaders: {'Idempotency-Key': _idemKey()},
+      extraHeaders: {'Idempotency-Key': idempotencyKey ?? _idemKey()},
     );
     return _parseStocktake(res);
   }
 
   @override
   Future<StocktakeItem> updateStocktakeLines(
-      String id, List<Map<String, dynamic>> lines) async {
+      String id, List<Map<String, dynamic>> lines,
+      {String? idempotencyKey, int? expectedVersion}) async {
     final res = await _put(
       '/inventory/stocktakes/$id/lines',
       {'lines': lines},
-      extraHeaders: {'Idempotency-Key': _idemKey()},
+      extraHeaders: {
+        'Idempotency-Key': idempotencyKey ?? _idemKey(),
+        if (expectedVersion != null) 'If-Match': '$expectedVersion',
+      },
     );
     return _parseStocktake(res);
   }
 
   @override
-  Future<StocktakeItem> submitStocktake(String id) async {
+  Future<StocktakeItem> submitStocktake(String id,
+      {String? idempotencyKey, int? expectedVersion}) async {
     final res = await _post(
       '/inventory/stocktakes/$id/submit',
       {},
-      extraHeaders: {'Idempotency-Key': _idemKey()},
+      extraHeaders: {
+        'Idempotency-Key': idempotencyKey ?? _idemKey(),
+        if (expectedVersion != null) 'If-Match': '$expectedVersion',
+      },
     );
     return _parseStocktake(res);
   }

@@ -711,6 +711,7 @@ class FakeBankOpsRepository implements BankOpsRepository {
     String? note,
     String? shiftCode,
     String? businessDate,
+    String? idempotencyKey,
   }) async {
     _ensureStocktakesSeeded();
     final items = await getItems();
@@ -771,10 +772,14 @@ class FakeBankOpsRepository implements BankOpsRepository {
 
   @override
   Future<StocktakeItem> updateStocktakeLines(
-      String id, List<Map<String, dynamic>> lines) async {
+      String id, List<Map<String, dynamic>> lines,
+      {String? idempotencyKey, int? expectedVersion}) async {
     final idx = _stocktakes.indexWhere((s) => s.id == id);
     if (idx < 0) throw ApiException('NOT_FOUND', 'Không tìm thấy đợt kiểm kê');
     final st = _stocktakes[idx];
+    if (expectedVersion != null && expectedVersion != st.version) {
+      throw ApiException('VERSION_CONFLICT', 'Phiên kiểm kê đã thay đổi');
+    }
     final balances = await getBalances(locationId: st.locationId);
 
     final lineItems = <StocktakeLineItem>[];
@@ -821,16 +826,21 @@ class FakeBankOpsRepository implements BankOpsRepository {
       lines: lineItems,
       shiftCode: st.shiftCode,
       businessDate: st.businessDate,
+      version: st.version + 1,
     );
     _stocktakes[idx] = updated;
     return _delay(updated);
   }
 
   @override
-  Future<StocktakeItem> submitStocktake(String id) async {
+  Future<StocktakeItem> submitStocktake(String id,
+      {String? idempotencyKey, int? expectedVersion}) async {
     final idx = _stocktakes.indexWhere((s) => s.id == id);
     if (idx < 0) throw ApiException('NOT_FOUND', 'Không tìm thấy đợt kiểm kê');
     final st = _stocktakes[idx];
+    if (expectedVersion != null && expectedVersion != st.version) {
+      throw ApiException('VERSION_CONFLICT', 'Phiên kiểm kê đã thay đổi');
+    }
     final updated = StocktakeItem(
       id: st.id,
       locationId: st.locationId,
@@ -844,6 +854,7 @@ class FakeBankOpsRepository implements BankOpsRepository {
       lines: st.lines,
       shiftCode: st.shiftCode,
       businessDate: st.businessDate,
+      version: st.version + 1,
     );
     _stocktakes[idx] = updated;
     return _delay(updated);
@@ -898,6 +909,7 @@ class FakeBankOpsRepository implements BankOpsRepository {
       lines: st.lines,
       shiftCode: st.shiftCode,
       businessDate: st.businessDate,
+      version: st.version + 1,
     );
     _stocktakes[idx] = updated;
     _approvalStreamCtrl.add('processed:$id');
@@ -920,6 +932,7 @@ class FakeBankOpsRepository implements BankOpsRepository {
       lines: st.lines,
       shiftCode: st.shiftCode,
       businessDate: st.businessDate,
+      version: st.version + 1,
     );
     _stocktakes[idx] = updated;
     _approvalStreamCtrl.add('processed:$id');

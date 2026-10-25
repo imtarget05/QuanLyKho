@@ -158,6 +158,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
+  Future<bool> _queueStocktake(BankOpsRepository repo, String kind,
+      Map<String, dynamic> payload, String idempotencyKey) async {
+    final user = SessionScope.maybeOf(context)?.user;
+    if (user == null) throw StateError('Cần đăng nhập để đồng bộ kiểm kê');
+    if (OfflineHub.instance.currentUserId != user.id ||
+        OfflineHub.instance.currentBranch != user.branch) {
+      throw StateError('Phiên đăng nhập đã thay đổi; mở lại ca kiểm kê');
+    }
+    await StocktakeOutbox.shared.bindIdentity(user.id, user.branch);
+    if (!mounted || OfflineHub.instance.currentUserId != user.id ||
+        OfflineHub.instance.currentBranch != user.branch) {
+      throw StateError('Phiên đăng nhập đã thay đổi; mở lại ca kiểm kê');
+    }
+    await StocktakeOutbox.shared.enqueue(kind, payload, idempotencyKey);
+    return StocktakeOutbox.shared.tryFlush(
+      repository: repo, currentUserId: user.id, currentBranch: user.branch,
+    );
+  }
+
   String _slugSku(String name) {
     var s = name.trim().toLowerCase();
     const map = {
@@ -1948,16 +1967,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (ok == true && mounted) {
       try {
         final repo = RepositoryScope.of(context);
-        await repo.createStocktake(
-          locationId: selectedLocId,
-          note: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
-          shiftCode: selectedShift,
-          businessDate: DateTime.now().toIso8601String().substring(0, 10),
-        );
+        final synced = await _queueStocktake(repo, 'create_stocktake', {
+          'location_id': selectedLocId,
+          'note': noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+          'shift_code': selectedShift,
+          'business_date': DateTime.now().toIso8601String().substring(0, 10),
+        }, 'create-${DateTime.now().microsecondsSinceEpoch}');
+        OfflineHub.instance.addQueued();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Đã mở phiên chốt tồn theo ca!'),
+            SnackBar(
+                content: Text(synced ? 'Đã mở phiên chốt tồn theo ca!'
+                    : StocktakeOutbox.shared.hasConflict
+                        ? 'Ca đã mở hoặc dữ liệu xung đột. Cần kiểm tra trước khi thử lại.'
+                        : 'Yêu cầu mở ca đã lưu trên thiết bị và sẽ đồng bộ khi có mạng.'),
                 behavior: SnackBarBehavior.floating),
           );
           _refresh();
@@ -2433,38 +2456,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       };
                     }).toList();
                     try {
-                      await repo.updateStocktakeLines(
-                          stocktake.id, linesPayload);
-                      try {
+                      final synced = await _queueStocktake(repo, 'submit_lines', {
+                        'stocktake_id': stocktake.id,
+                        'lines': linesPayload,
+                        'expected_version': stocktake.version,
+                      }, '${stocktake.id}-${DateTime.now().microsecondsSinceEpoch}');
+                      if (synced) {
                         await _prefs?.remove('stocktake_draft_${stocktake.id}');
-                      } catch (_) {}
-                      OfflineHub.instance.markOnline();
-                      StocktakeOutbox.shared.ack(stocktake.id);
+                      }
+                      OfflineHub.instance.addQueued();
                       if (mounted) {
-                        messenger.showSnackBar(
-                          const SnackBar(
-                              content: Text('Đã lưu số kiểm đếm thực tế!'),
-                              behavior: SnackBarBehavior.floating),
-                        );
+                        messenger.showSnackBar(SnackBar(
+                          content: Text(synced ? 'Đã lưu số kiểm đếm thực tế!'
+                              : StocktakeOutbox.shared.hasConflict
+                                  ? 'Dữ liệu trên máy chủ đã thay đổi. Cần xử lý xung đột kiểm kê.'
+                                  : 'Số đếm đã lưu trên thiết bị và sẽ đồng bộ khi có mạng.'),
+                          behavior: SnackBarBehavior.floating,
+                        ));
                         navigator.pop();
                         _refresh();
                       }
                     } catch (e) {
-                      OfflineHub.instance.markOffline();
-                      StocktakeOutbox.shared.enqueue(
-                        'submit_lines',
-                        {'stocktake_id': stocktake.id, 'lines': linesPayload},
-                        stocktake.id,
-                      );
                       if (mounted) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                              content: Text('Mất kết nối máy chủ (${friendlyError(e)}). Số đếm đã lưu an toàn trên máy!'),
-                              backgroundColor: Colors.amber.shade800,
-                              behavior: SnackBarBehavior.floating),
-                        );
-                        navigator.pop();
-                        _refresh();
+                        messenger.showSnackBar(SnackBar(
+                          content: Text('Không lưu được số đếm: ${friendlyError(e)}'),
+                          backgroundColor: Colors.red,
+                        ));
                       }
                     }
                   },
@@ -2500,40 +2517,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       };
                     }).toList();
                     try {
-                      await repo.updateStocktakeLines(
-                          stocktake.id, linesPayload);
-                      await repo.submitStocktake(stocktake.id);
-                      try {
+                      final synced = await _queueStocktake(repo, 'submit_stocktake', {
+                        'stocktake_id': stocktake.id,
+                        'lines': linesPayload,
+                        'expected_version': stocktake.version,
+                      }, '${stocktake.id}-submit-${DateTime.now().microsecondsSinceEpoch}');
+                      if (synced) {
                         await _prefs?.remove('stocktake_draft_${stocktake.id}');
-                      } catch (_) {}
-                      OfflineHub.instance.markOnline();
-                      StocktakeOutbox.shared.ack(stocktake.id);
+                      }
+                      OfflineHub.instance.addQueued();
                       if (mounted) {
-                        messenger.showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Đã gửi kiểm kê sang người phê duyệt!'),
-                              behavior: SnackBarBehavior.floating),
-                        );
+                        messenger.showSnackBar(SnackBar(
+                          content: Text(synced ? 'Đã gửi kiểm kê sang người phê duyệt!'
+                              : StocktakeOutbox.shared.hasConflict
+                                  ? 'Dữ liệu trên máy chủ đã thay đổi. Cần xử lý xung đột kiểm kê.'
+                                  : 'Bản kiểm kê đã lưu trên thiết bị và sẽ đồng bộ khi có mạng.'),
+                          behavior: SnackBarBehavior.floating,
+                        ));
                         navigator.pop();
                         _refresh();
                       }
                     } catch (e) {
-                      OfflineHub.instance.markOffline();
-                      StocktakeOutbox.shared.enqueue(
-                        'submit_stocktake',
-                        {'stocktake_id': stocktake.id, 'lines': linesPayload},
-                        stocktake.id,
-                      );
                       if (mounted) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                              content: Text('Mạng yếu/ngắt kết nối (${friendlyError(e)}). Bản kiểm kê đã lưu vào hàng đợi ngoại tuyến!'),
-                              backgroundColor: Colors.amber.shade800,
-                              behavior: SnackBarBehavior.floating),
-                        );
-                        navigator.pop();
-                        _refresh();
+                        messenger.showSnackBar(SnackBar(
+                          content: Text('Không lưu được bản kiểm kê: ${friendlyError(e)}'),
+                          backgroundColor: Colors.red,
+                        ));
                       }
                     }
                   },
