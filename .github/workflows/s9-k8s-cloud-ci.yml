@@ -3,6 +3,11 @@ run-name: "S9 Cloud CI Run #[{github.run_number}]"
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PUBLISH_MODEL_SERVING to push a verified image to GHCR'
+        required: false
+        type: string
   push:
     branches: [main]
     paths:
@@ -10,6 +15,21 @@ on:
       - 'backend/k8s/**'
       - 'backend/app/api/inference.py'
       - 'backend/app/services/drift_detection.py'
+      - '.github/workflows/s9-k8s-cloud-ci.yml'
+      - 'scripts/verify_tested_image_artifact.py'
+      - 'scripts/test_tested_image_artifact.py'
+      - 'scripts/test_release_workflow_gates.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/Dockerfile.serving'
+      - 'backend/k8s/**'
+      - 'backend/app/api/inference.py'
+      - 'backend/app/services/drift_detection.py'
+      - '.github/workflows/s9-k8s-cloud-ci.yml'
+      - 'scripts/verify_tested_image_artifact.py'
+      - 'scripts/test_tested_image_artifact.py'
+      - 'scripts/test_release_workflow_gates.py'
 
 jobs:
   cloud-ci-kind-verified:
@@ -18,7 +38,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      packages: write
+      packages: read
     env:
       MLFLOW_TRACKING_URI: "sqlite:///./mlflow.db"
       MODEL_NAME: "DemandForecastModel"
@@ -42,19 +62,19 @@ jobs:
         run: |
           docker build \
             -t "${{ env.IMAGE_NAME }}:${{ github.sha }}" \
-            -t "${{ env.IMAGE_NAME }}:latest" \
             -f Dockerfile.serving \
             .
           docker inspect --format='image_id={{.Id}} digest={{.RepoDigests}}' "${{ env.IMAGE_NAME }}:${{ github.sha }}" | tee "$RUNNER_TEMP/s11-evidence/image-digest.txt"
 
-      - name: Push image to GHCR
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Preserve exact image bytes for manual publication
         run: |
-          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker push "${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          docker push "${{ env.IMAGE_NAME }}:latest"
-          docker inspect --format='{{json .RepoDigests}}' "${{ env.IMAGE_NAME }}:${{ github.sha }}" | tee -a "$RUNNER_TEMP/s11-evidence/image-digest.txt"
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/s9-tested-image"
+          docker save "${{ env.IMAGE_NAME }}:${{ github.sha }}" | gzip -1 > "$RUNNER_TEMP/s9-tested-image/image.tar.gz"
+          docker image inspect --format='{{.Id}}' "${{ env.IMAGE_NAME }}:${{ github.sha }}" > "$RUNNER_TEMP/s9-tested-image/image-id"
+          printf '%s\n' "${{ github.sha }}" > "$RUNNER_TEMP/s9-tested-image/source-sha"
+          sha256sum "$RUNNER_TEMP/s9-tested-image/image.tar.gz" | cut -d' ' -f1 > "$RUNNER_TEMP/s9-tested-image/archive.sha256"
+          python3 scripts/verify_tested_image_artifact.py "$RUNNER_TEMP/s9-tested-image" "${{ github.sha }}"
 
       - name: Install kind
         run: |
@@ -70,7 +90,6 @@ jobs:
       - name: Load image into kind
         run: |
           kind load docker-image "${{ env.IMAGE_NAME }}:${{ github.sha }}" --name "${{ env.KIND_CLUSTER_NAME }}"
-          kind load docker-image "${{ env.IMAGE_NAME }}:latest" --name "${{ env.KIND_CLUSTER_NAME }}"
 
       - name: Apply K8s manifests
         working-directory: backend
@@ -264,3 +283,49 @@ jobs:
         if: success()
         run: |
           echo "gate=cloud_ci_kind_verified" >> $GITHUB_OUTPUT
+
+      - name: Upload tested image only after Kind verification
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s9-tested-image-${{ github.sha }}
+          path: ${{ runner.temp }}/s9-tested-image/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-model-serving:
+    name: Publish verified model-serving image
+    needs: cloud-ci-kind-verified
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm == 'PUBLISH_MODEL_SERVING'
+    environment: model-serving-publish-manual
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: s9-tested-image-${{ github.sha }}
+          path: ${{ runner.temp }}/s9-tested-image/
+      - name: Verify tested bytes and loaded image ID
+        run: |
+          set -euo pipefail
+          EXPECTED_ID=$(python3 scripts/verify_tested_image_artifact.py "$RUNNER_TEMP/s9-tested-image" "${{ github.sha }}")
+          docker load -i "$RUNNER_TEMP/s9-tested-image/image.tar.gz"
+          IMAGE="ghcr.io/${{ github.repository_owner }}/quanlykho/model-serving:${{ github.sha }}"
+          ACTUAL_ID=$(docker image inspect --format='{{.Id}}' "$IMAGE")
+          test "$ACTUAL_ID" = "$EXPECTED_ID"
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish exact tested image and record registry digest
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${{ github.repository_owner }}/quanlykho/model-serving:${{ github.sha }}"
+          docker push "$IMAGE" | tee "$RUNNER_TEMP/s9-push.log"
+          DIGEST=$(sed -nE 's/.*digest: (sha256:[0-9a-f]{64}).*/\1/p' "$RUNNER_TEMP/s9-push.log" | tail -1)
+          test -n "$DIGEST"
+          printf 'Published tested image: `%s@%s`\n' "${IMAGE%:*}" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"

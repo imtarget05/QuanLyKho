@@ -1,12 +1,12 @@
 name: Build & Deploy Quản Lý Kho Trà Sữa
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY_CLOUDFLARE_ASSETS to publish Flutter Web'
+        required: true
+        type: string
 
 concurrency:
   group: deploy-pages-${{ github.ref }}
@@ -19,6 +19,8 @@ env:
 jobs:
   build-and-deploy:
     name: Build Flutter Web & Deploy
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm == 'DEPLOY_CLOUDFLARE_ASSETS'
+    environment: cloudflare-assets-manual
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

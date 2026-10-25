@@ -45,12 +45,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install Ruff
+      - name: Install Ruff and workflow parser
         # Pin đúng version đã fix hết cảnh báo — ruff mới thường thêm rule mới
         # (vd 0.17.0 bắt I001/UP041 mà 0.16 không). Muốn nâng thì bump có chủ đích.
-        run: pip install "ruff==0.17.0"
+        run: pip install "ruff==0.17.0" "PyYAML==6.0.3"
       - name: Lint
         run: ruff check backend/
+      - name: Guard release workflows against automatic promotion
+        run: python3 -m unittest scripts.test_release_workflow_gates scripts.test_tested_image_artifact -v
 
   test:
     runs-on: ubuntu-latest
