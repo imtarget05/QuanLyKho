@@ -845,7 +845,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: const StoreLogo(size: 28),
                     title: Text(
-                      isVi ? 'Quản lý kho' : 'BankOps Inventory',
+                      isVi ? 'Quản lý kho' : 'QuanLyKho Inventory',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(

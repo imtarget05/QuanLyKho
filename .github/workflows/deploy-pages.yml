@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Canonical API FastAPI qua Cloudflare Worker Reverse Proxy
-  API_BASE_URL: "https://kho-tra-sua-api.tanmainguyenbinh.workers.dev/api/v1"
+  # Canonical FastAPI path through Cloudflare Edge and Azure Gateway.
+  API_BASE_URL: "https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho"
 
 jobs:
   build-and-deploy:
@@ -67,7 +67,7 @@ jobs:
       - name: Build Flutter Web (release)
         working-directory: frontend
         env:
-          # FastAPI trên Modal (xem `env.API_BASE_URL` ở đầu workflow).
+          # FastAPI on AKS, reached through the portfolio Cloudflare Edge.
           API_BASE_URL: ${{ env.API_BASE_URL }}
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -108,11 +108,6 @@ jobs:
 
       - name: Smoke test (API health from deployed bundle)
         run: |
-          # Backend tạm nghỉ (Modal) → API_BASE_URL rỗng thì bỏ qua smoke test.
-          if [ -z "${{ env.API_BASE_URL }}" ]; then
-            echo "API_BASE_URL chưa cấu hình — bỏ qua smoke test backend."
-            exit 0
-          fi
           TARGET_URL="${{ env.API_BASE_URL }}"
           TARGET_URL="${TARGET_URL%/}"
           if [[ "$TARGET_URL" != */api/v1 ]]; then
