@@ -71,8 +71,14 @@ def validate_kind_publish_workflow(source: str) -> None:
     assert download["with"]["name"] == upload["with"]["name"]
     runs = "\n".join(step.get("run", "") for step in publish["steps"])
     assert "verify_tested_image_artifact.py" in runs
-    assert "docker load -i" in runs and "docker image inspect" in runs
-    assert "docker push" in runs and "digest:" in runs
+    assert "docker load -i" in runs
+    assert "docker image inspect" in runs
+    assert "docker push" in runs
+    assert "digest:" in runs
+    assert any(
+        step.get("uses") == "docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9"
+        for step in publish["steps"]
+    ), "Registry login action must be pinned to its reviewed commit"
     assert all("docker/build-push-action" not in step.get("uses", "") for step in publish["steps"])
     assert "latest" not in str(publish["steps"]), "Only immutable SHA tags may be published"
 
@@ -114,25 +120,28 @@ class ReleaseWorkflowGateTests(unittest.TestCase):
         self.assertNotEqual(bad_publish, s9)
         with self.assertRaisesRegex(AssertionError, "Kind CI must not publish"):
             validate_kind_publish_workflow(bad_publish)
+        writable_kind = s9.replace("packages: read", "packages: write", 1)
         with self.assertRaises(AssertionError):
-            validate_kind_publish_workflow(s9.replace("packages: read", "packages: write", 1))
+            validate_kind_publish_workflow(writable_kind)
+        missing_confirmation = s9.replace("inputs.confirm == 'PUBLISH_MODEL_SERVING'", "true", 1)
         with self.assertRaises(AssertionError):
-            validate_kind_publish_workflow(
-                s9.replace("inputs.confirm == 'PUBLISH_MODEL_SERVING'", "true", 1)
-            )
+            validate_kind_publish_workflow(missing_confirmation)
+        publish_on_pr = s9.replace(
+            "github.event_name == 'workflow_dispatch'", "github.event_name == 'pull_request'", 1
+        )
         with self.assertRaises(AssertionError):
-            validate_kind_publish_workflow(
-                s9.replace("github.event_name == 'workflow_dispatch'", "github.event_name == 'pull_request'", 1)
-            )
+            validate_kind_publish_workflow(publish_on_pr)
+        unverified_artifact = s9.replace(
+            "python3 scripts/verify_tested_image_artifact.py", "echo unverified", 1
+        )
         with self.assertRaises(AssertionError):
-            validate_kind_publish_workflow(
-                s9.replace("python3 scripts/verify_tested_image_artifact.py", "echo unverified", 1)
-            )
+            validate_kind_publish_workflow(unverified_artifact)
 
     def test_quality_ci_still_runs_for_main_and_pull_requests(self) -> None:
         ci = yaml.load((WORKFLOWS / "ci.yml").read_text(), Loader=yaml.BaseLoader)
         assert set(ci["on"]) == {"push", "pull_request"}
-        assert "test" in ci["jobs"] and "frontend-web" in ci["jobs"]
+        assert "test" in ci["jobs"]
+        assert "frontend-web" in ci["jobs"]
 
 
 if __name__ == "__main__":
