@@ -56,3 +56,40 @@ def test_staff_shift_count_calculates_theoretical_balance_and_variance(client):
     theoretical = opening - 25
     assert float(line["theoretical_qty"]) == theoretical
     assert float(line["variance"]) == 43 - theoretical
+
+
+def test_stocktake_offline_retry_keeps_one_version_and_rejects_stale_write(client):
+    headers = _login(client)
+    location = client.get("/inventory/locations", headers=headers).json()["locations"][0]
+    item = client.get("/inventory/items", headers=headers).json()["items"][0]
+    open_headers = _idempotent(headers)
+    opened, stocktake_id = open_shift(client, open_headers, location["id"])
+    assert opened.json()["version"] == 1
+    open_retry = client.post("/inventory/stocktakes", headers=open_headers, json={
+        "location_id": location["id"],
+        "shift_code": "morning",
+        "business_date": opened.json()["business_date"],
+    })
+    assert open_retry.status_code == 201, open_retry.text
+    assert open_retry.json()["id"] == stocktake_id
+    path = f"/inventory/stocktakes/{stocktake_id}/lines"
+    payload = {"lines": [{"item_id": item["id"], "counted_qty": "12", "used_qty": "1"}]}
+    write_headers = {**headers, "Idempotency-Key": str(uuid.uuid4()), "If-Match": "1"}
+
+    first = client.put(path, headers=write_headers, json=payload)
+    assert first.status_code == 200, first.text
+    assert first.json()["version"] == 2
+    retry = client.put(path, headers=write_headers, json=payload)
+    assert retry.status_code == 200, retry.text
+    assert retry.json()["version"] == 2
+    stale = client.put(path, headers={**_idempotent(headers), "If-Match": "1"}, json=payload)
+    assert stale.status_code == 409, stale.text
+    assert stale.json()["error"]["code"] == "VERSION_CONFLICT"
+
+    submit_headers = {**_idempotent(headers), "If-Match": "2"}
+    submitted = client.post(f"/inventory/stocktakes/{stocktake_id}/submit", headers=submit_headers)
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["version"] == 3
+    repeated = client.post(f"/inventory/stocktakes/{stocktake_id}/submit", headers=submit_headers)
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["version"] == 3

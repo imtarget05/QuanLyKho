@@ -16,6 +16,7 @@ import '../core/i18n/locale_controller.dart';
 import '../core/util/role_visibility.dart';
 import '../core/widgets/app_screen.dart';
 import '../core/offline/offline_ui.dart';
+import '../core/offline/stocktake_outbox.dart';
 import '../core/util/web_helpers.dart';
 import '../core/widgets/app_toast.dart';
 import '../core/widgets/global_search.dart';
@@ -78,6 +79,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   BankOpsRepository? _repository;
+  String? _repositoryUserId;
+  String? _repositoryBranch;
   int _index = 0;
   int _refreshTick = 0;
   late final DataSyncController _syncController = DataSyncController();
@@ -107,6 +110,7 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _syncController.addListener(_onSyncSignal);
+    OfflineHub.instance.listen(_onOfflineHubChanged);
     onAppUpdateAvailable(() {
       if (mounted) {
         setState(() => _isUpdateAvailable = true);
@@ -132,6 +136,10 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  void _onOfflineHubChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -142,18 +150,51 @@ class _AppShellState extends State<AppShell> {
       final auth = Provider.of<AuthService?>(context);
       final wantsOfflineDemo = auth?.isOfflineSession ?? false;
       final usingOfflineDemo = _repository is FakeBankOpsRepository;
-      if (_repository == null || usingOfflineDemo != wantsOfflineDemo) {
+      final userId = auth?.user?.id;
+      final branch = auth?.user?.branch;
+      if (_repository == null || usingOfflineDemo != wantsOfflineDemo ||
+          _repositoryUserId != userId || _repositoryBranch != branch) {
         _repository?.dispose();
+        _repositoryUserId = userId;
+        _repositoryBranch = branch;
         _repository = wantsOfflineDemo
             ? FakeBankOpsRepository()
             : HttpBankOpsRepository(
                 baseUrl: auth?.apiBaseUrl,
-                tokenProvider: auth?.getAccessToken,
+                tokenProvider: () async {
+                  if (auth?.user?.id != userId || auth?.user?.branch != branch) {
+                    return null;
+                  }
+                  final token = await auth?.getAccessToken();
+                  if (auth?.user?.id != userId || auth?.user?.branch != branch) {
+                    return null;
+                  }
+                  return token;
+                },
               );
       }
       _startOfflinePing();
     }
     _syncController.bindRepository(_repository);
+    OfflineHub.instance.repository = _repository;
+    final sessionUser = SessionScope.maybeOf(context)?.user ??
+        Provider.of<AuthService?>(context, listen: false)?.user;
+    OfflineHub.instance.currentUserId = sessionUser?.id;
+    OfflineHub.instance.currentBranch = sessionUser?.branch;
+    OfflineHub.instance.onSynced = () {
+      if (mounted) setState(() => _refreshTick++);
+    };
+    StocktakeOutbox.shared.bindIdentity(sessionUser?.id, sessionUser?.branch).then((_) async {
+      if (mounted && OfflineHub.instance.currentUserId == sessionUser?.id &&
+          OfflineHub.instance.currentBranch == sessionUser?.branch) {
+        await OfflineHub.instance.refreshLegacy();
+        if (mounted && OfflineHub.instance.currentUserId == sessionUser?.id &&
+            OfflineHub.instance.currentBranch == sessionUser?.branch) {
+          OfflineHub.instance.addQueued();
+          OfflineHub.instance.flushNow();
+        }
+      }
+    });
     if (_repository != null) {
       _fetchPendingCount(_repository!);
     }
@@ -180,6 +221,7 @@ class _AppShellState extends State<AppShell> {
           .timeout(const Duration(seconds: 8));
       if (res.statusCode >= 200 && res.statusCode < 300) {
         OfflineHub.instance.markOnline();
+        OfflineHub.instance.flushNow();
         _aiUnavailable = false;
       } else if (res.statusCode == 503) {
         // Gateway trả 503 khi upstream chưa được cấu hình (ví dụ Render DB
@@ -213,6 +255,13 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _offlinePingTimer?.cancel();
+    OfflineHub.instance.onSynced = null;
+    OfflineHub.instance.repository = null;
+    OfflineHub.instance.currentUserId = null;
+    OfflineHub.instance.currentBranch = null;
+    OfflineHub.instance.cancelRetry();
+    StocktakeOutbox.shared.bindIdentity(null, null);
+    OfflineHub.instance.unlisten(_onOfflineHubChanged);
     _syncController.removeListener(_onSyncSignal);
     _syncController.dispose();
     _repository?.dispose();

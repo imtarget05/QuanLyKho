@@ -154,10 +154,13 @@ abstract class BankOpsRepository {
     String? note,
     String? shiftCode,
     String? businessDate,
+    String? idempotencyKey,
   });
   Future<StocktakeItem> updateStocktakeLines(
-      String id, List<Map<String, dynamic>> lines);
-  Future<StocktakeItem> submitStocktake(String id);
+      String id, List<Map<String, dynamic>> lines,
+      {String? idempotencyKey, int? expectedVersion});
+  Future<StocktakeItem> submitStocktake(String id,
+      {String? idempotencyKey, int? expectedVersion});
   Future<StocktakeItem> approveStocktake(String id);
   Future<StocktakeItem> rejectStocktake(String id, {String? reason});
 

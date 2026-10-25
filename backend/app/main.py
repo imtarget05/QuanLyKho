@@ -32,6 +32,7 @@ from app.api.routes import (
     intake,
     integrations,
     inventory,
+    notifications,
     reconciliations,
     reports,
 )
@@ -290,6 +291,7 @@ def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True
     target.include_router(activity.router, tags=["activity"], include_in_schema=include_in_schema)
     target.include_router(events.router, tags=["events"], include_in_schema=include_in_schema)
     target.include_router(reports.router, prefix="/reports", tags=["reports"], include_in_schema=include_in_schema)
+    target.include_router(notifications.router, prefix="/notifications", tags=["notifications"], include_in_schema=include_in_schema)
     target.include_router(etl.router, tags=["etl"], include_in_schema=include_in_schema)
     target.include_router(integrations.router, tags=["integrations"], include_in_schema=include_in_schema)
     target.include_router(reconciliations.router, tags=["reconciliations"], include_in_schema=include_in_schema)

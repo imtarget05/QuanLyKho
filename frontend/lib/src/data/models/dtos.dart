@@ -249,6 +249,7 @@ class StocktakeItem {
     this.lines = const [],
     this.shiftCode,
     this.businessDate,
+    this.version = 1,
   });
 
   final String id;
@@ -263,6 +264,7 @@ class StocktakeItem {
   final List<StocktakeLineItem> lines;
   final String? shiftCode;
   final String? businessDate;
+  final int version;
 
   int get discrepancyCount => lines
       .where((l) => (double.tryParse(l.variance) ?? 0).abs() > 0.0001)

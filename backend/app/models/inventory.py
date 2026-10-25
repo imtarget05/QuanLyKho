@@ -279,6 +279,7 @@ class Stocktake(Base, TimestampMixin):
     id: str = Column(UUID(as_uuid=True), primary_key=True)
     location_id: str = Column(UUID(as_uuid=True), ForeignKey("inv_locations.id", ondelete="RESTRICT"), nullable=False)
     status: str = Column(String(32), nullable=False, default="open")  # open, submitted, closed, cancelled
+    version: int = Column(Integer, nullable=False, default=1, server_default="1")
     maker_id: str = Column(UUID(as_uuid=True), ForeignKey("iam_users.id"), nullable=False)
     approver_id: str = Column(UUID(as_uuid=True), ForeignKey("iam_users.id"), nullable=True)
     note: str = Column(String(512), nullable=True)

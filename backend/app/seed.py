@@ -124,6 +124,7 @@ async def seed_demo():
             RoleCapability(role_code="approver", capability_code="inventory:approve_request"),
             RoleCapability(role_code="inventory_manager", capability_code="inventory:approve_request"),
             RoleCapability(role_code="admin", capability_code="inventory:approve_request"),
+            RoleCapability(role_code="admin", capability_code="inventory:create_request"),
             RoleCapability(role_code="inventory_manager", capability_code="inventory:manage_catalog"),
             RoleCapability(role_code="inventory_manager", capability_code="inventory:view_balances"),
             # Quản lý cửa hàng là checker của ca/phiếu điều chỉnh theo SRS.

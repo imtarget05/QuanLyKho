@@ -610,6 +610,18 @@ def _replay(key: str, payload) -> dict | None:
     _status, body = replay
     return body
 
+
+async def _stocktake_replay(db: AsyncSession, key: str | None, operation: dict) -> dict | None:
+    """Read the durable response before repeating a stocktake write."""
+    if not key:
+        return None
+    record = await idempotency.find_key(db, key)
+    if record is None:
+        return None
+    if record.request_hash != idempotency.payload_hash(operation):
+        raise AppError(409, "IDEMPOTENCY_KEY_REUSED", "Idempotency-Key đã dùng cho payload khác")
+    return record.response_body if record.status_code is not None else None
+
 # --------------------------------------------------------------------------
 # --------------------------------------------------------------------------
 # Catalog reads
@@ -1146,7 +1158,9 @@ async def list_requests(
     if status:
         stmt = stmt.where(InventoryRequest.status == status)
     caps = await get_user_capabilities(db, current_user.id)
-    if mine or "inventory:approve_request" not in caps:
+    # Auditors have inventory:review, not approval. They may list read-only
+    # requests inside their location scope, just as GET by id permits.
+    if mine or not ({"inventory:approve_request", "inventory:review"} & set(caps)):
         stmt = stmt.where(InventoryRequest.maker_id == current_user.id)
     else:
         accessible_locations = await get_accessible_location_ids(db, current_user)
@@ -2898,16 +2912,19 @@ async def create_stocktake(
 ):
     """Tạo đợt kiểm kê kho mới (trạng thái ban đầu = open)."""
     key = request.headers.get("Idempotency-Key")
-    if key:
-        cached = _replay(key, payload)
-        if cached is not None:
-            return cached
-
     location_id = _uuid(payload.get("location_id"), "location_id")
     await _require_location_scope(db, user, location_id)
     loc = (await db.execute(select(Location).where(Location.id == location_id))).scalars().first()
     if not loc:
         raise AppError(404, "LOCATION_NOT_FOUND", "Không tìm thấy kho kiểm kê")
+    cached = await _stocktake_replay(db, key, payload)
+    if cached is not None:
+        return cached
+    if key and not await idempotency.claim_key(db, key, idempotency.payload_hash(payload), "stocktake:create"):
+        cached = await _stocktake_replay(db, key, payload)
+        if cached is not None:
+            return cached
+        raise AppError(409, "IDEMPOTENCY_IN_PROGRESS", "Yêu cầu mở ca đang được xử lý")
 
     note = str(payload.get("note") or payload.get("title") or "Kiểm kê theo ca").strip()
     shift_code = str(payload.get("shift_code") or "").strip().lower() or None
@@ -2980,14 +2997,14 @@ async def create_stocktake(
                 variance=_ZERO,
             )
         )
-    await db.commit()
-    await db.refresh(st)
+    await db.flush()
 
     shift_label = _SHIFT_WINDOWS.get(shift_code, ("Kiểm kê", "", ""))[0] if shift_code else "Kiểm kê"
     body = {
         "id": str(st.id),
         "location_id": str(st.location_id),
         "status": st.status,
+        "version": st.version,
         "note": st.note,
         "maker_id": str(st.maker_id),
         "shift_code": st.shift_code,
@@ -2996,7 +3013,8 @@ async def create_stocktake(
         "created_at": st.created_at.isoformat() if st.created_at else None,
     }
     if key:
-        idempotency.remember(db, key, idempotency.payload_hash(payload), 201, body)
+        await idempotency.store_response(db, key, idempotency.payload_hash(payload), 201, body)
+    await db.commit()
     return body
 
 
@@ -3026,6 +3044,7 @@ async def list_stocktakes(
                 "id": str(r.id),
                 "location_id": str(r.location_id),
                 "status": r.status,
+                "version": r.version,
                 "note": r.note,
                 "maker_id": str(r.maker_id),
                 "shift_code": r.shift_code,
@@ -3065,6 +3084,7 @@ async def get_stocktake(
         "id": str(st.id),
         "location_id": str(st.location_id),
         "status": st.status,
+        "version": st.version,
         "note": st.note,
         "maker_id": str(st.maker_id),
         "shift_code": st.shift_code,
@@ -3087,6 +3107,8 @@ async def update_stocktake_lines(
 ):
     """Cập nhật các dòng kiểm đếm thực tế, tự tính chênh lệch so với sổ cái."""
     sid = _uuid(stocktake_id, "stocktake_id")
+    key = request.headers.get("Idempotency-Key")
+    operation = {"update_stocktake_lines": str(sid), "payload": payload}
     st = (
         await db.execute(
             select(Stocktake)
@@ -3098,10 +3120,14 @@ async def update_stocktake_lines(
     if not st:
         raise AppError(404, "STOCKTAKE_NOT_FOUND", "Không tìm thấy đợt kiểm kê")
     await _require_location_scope(db, user, st.location_id)
-    if st.status != "open":
-        raise AppError(409, "STOCKTAKE_LOCKED", f"Ca đã {st.status}, không được sửa — phải tạo Phiếu điều chỉnh kiểm kê")
     if str(st.maker_id) != str(user.id):
         raise AppError(403, "FORBIDDEN", "Chỉ maker mới được cập nhật dòng kiểm kê của mình")
+    cached = await _stocktake_replay(db, key, operation)
+    if cached is not None:
+        return cached
+    _check_if_match(request, st.version)
+    if st.status != "open":
+        raise AppError(409, "STOCKTAKE_LOCKED", f"Ca đã {st.status}, không được sửa — phải tạo Phiếu điều chỉnh kiểm kê")
 
     raw_lines = payload.get("lines", [])
     for row in raw_lines:
@@ -3176,17 +3202,23 @@ async def update_stocktake_lines(
                 )
             )
 
-    await db.commit()
+    st.version += 1
+    await db.flush()
     lines = (
         await db.execute(select(StocktakeLine).where(StocktakeLine.stocktake_id == sid))
     ).scalars().all()
-    return {
+    body = {
         "id": str(st.id),
         "location_id": str(st.location_id),
         "status": st.status,
+        "version": st.version,
         "note": st.note,
         "lines": [_stocktake_line_out(line) for line in lines],
     }
+    if key:
+        await idempotency.store_response(db, key, idempotency.payload_hash(operation), 200, body)
+    await db.commit()
+    return body
 
 
 @router.post("/inventory/stocktakes/{stocktake_id}/submit")
@@ -3198,6 +3230,8 @@ async def submit_stocktake(
 ):
     """Đệ trình đợt kiểm kê sang trạng thái submitted chờ phê duyệt."""
     sid = _uuid(stocktake_id, "stocktake_id")
+    key = request.headers.get("Idempotency-Key")
+    operation = {"submit_stocktake": str(sid)}
     st = (
         await db.execute(
             select(Stocktake)
@@ -3209,14 +3243,27 @@ async def submit_stocktake(
     if not st:
         raise AppError(404, "STOCKTAKE_NOT_FOUND", "Không tìm thấy đợt kiểm kê")
     await _require_location_scope(db, user, st.location_id)
-    if st.status != "open":
-        raise AppError(409, "STATE_CONFLICT", f"Không thể submit từ trạng thái {st.status}")
     if str(st.maker_id) != str(user.id):
         raise AppError(403, "FORBIDDEN", "Chỉ maker mới được submit đợt kiểm kê của mình")
+    cached = await _stocktake_replay(db, key, operation)
+    if cached is not None:
+        return cached
+    _check_if_match(request, st.version)
+    if st.status != "open":
+        raise AppError(409, "STATE_CONFLICT", f"Không thể submit từ trạng thái {st.status}")
 
     st.status = "submitted"
+    st.version += 1
+    body = {
+        "id": str(st.id),
+        "location_id": str(st.location_id),
+        "status": st.status,
+        "version": st.version,
+        "note": st.note,
+    }
+    if key:
+        await idempotency.store_response(db, key, idempotency.payload_hash(operation), 200, body)
     await db.commit()
-    await db.refresh(st)
     await broadcast_approval_event(
         action="submitted",
         request_id=str(st.id),
@@ -3225,12 +3272,7 @@ async def submit_stocktake(
         message=f"Đợt kiểm kê {str(st.id)[:8]} đã được gửi phê duyệt",
         meta={"location_id": str(st.location_id), "maker_id": str(user.id)},
     )
-    return {
-        "id": str(st.id),
-        "location_id": str(st.location_id),
-        "status": st.status,
-        "note": st.note,
-    }
+    return body
 
 
 
@@ -3314,6 +3356,7 @@ async def approve_stocktake(
         adj_id = str(adj_req.id)
 
     st.status = "closed"
+    st.version += 1
     st.approver_id = user.id
     st.completed_at = _now()
     db.add(
@@ -3355,6 +3398,7 @@ async def approve_stocktake(
     body = {
         "id": str(st.id),
         "status": "closed",
+        "version": st.version,
         "location_id": str(st.location_id),
         "maker_id": str(st.maker_id),
         "approver_id": str(st.approver_id),
@@ -3390,6 +3434,7 @@ async def reject_stocktake(
 
     reason = (payload or {}).get("reason") or "Yêu cầu kiểm đếm lại số liệu"
     st.status = "open"
+    st.version += 1
     st.note = f"{st.note or ''} [Từ chối: {reason}]".strip()
     await db.commit()
     record_approval_decision("stocktake", "rejected", st.created_at)
@@ -3401,5 +3446,5 @@ async def reject_stocktake(
         message=f"Đợt kiểm kê {str(st.id)[:8]} bị từ chối: {reason}",
         meta={"stocktake_id": str(st.id), "reason": reason},
     )
-    return {"id": str(st.id), "status": "open", "note": st.note}
+    return {"id": str(st.id), "status": "open", "version": st.version, "note": st.note}
 
