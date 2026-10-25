@@ -54,7 +54,7 @@ jobs:
   deploy-azure-container-apps:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.AZURE_CLIENT_ID != ''
     permissions:
       contents: read
       # OIDC federation requires the workflow to mint an OIDC token; azure/login
