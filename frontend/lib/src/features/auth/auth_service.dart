@@ -89,7 +89,7 @@ class AuthService extends ChangeNotifier {
   }
 
   static const String canonicalProductionBaseUrl =
-      'https://kho-tra-sua-api.tanmainguyenbinh.workers.dev/api/v1';
+      'https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho';
 
   /// Per-platform default: Android emulator cannot reach host `localhost`,
   /// so use `10.0.2.2`; iOS simulator/desktop/web keep `localhost`.
