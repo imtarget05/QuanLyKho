@@ -10,7 +10,7 @@ resources:
 images:
 - name: ghcr.io/imtarget05/bankops-api
   newName: ghcr.io/imtarget05/bankops-api
-  newTag: sha-e525f02
+  newTag: sha-c38d724
 - name: ghcr.io/imtarget05/bankops-frontend
   newName: ghcr.io/imtarget05/bankops-frontend
   newTag: v1.0.0
