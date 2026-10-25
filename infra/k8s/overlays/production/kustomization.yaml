@@ -14,3 +14,9 @@ images:
 - name: ghcr.io/imtarget05/bankops-frontend
   newName: ghcr.io/imtarget05/bankops-frontend
   newTag: v1.0.0
+
+replicas:
+- name: bankops-frontend
+  count: 0
+- name: cloudflare-tunnel
+  count: 0
