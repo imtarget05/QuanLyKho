@@ -1,5 +1,6 @@
 """Prevent a merge to main from promoting the legacy cloud release paths."""
 
+import json
 import unittest
 from pathlib import Path
 
@@ -154,6 +155,16 @@ class ReleaseWorkflowGateTests(unittest.TestCase):
             ROOT / "frontend/lib/src/features/auth/auth_service.dart"
         ).read_text()
         self.assertIn(f"'{edge_url}'", auth_service)
+
+    def test_cloudflare_assets_use_quanlykho_name(self) -> None:
+        title = "Kho Trà Sữa · QuanLyKho"
+        index = (ROOT / "frontend/web/index.html").read_text()
+        manifest = json.loads((ROOT / "frontend/web/manifest.json").read_text())
+        self.assertTrue(
+            f"<title>{title}</title>" in index,
+            "Flutter Web title must use QuanLyKho",
+        )
+        self.assertEqual(manifest["name"], title)
 
 
 if __name__ == "__main__":
