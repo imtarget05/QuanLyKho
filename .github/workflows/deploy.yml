@@ -54,7 +54,7 @@ jobs:
   deploy-azure-container-apps:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.AZURE_CLIENT_ID != ''
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       # OIDC federation requires the workflow to mint an OIDC token; azure/login
@@ -64,7 +64,19 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Check Azure credentials configured
+        id: check-creds
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          if [ -z "$AZURE_CLIENT_ID" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::notice title=Azure Deploy Skipped::AZURE_CLIENT_ID secret not configured in repository. Skipping deployment to Azure Container Apps."
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
       - name: Azure Login (OIDC)
+        if: steps.check-creds.outputs.configured == 'true'
         # No static service-principal secret: authenticate via workload identity
         # federation using the three OIDC secrets below (no client secret).
         uses: azure/login@v2
@@ -73,6 +85,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy to Azure Container Apps
+        if: steps.check-creds.outputs.configured == 'true'
         uses: azure/container-apps-deploy-action@v2
         with:
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
