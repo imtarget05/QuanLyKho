@@ -19,7 +19,7 @@ from app.schemas.notification import (
     TestNotificationResult,
 )
 
-logger = logging.getLogger("bankops.notifications")
+logger = logging.getLogger("quanlykho.notifications")
 
 router = APIRouter()
 

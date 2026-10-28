@@ -47,7 +47,7 @@ from app.database import init_db
 
 PUBLIC_WEB_ORIGIN = "https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev"
 
-logger = logging.getLogger("bankops.api")
+logger = logging.getLogger("quanlykho.api")
 tracer_provider = create_tracer_provider()
 
 
@@ -96,6 +96,8 @@ async def redirect_openapi_json():
 app.openapi = lambda: custom_openapi(app)
 
 # Không echo wildcard origin kèm credentials (docs/08: CORS cụ thể).
+# Không dùng `allow_origin_regex` vì regex chấp nhận mọi subdomain
+# (`.tanmainguyenbinh.workers.dev`, `.pages.dev`) kèm credentials → rủi ro P0.
 _allowed_origins = list(
     dict.fromkeys(
         [
@@ -110,7 +112,6 @@ _allow_credentials = bool(_allowed_origins) and _allowed_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_origin_regex=r"^https://.*\.tanmainguyenbinh\.workers\.dev$|^https://.*\.pages\.dev$",
     allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -171,7 +172,7 @@ async def request_id_mw(request: Request, call_next):
     finally:
         route = request.scope.get("route")
         route_template = getattr(route, "path", "unmatched")
-        logging.getLogger("bankops.http").info(
+        logging.getLogger("quanlykho.http").info(
             "http_request",
             extra={
                 "http_method": request.method,

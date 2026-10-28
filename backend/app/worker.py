@@ -33,15 +33,15 @@ WORKER_ID = os.environ.get("WORKER_ID", socket.gethostname())
 OUTBOX_BATCH_SIZE = 50
 _worker_meter = metrics.get_meter("bankops.worker")
 _worker_poll_results = _worker_meter.create_counter(
-    "bankops_worker_polls_total",
+    "quanlykho_worker_polls_total",
     description="Worker poll loop outcomes.",
 )
 _worker_job_results = _worker_meter.create_counter(
-    "bankops_worker_jobs_total",
+    "quanlykho_worker_jobs_total",
     description="Leased background job outcomes.",
 )
 _worker_outbox_dispatched = _worker_meter.create_counter(
-    "bankops_worker_outbox_dispatched_total",
+    "quanlykho_worker_outbox_dispatched_total",
     description="Outbox events materialized by the worker.",
 )
 

@@ -31,7 +31,7 @@ from app.schemas.invoice_intake import (
     ValidationReport,
 )
 
-logger = logging.getLogger("bankops.multimodal")
+logger = logging.getLogger("quanlykho.multimodal")
 
 
 def parse_invoice_text(text: str) -> InvoiceExtraction:

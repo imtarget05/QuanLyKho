@@ -1096,6 +1096,7 @@ async def list_movements(
     current_user=Depends(require_any_capability(*_VIEW_CATALOG)),
     db: AsyncSession = Depends(get_db),
     request_id: str | None = None,
+    location_id: str | None = None,
     limit: int = 100,
     cursor: str | None = None,
 ):
@@ -1109,8 +1110,14 @@ async def list_movements(
         coerce=(coerce_timestamp, lambda raw: _uuid(raw, "cursor.id")),
     )
     stmt = select(Movement).order_by(Movement.posted_at.desc(), Movement.id)
+    # IDOR: chỉ cho thấy movement trong các location user có quyền truy cập.
+    allowed_location_ids = await get_accessible_location_ids(db, current_user)
+    if allowed_location_ids is not None:
+        stmt = stmt.where(Movement.location_id.in_(allowed_location_ids))
     if request_id:
         stmt = stmt.where(Movement.request_id == _uuid(request_id, "request_id"))
+    if location_id:
+        stmt = stmt.where(Movement.location_id == _uuid(location_id, "location_id"))
     stmt = apply_keyset(stmt, spec, decode_cursor(cursor))
     rows = (await db.execute(stmt.limit(limit + 1))).scalars().all()
     page, next_cursor = rows[:limit], None

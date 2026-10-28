@@ -39,7 +39,7 @@ from app.services.email_service import (
     send_password_reset_email,
 )
 
-logger = logging.getLogger("bankops.auth")
+logger = logging.getLogger("quanlykho.auth")
 
 router = APIRouter()
 

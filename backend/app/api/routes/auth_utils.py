@@ -29,7 +29,7 @@ from app.models.iam import (
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-logger = logging.getLogger("bankops.auth")
+logger = logging.getLogger("quanlykho.auth")
 
 # S13 — `must_change_password` phai duoc ENFORCE, khong phai chi la co.
 # Cac endpoint duoc phep tiep tuc la nhung endpoint auth can thiet de user

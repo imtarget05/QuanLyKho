@@ -282,16 +282,21 @@ class TestAuthRBAC:
             )
 
     def test_cors_wildcard_with_credentials_is_rejected(self):
-        """docs/08: 'security headers/CORS cụ thể', không wildcard + credentials."""
+        """docs/08: 'security headers/CORS cụ thể', không wildcard + credentials.
+
+        Chặn cả `allow_origins=["*"]` và `allow_origin_regex` (regex chấp nhận mọi
+        subdomain kèm credentials → rủi ro P0).
+        """
         compose = (REPO_DIR / "docker-compose.yml").read_text()
         main = (BACKEND_DIR / "app" / "main.py").read_text()
         wildcard = "ALLOWED_ORIGINS=*" in compose or 'allow_origins=["*"]' in main
-        if wildcard and "allow_credentials=True" in main:
+        origin_regex = "allow_origin_regex" in main
+        if (wildcard or origin_regex) and "allow_credentials=True" in main:
             pytest.fail(
-                "docker-compose set `ALLOWED_ORIGINS=*` trong khi `main.py` bật "
-                "`allow_credentials=True` -> CORS sai chuẩn (credentialed request với "
-                "Origin `*` bị trình duyệt từ chối) và mở rộng nguồn. docs/08: "
-                "'security headers/CORS cụ thể'.",
+                "docker-compose set `ALLOWED_ORIGINS=*` hoặc `main.py` dùng "
+                "`allow_origin_regex` trong khi `allow_credentials=True` -> CORS sai "
+                "chuẩn (credentialed request với Origin `*`/regex bị trình duyệt từ "
+                "chối) và mở rộng nguồn. docs/08: 'security headers/CORS cụ thể'.",
                 pytrace=False,
             )
 

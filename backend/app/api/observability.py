@@ -44,43 +44,43 @@ def _build_metrics_bundle() -> MetricsBundle:
     return MetricsBundle(
         registry=registry,
         reconciliation_runs=Counter(
-            "bankops_reconciliation_runs_total",
+            "quanlykho_reconciliation_runs_total",
             "Completed reconciliation runs by bounded scope and outcome.",
             labelnames=("scope", "outcome"),
             registry=registry,
         ),
         approval_decisions=Counter(
-            "bankops_approval_decisions_total",
+            "quanlykho_approval_decisions_total",
             "Committed maker-checker decisions by request kind and outcome.",
             labelnames=("kind", "outcome"),
             registry=registry,
         ),
         approval_pending=Histogram(
-            "bankops_approval_pending_seconds",
+            "quanlykho_approval_pending_seconds",
             "Time spent awaiting a committed maker-checker decision.",
             labelnames=("kind", "outcome"),
             registry=registry,
         ),
         external_dependency_results=Counter(
-            "bankops_external_dependency_results_total",
+            "quanlykho_external_dependency_results_total",
             "External integration outcomes by provider and bounded result category.",
             labelnames=("provider", "outcome"),
             registry=registry,
         ),
         http_requests=Counter(
-            "bankops_http_requests_total",
+            "quanlykho_http_requests_total",
             "HTTP requests completed by the API.",
             labelnames=("method", "route", "status_class"),
             registry=registry,
         ),
         http_duration=Histogram(
-            "bankops_http_request_duration_seconds",
+            "quanlykho_http_request_duration_seconds",
             "HTTP request duration in seconds by method and route template.",
             labelnames=("method", "route"),
             registry=registry,
         ),
         http_in_flight=Gauge(
-            "bankops_http_requests_in_flight",
+            "quanlykho_http_requests_in_flight",
             "HTTP requests currently being handled by the API.",
             registry=registry,
         ),
@@ -93,7 +93,7 @@ _metrics = _build_metrics_bundle()
 # duration of a request, so business metrics recorded inside a route handler
 # land on that app's registry instead of whichever app was configured last.
 _request_metrics: ContextVar[MetricsBundle | None] = ContextVar(
-    "bankops_request_metrics", default=None
+    "quanlykho_request_metrics", default=None
 )
 
 

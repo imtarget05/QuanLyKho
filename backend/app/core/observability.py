@@ -20,7 +20,7 @@ from typing import Any
 
 from app.config import Settings
 
-logger = logging.getLogger("bankops.observability")
+logger = logging.getLogger("quanlykho.observability")
 
 try:
     from langfuse import Langfuse

@@ -1,16 +1,7 @@
-"""Service layer - business logic orchestration."""
+"""Service layer - business logic orchestration.
 
-from app.services.approval_service import ApprovalService
-from app.services.auth_service import AuthService, User
-from app.services.inventory_service import InventoryService
-from app.services.request_service import RequestService
-from app.services.stocktake_service import StocktakeService
-
-__all__ = [
-    "AuthService",
-    "User",
-    "InventoryService",
-    "RequestService",
-    "StocktakeService",
-    "ApprovalService",
-]
+Các service còn lại (idempotency, approval_controls, approval_events,
+ai, etl_engine, ml_registry, v.v.) được import trực tiếp tại route
+cần dùng. Layer domain/repositories đã được gỡ vì chưa được wire vào
+routes (để tránh duplicate logic với route handlers hiện có).
+"""

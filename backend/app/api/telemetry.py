@@ -52,7 +52,7 @@ def create_tracer_provider(
     resource = Resource.create(
         {
             "service.name": service_name
-            or os.getenv("OTEL_SERVICE_NAME", "bankops-api"),
+            or os.getenv("OTEL_SERVICE_NAME", "quanlykho-api"),
             "service.version": os.getenv("APP_VERSION", "dev"),
             "deployment.environment": os.getenv("APP_ENV", "demo"),
         }

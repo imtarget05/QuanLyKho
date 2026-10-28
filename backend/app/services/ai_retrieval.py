@@ -17,7 +17,7 @@ def _get_docs_root() -> Path:
         Path(__file__).resolve().parents[1] / "docs",
         Path("/app/docs"),
         Path("/app/backend/docs"),
-        Path("/root/bankops/docs"),
+        Path("/root/quanlykho/docs"),
         Path("/root/docs"),
         Path.cwd() / "docs",
         Path.cwd().parent / "docs",
