@@ -86,6 +86,7 @@ class _AppShellState extends State<AppShell> {
   late final DataSyncController _syncController = DataSyncController();
   final GlobalKey _bodySubtreeKey = GlobalKey();
   int _pendingApprovalCount = 0;
+  bool? _sidebarCollapsedOverride;
   int _requestsNavId = 0;
   bool _autoOpenStockRequest = false;
   bool _autoOpenCashRequest = false;
@@ -99,6 +100,7 @@ class _AppShellState extends State<AppShell> {
   String? _pendingStockItemId;
   double? _pendingStockQuantity;
   int _inventoryNavKey = 0;
+
   /// Tạm thời ẩn chat bot trợ lý theo yêu cầu người dùng
   static const bool _enableAiAssistant = false;
   bool _aiUnavailable = false;
@@ -152,8 +154,10 @@ class _AppShellState extends State<AppShell> {
       final usingOfflineDemo = _repository is FakeBankOpsRepository;
       final userId = auth?.user?.id;
       final branch = auth?.user?.branch;
-      if (_repository == null || usingOfflineDemo != wantsOfflineDemo ||
-          _repositoryUserId != userId || _repositoryBranch != branch) {
+      if (_repository == null ||
+          usingOfflineDemo != wantsOfflineDemo ||
+          _repositoryUserId != userId ||
+          _repositoryBranch != branch) {
         _repository?.dispose();
         _repositoryUserId = userId;
         _repositoryBranch = branch;
@@ -162,11 +166,13 @@ class _AppShellState extends State<AppShell> {
             : HttpBankOpsRepository(
                 baseUrl: auth?.apiBaseUrl,
                 tokenProvider: () async {
-                  if (auth?.user?.id != userId || auth?.user?.branch != branch) {
+                  if (auth?.user?.id != userId ||
+                      auth?.user?.branch != branch) {
                     return null;
                   }
                   final token = await auth?.getAccessToken();
-                  if (auth?.user?.id != userId || auth?.user?.branch != branch) {
+                  if (auth?.user?.id != userId ||
+                      auth?.user?.branch != branch) {
                     return null;
                   }
                   return token;
@@ -184,11 +190,15 @@ class _AppShellState extends State<AppShell> {
     OfflineHub.instance.onSynced = () {
       if (mounted) setState(() => _refreshTick++);
     };
-    StocktakeOutbox.shared.bindIdentity(sessionUser?.id, sessionUser?.branch).then((_) async {
-      if (mounted && OfflineHub.instance.currentUserId == sessionUser?.id &&
+    StocktakeOutbox.shared
+        .bindIdentity(sessionUser?.id, sessionUser?.branch)
+        .then((_) async {
+      if (mounted &&
+          OfflineHub.instance.currentUserId == sessionUser?.id &&
           OfflineHub.instance.currentBranch == sessionUser?.branch) {
         await OfflineHub.instance.refreshLegacy();
-        if (mounted && OfflineHub.instance.currentUserId == sessionUser?.id &&
+        if (mounted &&
+            OfflineHub.instance.currentUserId == sessionUser?.id &&
             OfflineHub.instance.currentBranch == sessionUser?.branch) {
           OfflineHub.instance.addQueued();
           OfflineHub.instance.flushNow();
@@ -267,7 +277,6 @@ class _AppShellState extends State<AppShell> {
     _repository?.dispose();
     super.dispose();
   }
-
 
   Future<void> _fetchPendingCount(BankOpsRepository repo) async {
     try {
@@ -377,7 +386,8 @@ class _AppShellState extends State<AppShell> {
               const SizedBox(height: 16),
               Text(
                 context.tr('nav_access_denied_title'),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
@@ -475,7 +485,8 @@ class _AppShellState extends State<AppShell> {
                   const SizedBox(height: 16),
                   Text(
                     context.tr('nav_access_denied_title'),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -686,7 +697,8 @@ class _AppShellState extends State<AppShell> {
               leading: const Icon(Icons.apps_rounded),
               title: Text(
                 context.tr('nav_select_workspace'),
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
@@ -711,9 +723,7 @@ class _AppShellState extends State<AppShell> {
                       _icons[it.index],
                       color: isCurrent
                           ? const Color(0xFF2563EB)
-                          : Theme.of(sheetContext)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          : Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                     ),
                     title: Text(
                       _titleFor(context, it.index),
@@ -746,7 +756,6 @@ class _AppShellState extends State<AppShell> {
   Widget _navRail({required double width, SessionScope? session}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isWide = width >= 200;
     final canApprove = _canAccessApprovals(session);
     final roles = RoleVisibility.rolesOf(session?.user);
     final visibleItems = _items
@@ -755,7 +764,10 @@ class _AppShellState extends State<AppShell> {
             RoleVisibility.visibleTabs(roles, session?.user).contains(it.index))
         .toList();
 
-    return Container(
+    return AnimatedContainer(
+      key: const Key('app-sidebar'),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
       width: width,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
@@ -765,196 +777,230 @@ class _AppShellState extends State<AppShell> {
           ),
         ),
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Row(
-              children: [
-                const StoreLogo(size: 32),
-                if (isWide) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('nav_brand_title'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        Text(
-                          context.tr('nav_brand_sub'),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                            radius: 3, backgroundColor: Color(0xFF10B981)),
-                        SizedBox(width: 4),
-                        Text(
-                          'LIVE',
-                          style: TextStyle(
-                            color: Color(0xFF059669),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              itemCount: visibleItems.length,
-              itemBuilder: (context, i) {
-                final item = visibleItems[i];
-                final selected = _index == item.index;
-
-                // Category header on wide layout
-                Widget? sectionHeader;
-                if (isWide) {
-                  if (item.index == 0) {
-                    sectionHeader =
-                        _buildNavSectionHeader(context.tr('nav_section_ops'));
-                  } else if (item.index == 3) {
-                    sectionHeader =
-                        _buildNavSectionHeader(context.tr('nav_section_control'));
-                  } else if (item.index == 5 || item.index == 6) {
-                    sectionHeader =
-                        _buildNavSectionHeader(context.tr('nav_section_system'));
-                  }
-                }
-
-                final navBtn = Container(
-                  height: 44,
-                  margin: const EdgeInsets.symmetric(vertical: 2),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? (isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFEFF6FF))
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    border: selected
-                        ? Border.all(
-                            color: isDark
-                                ? const Color(0xFF334155)
-                                : const Color(0xFFBFDBFE),
-                            width: 1,
-                          )
-                        : null,
-                  ),
-                  child: InkWell(
-                    key: Key('nav-${_slugs[item.index]}'),
-                    onTap: () => setState(() => _index = item.index),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isWide ? 12 : 8,
-                        vertical: 6,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: isWide
-                            ? MainAxisAlignment.start
-                            : MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            selected ? item.filled : item.icon,
-                            size: 20,
-                            color: selected
-                                ? const Color(0xFF2563EB)
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                          if (isWide) ...[
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _labelFor(context, item.index),
-                                style: TextStyle(
-                                  color: selected
-                                      ? (isDark
-                                          ? Colors.white
-                                          : const Color(0xFF1E3A8A))
-                                      : theme.colorScheme.onSurface,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  fontSize: 13.5,
-                                ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 200;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Row(
+                  children: [
+                    const StoreLogo(size: 32),
+                    if (isWide) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('nav_brand_title'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            if (item.index == 4) // Approvals tab badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: (_pendingApprovalCount > 0
-                                          ? const Color(0xFFDC2626)
-                                          : const Color(0xFFF59E0B))
-                                      .withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  _pendingApprovalCount > 0
-                                      ? context.tr('nav_badge_pending', {
-                                          'count': '$_pendingApprovalCount'
-                                        })
-                                      : context.tr('nav_badge_approvals'),
-                                  style: TextStyle(
-                                    color: _pendingApprovalCount > 0
-                                        ? const Color(0xFFDC2626)
-                                        : const Color(0xFFD97706),
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
+                            Text(
+                              context.tr('nav_brand_sub'),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                                radius: 3, backgroundColor: Color(0xFF10B981)),
+                            SizedBox(width: 4),
+                            Text(
+                              'LIVE',
+                              style: TextStyle(
+                                color: Color(0xFF059669),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  itemCount: visibleItems.length,
+                  itemBuilder: (context, i) {
+                    final item = visibleItems[i];
+                    final selected = _index == item.index;
+
+                    // Category header on wide layout
+                    Widget? sectionHeader;
+                    if (isWide) {
+                      if (item.index == 0) {
+                        sectionHeader = _buildNavSectionHeader(
+                            context.tr('nav_section_inventory'));
+                      } else if (item.index == 3) {
+                        sectionHeader = _buildNavSectionHeader(
+                            context.tr('nav_section_transactions'));
+                      } else if (item.index == 6) {
+                        sectionHeader = _buildNavSectionHeader(
+                            context.tr('nav_section_activity'));
+                      } else if (item.index == 8) {
+                        sectionHeader = _buildNavSectionHeader(
+                            context.tr('nav_section_admin'));
+                      }
+                    }
+
+                    final navBtn = Container(
+                      height: 44,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? (isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFEFF6FF))
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: selected
+                            ? Border.all(
+                                color: isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFBFDBFE),
+                                width: 1,
+                              )
+                            : null,
+                      ),
+                      child: InkWell(
+                        key: Key('nav-${_slugs[item.index]}'),
+                        onTap: () => setState(() => _index = item.index),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWide ? 12 : 8,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: isWide
+                                ? MainAxisAlignment.start
+                                : MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                selected ? item.filled : item.icon,
+                                size: 20,
+                                color: selected
+                                    ? const Color(0xFF2563EB)
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              if (isWide) ...[
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _labelFor(context, item.index),
+                                    style: TextStyle(
+                                      color: selected
+                                          ? (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1E3A8A))
+                                          : theme.colorScheme.onSurface,
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      fontSize: 13.5,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
+                                if (item.index == 4) // Approvals tab badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (_pendingApprovalCount > 0
+                                              ? const Color(0xFFDC2626)
+                                              : const Color(0xFFF59E0B))
+                                          .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      _pendingApprovalCount > 0
+                                          ? context.tr('nav_badge_pending', {
+                                              'count': '$_pendingApprovalCount'
+                                            })
+                                          : context.tr('nav_badge_approvals'),
+                                      style: TextStyle(
+                                        color: _pendingApprovalCount > 0
+                                            ? const Color(0xFFDC2626)
+                                            : const Color(0xFFD97706),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+
+                    if (sectionHeader != null) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          sectionHeader,
+                          navBtn,
                         ],
+                      );
+                    }
+                    return navBtn;
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Tooltip(
+                message: isWide
+                    ? context.tr('nav_collapse_sidebar')
+                    : context.tr('nav_expand_sidebar'),
+                child: InkWell(
+                  key: const Key('sidebar-collapse-toggle'),
+                  onTap: () => setState(() {
+                    _sidebarCollapsedOverride = isWide;
+                  }),
+                  child: SizedBox(
+                    height: 44,
+                    child: Center(
+                      child: Icon(
+                        isWide
+                            ? Icons.arrow_back_ios_new_rounded
+                            : Icons.arrow_forward_ios_rounded,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                );
-
-                if (sectionHeader != null) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      sectionHeader,
-                      navBtn,
-                    ],
-                  );
-                }
-                return navBtn;
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1228,6 +1274,8 @@ class _AppShellState extends State<AppShell> {
     }
     final session = SessionScope.maybeOf(context);
     final layout = Breakpoints.fromWidth(MediaQuery.sizeOf(context).width);
+    final sidebarCollapsed = _sidebarCollapsedOverride ?? layout.isMedium;
+    final sidebarWidth = sidebarCollapsed ? 72.0 : 256.0;
 
     final body = AppScreen(
       body: KeyedSubtree(
@@ -1242,44 +1290,32 @@ class _AppShellState extends State<AppShell> {
     );
 
     final bodyWithTicker = _withLiveTicker(body);
-    final auth = Provider.of<AuthService?>(context);
-    final isSandbox = auth?.isOfflineSession ?? false;
-    final sandboxBanner = isSandbox
-        ? Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFFFEF3C7),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, size: 18, color: Color(0xFFB45309)),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Chế độ Reviewer Sandbox (Mô Phỏng 3 Phút) — Dữ liệu mẫu in-memory, không ghi cơ sở dữ liệu thật.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF92400E),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )
-        : null;
-
     Widget mainBody;
     if (layout.isWide) {
       mainBody = Row(
         children: [
-          _navRail(width: 256, session: session),
+          _navRail(width: sidebarWidth, session: session),
           const VerticalDivider(width: 8, thickness: 1),
           Expanded(
             child: Column(
               children: [
-                if (sandboxBanner != null) sandboxBanner,
                 OfflineBanner(pending: OfflineHub.instance.pending),
                 _topBar(session: session),
+                _Breadcrumb(
+                  items: [
+                    BreadcrumbItem(
+                      section: 0,
+                      label: context.tr('nav_home'),
+                    ),
+                    if (_index != 0)
+                      BreadcrumbItem(
+                        section: _index,
+                        label: _labelFor(context, _index),
+                      ),
+                  ],
+                  selectedIndex: _index,
+                  onSectionChanged: (index) => setState(() => _index = index),
+                ),
                 Expanded(child: bodyWithTicker),
               ],
             ),
@@ -1291,12 +1327,11 @@ class _AppShellState extends State<AppShell> {
         children: [
           Row(
             children: [
-              _navRail(width: 88, session: session),
+              _navRail(width: sidebarWidth, session: session),
               const VerticalDivider(width: 8, thickness: 1),
               Expanded(
                 child: Column(
                   children: [
-                    if (sandboxBanner != null) sandboxBanner,
                     Expanded(child: bodyWithTicker),
                   ],
                 ),
@@ -1316,7 +1351,6 @@ class _AppShellState extends State<AppShell> {
         children: [
           Column(
             children: [
-              if (sandboxBanner != null) sandboxBanner,
               Expanded(child: bodyWithTicker),
             ],
           ),
@@ -1385,17 +1419,21 @@ class _AppShellState extends State<AppShell> {
   Widget _withLiveTicker(Widget body) {
     final isOfflineDemo =
         context.watch<AuthService?>()?.isOfflineSession ?? false;
+    final isSampleRepository = _repository is FakeBankOpsRepository;
     final showTicker =
         context.watch<AppUiSettingsController?>()?.showLiveTicker ?? true;
-    if (!isOfflineDemo && !showTicker && !_isUpdateAvailable) return body;
+    if (!isOfflineDemo &&
+        !isSampleRepository &&
+        !showTicker &&
+        !_isUpdateAvailable) {
+      return body;
+    }
     return Column(
       children: [
         if (_isUpdateAvailable)
           const _AppUpdateBanner(onUpdate: forceAppUpdate),
-        if (isOfflineDemo)
-          const _OfflineDemoBanner()
-        else if (showTicker)
-          const _TeaOpsTicker(),
+        if (isOfflineDemo || isSampleRepository) const _OfflineDemoBanner(),
+        if (!isOfflineDemo && showTicker) const _TeaOpsTicker(),
         Expanded(child: body),
       ],
     );
@@ -1532,12 +1570,13 @@ class _OfflineDemoBanner extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isVi = context.isVietnamese;
     final text = isVi
-        ? 'Chế độ ngoại tuyến · Dữ liệu lưu trữ cục bộ trên thiết bị'
-        : 'Offline Mode · Data stored locally on device';
+        ? 'Dữ liệu demo · Mẫu in-memory, không ghi DB thật'
+        : 'Demo data · In-memory sample, no writes to the real database';
     return Semantics(
       liveRegion: true,
       label: '$text.',
       child: Container(
+        key: const Key('app-demo-banner'),
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         color: scheme.tertiaryContainer,
@@ -1620,4 +1659,68 @@ class _Item {
   final String label;
   final IconData icon;
   final IconData filled;
+}
+
+class BreadcrumbItem {
+  const BreadcrumbItem({required this.section, required this.label});
+
+  final int section;
+  final String label;
+}
+
+class _Breadcrumb extends StatelessWidget {
+  const _Breadcrumb({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSectionChanged,
+  });
+
+  final List<BreadcrumbItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSectionChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final children = <Widget>[
+      GestureDetector(
+        onTap: () => onSectionChanged(0),
+        child: Icon(Icons.home_outlined,
+            key: const Key('breadcrumb-home'),
+            size: 16,
+            color: scheme.onSurfaceVariant),
+      ),
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      if (index > 0 || item.section != 0) {
+        children.add(Icon(Icons.chevron_right_rounded,
+            size: 14, color: scheme.outlineVariant));
+      }
+      children.add(GestureDetector(
+        onTap: () => onSectionChanged(item.section),
+        child: Text(
+          item.label,
+          style: TextStyle(
+            color: selectedIndex == item.section
+                ? scheme.primary
+                : scheme.onSurfaceVariant,
+            fontSize: 12,
+            fontWeight: selectedIndex == item.section
+                ? FontWeight.w600
+                : FontWeight.w400,
+          ),
+        ),
+      ));
+    }
+    return SizedBox(
+      key: const Key('app-breadcrumb'),
+      height: 32,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(children: children),
+      ),
+    );
+  }
 }

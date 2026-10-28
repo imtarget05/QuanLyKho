@@ -56,3 +56,9 @@ node_modules/
 # macOS
 .DS_Store
 enterprise-ai-suite
+
+# Flutter web build output (build in CI/deploy)
+frontend/dist/
+
+# Built web artifacts (build in CI/deploy)
+frontend/dist/

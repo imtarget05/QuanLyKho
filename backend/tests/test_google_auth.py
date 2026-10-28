@@ -112,16 +112,6 @@ def test_google_login_disambiguates_email_and_username(client, demo_mode):
 
 
 @pytest.fixture
-def demo_mode(monkeypatch):
-    """Bật demo mode TƯỜNG MINH cho các test dùng token `mock-`."""
-    from app.config import settings
-
-    monkeypatch.setattr(settings, "demo_mode", True)
-    assert settings.is_demo_mode is True
-    return settings
-
-
-@pytest.fixture
 def non_demo_mode(monkeypatch):
     """Tắt demo mode — môi trường thật."""
     from app.config import settings

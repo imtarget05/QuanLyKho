@@ -13,6 +13,7 @@ import '../../core/widgets/app_toast.dart';
 import '../../core/util/approval_pdf.dart';
 import '../../core/util/error_text.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/data_table_card_fallback.dart';
 import '../../data/models/dtos.dart';
 import '../../data/repositories/bankops_repository.dart';
 import 'reports_filter.dart';
@@ -99,11 +100,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     // Validate cashflow data - ensure it's a proper list, default to empty if malformed
     final rawCashflow = results[1] as List?;
-    final cashflowBuckets = rawCashflow?.whereType<CashflowBucket>().toList() ?? [];
+    final cashflowBuckets =
+        rawCashflow?.whereType<CashflowBucket>().toList() ?? [];
 
     // Validate inventory data similarly
     final rawInventory = results[0] as List?;
-    final inventoryBuckets = rawInventory?.whereType<InventoryBucket>().toList() ?? [];
+    final inventoryBuckets =
+        rawInventory?.whereType<InventoryBucket>().toList() ?? [];
 
     return _ReportsData(
       inventoryBuckets: inventoryBuckets,
@@ -227,7 +230,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ),
                               OutlinedButton.icon(
                                 key: const Key('btn-print-vouchers-modal'),
-                                onPressed: () => _showVoucherPrintModal(context, data),
+                                onPressed: () =>
+                                    _showVoucherPrintModal(context, data),
                                 icon: const Icon(Icons.receipt_long_outlined,
                                     size: 18),
                                 label: const Text('Mẫu Phiếu In (BTC)'),
@@ -343,12 +347,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   void _exportCsv(BuildContext context, _ReportsData data) {
     final sb = StringBuffer();
-    sb.writeln('Ky,NhapKho_SoLuong,XuatKho_SoLuong,TonRong_SoLuong,SoPhieuNhap,SoPhieuXuat');
+    sb.writeln(
+        'Ky,NhapKho_SoLuong,XuatKho_SoLuong,TonRong_SoLuong,SoPhieuNhap,SoPhieuXuat');
     for (final b in data.inventoryBuckets) {
-      sb.writeln('${b.bucket},${b.inboundQty},${b.outboundQty},${b.netQty},${b.receiptCount},${b.issueCount}');
+      sb.writeln(
+          '${b.bucket},${b.inboundQty},${b.outboundQty},${b.netQty},${b.receiptCount},${b.issueCount}');
     }
     Clipboard.setData(ClipboardData(text: sb.toString()));
-    AppToast.success(context, 'Đã sao chép dữ liệu CSV vào Clipboard (có thể dán trực tiếp vào Google Sheets / Excel).');
+    AppToast.success(context,
+        'Đã sao chép dữ liệu CSV vào Clipboard (có thể dán trực tiếp vào Google Sheets / Excel).');
   }
 
   void _showVoucherPrintModal(BuildContext context, _ReportsData data) {
@@ -385,7 +392,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(Icons.receipt_long_rounded,
@@ -429,10 +437,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ApprovalItem(
                             id: 'PNK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                             kind: 'inbound',
-                            maker: SessionScope.maybeOf(context)?.user?.displayName ?? 'Thủ kho phụ trách',
+                            maker: SessionScope.maybeOf(context)
+                                    ?.user
+                                    ?.displayName ??
+                                'Thủ kho phụ trách',
                             impact: 'Nhập kho nguyên vật liệu',
                             detail: data.consumptionTop.isNotEmpty
-                                ? data.consumptionTop.take(3).map((c) => '${c.sku}: 20 kg').join(', ')
+                                ? data.consumptionTop
+                                    .take(3)
+                                    .map((c) => '${c.sku}: 20 kg')
+                                    .join(', ')
                                 : 'TRA-DEN: 20 kg, SUA-TUOI: 50 lit, TRAN-CHAU: 30 goi',
                             status: 'approved',
                           ),
@@ -455,10 +469,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ApprovalItem(
                             id: 'PXK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                             kind: 'outbound',
-                            maker: SessionScope.maybeOf(context)?.user?.displayName ?? 'Nhân viên quầy pha chế',
+                            maker: SessionScope.maybeOf(context)
+                                    ?.user
+                                    ?.displayName ??
+                                'Nhân viên quầy pha chế',
                             impact: 'Xuất quầy pha chế',
                             detail: data.consumptionTop.isNotEmpty
-                                ? data.consumptionTop.take(3).map((c) => '${c.sku}: 10 kg').join(', ')
+                                ? data.consumptionTop
+                                    .take(3)
+                                    .map((c) => '${c.sku}: 10 kg')
+                                    .join(', ')
                                 : 'TRA-DEN: 10 kg, SUA-TUOI: 30 lit, SIRO-DUONG: 15 chai',
                             status: 'approved',
                           ),
@@ -481,7 +501,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ApprovalItem(
                             id: 'PT-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                             kind: 'deposit',
-                            maker: SessionScope.maybeOf(context)?.user?.displayName ?? 'Thủ quỹ cửa hàng',
+                            maker: SessionScope.maybeOf(context)
+                                    ?.user
+                                    ?.displayName ??
+                                'Thủ quỹ cửa hàng',
                             impact: '2.500.000 VND',
                             detail: 'Thu tiền doanh thu bán lẻ ca trực',
                             status: 'approved',
@@ -505,7 +528,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ApprovalItem(
                             id: 'PC-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                             kind: 'withdraw',
-                            maker: SessionScope.maybeOf(context)?.user?.displayName ?? 'Thủ quỹ cửa hàng',
+                            maker: SessionScope.maybeOf(context)
+                                    ?.user
+                                    ?.displayName ??
+                                'Thủ quỹ cửa hàng',
                             impact: '500.000 VND',
                             detail: 'Chi mua phụ liệu phát sinh tại quán',
                             status: 'approved',
@@ -517,7 +543,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _buildVoucherTile(
                     ctx,
                     title: 'Biên Bản Kiểm Kê Kho & Bàn Giao Ca (Mẫu 05-VT)',
-                    subtitle: 'Biên bản đối chiếu tồn sổ sách và thực tế kiểm đếm',
+                    subtitle:
+                        'Biên bản đối chiếu tồn sổ sách và thực tế kiểm đếm',
                     icon: Icons.fact_check_outlined,
                     color: const Color(0xFF7C3AED),
                     onTap: () {
@@ -529,9 +556,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ApprovalItem(
                             id: 'BBKK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                             kind: 'stocktake',
-                            maker: SessionScope.maybeOf(context)?.user?.displayName ?? 'Trưởng ca kiểm đếm',
+                            maker: SessionScope.maybeOf(context)
+                                    ?.user
+                                    ?.displayName ??
+                                'Trưởng ca kiểm đếm',
                             impact: 'Khớp 100% số lượng',
-                            detail: 'Bàn giao ca trực sáng chiều - kho bảo đảm niêm phong',
+                            detail:
+                                'Bàn giao ca trực sáng chiều - kho bảo đảm niêm phong',
                             status: 'approved',
                           ),
                         ),
@@ -586,7 +617,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+          style: TextStyle(
+              fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
         ),
         trailing: const Icon(Icons.print_outlined, size: 18),
       ),
@@ -673,7 +705,8 @@ class _InventoryXntTab extends StatelessWidget {
                     Expanded(
                       child: _buildMetricMini(
                         title: 'TỔNG LƯỢNG NHẬP',
-                        value: '+${AppFormat.quantity(totalIn.toStringAsFixed(0))}',
+                        value:
+                            '+${AppFormat.quantity(totalIn.toStringAsFixed(0))}',
                         sub: '$totalReceipts phiếu nhập',
                         color: const Color(0xFF059669),
                       ),
@@ -682,7 +715,8 @@ class _InventoryXntTab extends StatelessWidget {
                     Expanded(
                       child: _buildMetricMini(
                         title: 'TỔNG LƯỢNG XUẤT',
-                        value: '-${AppFormat.quantity(totalOut.toStringAsFixed(0))}',
+                        value:
+                            '-${AppFormat.quantity(totalOut.toStringAsFixed(0))}',
                         sub: '$totalIssues phiếu xuất',
                         color: const Color(0xFFDC2626),
                       ),
@@ -712,7 +746,8 @@ class _InventoryXntTab extends StatelessWidget {
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
               child: Column(
@@ -725,52 +760,48 @@ class _InventoryXntTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(
-                        isDark
-                            ? const Color(0xFF334155)
-                            : const Color(0xFFF8FAFC),
-                      ),
-                      columns: const [
-                        DataColumn(label: Text('Kỳ đối soát')),
-                        DataColumn(label: Text('Nhập kho')),
-                        DataColumn(label: Text('Xuất quầy')),
-                        DataColumn(label: Text('Tồn ròng (Net)')),
-                        DataColumn(label: Text('Phiếu nhập')),
-                        DataColumn(label: Text('Phiếu xuất')),
-                      ],
-                      rows: buckets.map((b) {
-                        final inVal = b.inboundValue;
-                        final outVal = b.outboundValue;
-                        final netVal = inVal - outVal;
-                        return DataRow(
-                          cells: [
-                            DataCell(Text('Kỳ: ${b.bucket}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600))),
-                            DataCell(Text('+${b.inboundQty}',
-                                style:
-                                    const TextStyle(color: Color(0xFF059669)))),
-                            DataCell(Text('-${b.outboundQty}',
-                                style:
-                                    const TextStyle(color: Color(0xFFDC2626)))),
-                            DataCell(Text(
-                              '${netVal >= 0 ? '+' : ''}${b.netQty}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: netVal >= 0
-                                    ? const Color(0xFF2563EB)
-                                    : const Color(0xFFDC2626),
-                              ),
-                            )),
-                            DataCell(Text('${b.receiptCount}')),
-                            DataCell(Text('${b.issueCount}')),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                  DataTableCardFallback(
+                    headingColor: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFF8FAFC),
+                    compactBreakpoint: 600,
+                    columns: const [
+                      DataColumn(label: Text('Kỳ đối soát')),
+                      DataColumn(label: Text('Nhập kho')),
+                      DataColumn(label: Text('Xuất quầy')),
+                      DataColumn(label: Text('Tồn ròng (Net)')),
+                      DataColumn(label: Text('Phiếu nhập')),
+                      DataColumn(label: Text('Phiếu xuất')),
+                    ],
+                    rows: buckets.map((b) {
+                      final inVal = b.inboundValue;
+                      final outVal = b.outboundValue;
+                      final netVal = inVal - outVal;
+                      return DataRow(
+                        cells: [
+                          DataCell(Text('Kỳ: ${b.bucket}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600))),
+                          DataCell(Text('+${b.inboundQty}',
+                              style:
+                                  const TextStyle(color: Color(0xFF059669)))),
+                          DataCell(Text('-${b.outboundQty}',
+                              style:
+                                  const TextStyle(color: Color(0xFFDC2626)))),
+                          DataCell(Text(
+                            '${netVal >= 0 ? '+' : ''}${b.netQty}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: netVal >= 0
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFDC2626),
+                            ),
+                          )),
+                          DataCell(Text('${b.receiptCount}')),
+                          DataCell(Text('${b.issueCount}')),
+                        ],
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -803,8 +834,7 @@ class _InventoryXntTab extends StatelessWidget {
                   fontSize: 16, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 2),
           Text(sub,
-              style:
-                  const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
         ],
       ),
     );
@@ -1000,8 +1030,7 @@ class _ConsumptionTopTab extends StatelessWidget {
                                   'SKU: ${it.sku}${it.category != null ? " • ${it.category}" : ""}',
                                   style: TextStyle(
                                     fontSize: 11.5,
-                                    color:
-                                        theme.colorScheme.onSurfaceVariant,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -1168,8 +1197,7 @@ class _ShiftHistoryTab extends StatelessWidget {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color:
-                                          badgeColor.withValues(alpha: 0.12),
+                                      color: badgeColor.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -1188,8 +1216,7 @@ class _ShiftHistoryTab extends StatelessWidget {
                                 'Nhân viên: ${it.maker} • Ngày: ${it.businessDate ?? "Hôm nay"} • Tổng mục: ${it.lineCount}${it.completedAt != null ? " • Hoàn tất: ${it.completedAt!.substring(11, 16)}" : ""}',
                                 style: TextStyle(
                                   fontSize: 11.5,
-                                  color:
-                                      theme.colorScheme.onSurfaceVariant,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -1212,8 +1239,7 @@ class _ShiftHistoryTab extends StatelessWidget {
                               hasVariance ? 'Cần giải trình' : 'Chuẩn ca',
                               style: TextStyle(
                                 fontSize: 10.5,
-                                color:
-                                    theme.colorScheme.onSurfaceVariant,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],

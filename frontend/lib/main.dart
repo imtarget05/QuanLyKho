@@ -10,6 +10,8 @@ import 'src/app/theme_mode_controller.dart';
 import 'src/features/auth/accept_invite_screen.dart';
 import 'src/features/auth/auth_service.dart';
 import 'src/features/auth/login_screen.dart';
+import 'src/features/landing/landing_screen.dart';
+import 'src/data/repositories/fake_repository.dart';
 
 import 'src/core/i18n/app_i18n.dart';
 import 'src/core/i18n/locale_controller.dart';
@@ -78,8 +80,11 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
+  final FakeBankOpsRepository _demoRepository = FakeBankOpsRepository();
   bool _showAcceptInvite = false;
   String? _inviteToken;
+  bool _showLogin = false;
+  bool _showDemo = false;
 
   @override
   void initState() {
@@ -97,9 +102,8 @@ class _AuthGateState extends State<_AuthGate> {
       if ((token == null || token.isEmpty) &&
           base.hasFragment &&
           base.fragment.isNotEmpty) {
-        final frag = base.fragment.startsWith('/')
-            ? base.fragment
-            : '/${base.fragment}';
+        final frag =
+            base.fragment.startsWith('/') ? base.fragment : '/${base.fragment}';
         final fragUri = Uri.tryParse(frag);
         if (fragUri != null && fragUri.queryParameters.containsKey('token')) {
           token = fragUri.queryParameters['token']?.trim();
@@ -118,6 +122,9 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
+    if (_showDemo) {
+      return AppShell(repository: _demoRepository);
+    }
     if (auth.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -129,7 +136,13 @@ class _AuthGateState extends State<_AuthGate> {
           onSuccess: () => setState(() => _showAcceptInvite = false),
         );
       }
-      return const LoginScreen();
+      if (_showLogin) {
+        return const LoginScreen();
+      }
+      return LandingScreen(
+        onEnter: () => setState(() => _showLogin = true),
+        onDemo: () => setState(() => _showDemo = true),
+      );
     }
     return const AppShell();
   }

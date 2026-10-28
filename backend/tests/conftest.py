@@ -96,6 +96,29 @@ def client(app):
         )
 
 
+@pytest.fixture
+def demo_mode(monkeypatch):
+    """Bật demo mode TƯỜNG MINH (fixture dùng chung) cho test cần hành vi demo.
+
+    Superset của các bản sao cục bộ trước đây:
+    - bản gốc `test_change_security.py` / `test_google_auth.py`: bật
+      `settings.demo_mode = True` (và dựa vào `app_env == "demo"` cho property).
+    - bản gốc `test_admin_user_default_pin_gate.py`: ghim property
+      `is_demo_mode` trên class Settings để không phụ thuộc `app_env`.
+
+    Bật cả hai để mọi con đường (trường `demo_mode` hoặc property
+    `is_demo_mode`) đều thấy demo mode, bất kể `APP_ENV`.
+    """
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "demo_mode", True)
+    monkeypatch.setattr(
+        type(settings), "is_demo_mode", property(lambda self: True), raising=False
+    )
+    assert settings.is_demo_mode is True
+    return settings
+
+
 @pytest.fixture(autouse=True)
 def reset_rate_limits():
     """Reset in-memory login failure rate limits between tests."""
