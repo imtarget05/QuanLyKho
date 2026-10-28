@@ -17,7 +17,21 @@ import 'widgets/register_dialog.dart';
 /// Thiết kế Split-screen trên desktop/tablet, phong cách F&B hiện đại.
 /// Hỗ trợ đăng nhập nhanh theo ca trực và Google Sign-In SSO.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.initialUsername,
+    this.initialPassword,
+    this.showDemoBanner = false,
+  });
+
+  /// Pre-fill the username field (e.g. for demo flow).
+  final String? initialUsername;
+
+  /// Pre-fill the password field (e.g. for demo flow).
+  final String? initialPassword;
+
+  /// When true, shows a top banner indicating this is a demo session.
+  final bool showDemoBanner;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

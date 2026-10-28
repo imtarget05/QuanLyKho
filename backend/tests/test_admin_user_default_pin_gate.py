@@ -66,15 +66,6 @@ def non_demo_mode(monkeypatch):
     yield
 
 
-@pytest.fixture
-def demo_mode(monkeypatch):
-    """Bật demo mode tường minh."""
-    monkeypatch.setattr(
-        type(_settings()), "is_demo_mode", property(lambda self: True), raising=False
-    )
-    yield
-
-
 class TestAdminCreateUserDefaultPin:
     def test_non_demo_user_has_no_default_pin(self, client, non_demo_mode):
         """Ngoài demo mode: user mới KHÔNG có PIN sẵn."""

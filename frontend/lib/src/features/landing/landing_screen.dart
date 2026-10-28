@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_tokens.dart';
 
 class LandingScreen extends StatelessWidget {
-  const LandingScreen({super.key, required this.onEnter});
+  const LandingScreen({super.key, required this.onEnter, this.onDemo});
 
   final VoidCallback onEnter;
+  /// When provided, tapping "Trải nghiệm demo" fires this callback instead
+  /// of [onEnter]. Falls back to [onEnter] when null (backward-compatible).
+  final VoidCallback? onDemo;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,7 @@ class LandingScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _HeroSection(isWide: isWide, isCompact: isCompact, onEnter: onEnter),
+            _HeroSection(isWide: isWide, isCompact: isCompact, onEnter: onEnter, onDemo: onDemo),
             _FeaturesSection(isWide: isWide, isCompact: isCompact),
             _FooterSection(onEnter: onEnter),
           ],
@@ -32,11 +35,13 @@ class _HeroSection extends StatelessWidget {
     required this.isWide,
     required this.isCompact,
     required this.onEnter,
+    this.onDemo,
   });
 
   final bool isWide;
   final bool isCompact;
   final VoidCallback onEnter;
+  final VoidCallback? onDemo;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +135,8 @@ class _HeroSection extends StatelessWidget {
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed: onEnter,
+                          key: const Key('landing-demo-btn'),
+                          onPressed: onDemo ?? onEnter,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                             side: const BorderSide(color: Colors.white70),

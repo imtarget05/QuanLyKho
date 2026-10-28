@@ -39,6 +39,22 @@ class AppI18n {
       'nav_badge_pending': '{count} CHỜ DUYỆT',
       'nav_badge_approvals': 'PHÊ DUYỆT',
 
+      // Sidebar collapsible
+      'nav_collapse_sidebar': 'Thu gọn menu',
+      'nav_expand_sidebar': 'Mở rộng menu',
+
+      // Breadcrumb
+      'breadcrumb_home': 'Trang chủ',
+      'nav_home': 'Trang chủ',
+
+      // Additional section headers
+      'nav_section_inventory': 'KHO & KIỂM KÊ',
+      'nav_section_transactions': 'GIAO DỊCH',
+      'nav_section_finance': 'SỔ QUỸ',
+      'nav_section_reports': 'BÁO CÁO & ĐỐI SOÁT',
+      'nav_section_activity': 'HOẠT ĐỘNG',
+      'nav_section_admin': 'QUẢN TRỊ',
+
       // Branding & Shell
       'app_title': 'Quản Lý Bán Hàng & Kho',
       'branch_badge': 'CN Quận 1 · Quán Trà Sữa Đô Thị',
@@ -227,6 +243,22 @@ class AppI18n {
           'Employee Management module is reserved for Administrators (Admin) only.',
       'nav_badge_pending': '{count} PENDING',
       'nav_badge_approvals': 'APPROVALS',
+
+      // Sidebar collapsible
+      'nav_collapse_sidebar': 'Collapse menu',
+      'nav_expand_sidebar': 'Expand menu',
+
+      // Breadcrumb
+      'breadcrumb_home': 'Home',
+      'nav_home': 'Home',
+
+      // Additional section headers
+      'nav_section_inventory': 'INVENTORY & STOCKTAKE',
+      'nav_section_transactions': 'TRANSACTIONS',
+      'nav_section_finance': 'CASH LEDGER',
+      'nav_section_reports': 'REPORTS & RECONCILIATION',
+      'nav_section_activity': 'ACTIVITY',
+      'nav_section_admin': 'ADMINISTRATION',
 
       // Branding & Shell
       'app_title': 'Milk Tea Inventory Ops',

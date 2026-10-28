@@ -8,7 +8,8 @@
 ## 1. Kết luận audit nhanh
 
 - **Backend hiện tại đã đủ để hỗ trợ shell mới mà không cần API mới**: inventory, requests, approvals, cash_sim, reports, activity, notifications, dashboard, integrations, ETL, admin_users, auth, demo. Không cần thay đổi schema/ledger.
-- **Frontend hiện tại là 1 Flutter app adaptive với 10 tab cố định** (`AppShell` index 0–9), điều hướng ngang/bottom bar, không có sidebar đa cấp, không có landing công khai, không có route-level public pages.
+- **Frontend hiện tại là một Flutter app adaptive với 10 index tab** (`AppShell` index 0–9; tab 5 Tích hợp/ETL đang ẩn). Điều hướng đã có bottom bar + More sheet trên màn hình hẹp, sidebar/rail có nhóm mục trên màn hình lớn, top bar ở màn hình không-wide. Chưa có menu con đa cấp, breadcrumb hoạt động trong app shell, hoặc routing theo URL cho từng tab.
+- **Landing công khai đã tồn tại** tại `frontend/lib/src/features/landing/landing_screen.dart` và được chọn bởi `_AuthGate` trong `frontend/lib/main.dart`. Trang có hero, phần năng lực cốt lõi, footer và CTA đăng nhập. CTA “Trải nghiệm demo” hiện gọi cùng callback với “Đăng nhập”, nên chưa mở một luồng demo riêng. Đăng ký hiện là dialog mở từ trang đăng nhập; chấp nhận lời mời là màn hình riêng.
 - **VKHO chỉ dùng làm cảm hứng về cấu trúc thông tin** (sidebar nhóm nghiệp vụ, header search/notify/profile, breadcrumb). Không sao chép thương hiệu/câu chữ/hình ảnh.
 - **MVP thực tế là kho trà sữa + ca làm việc**, không phải bán lẻ đa phân hệ. Các module đề xuất (bán hàng, sửa chữa, trả hàng, chi nhánh, khách hàng, nhà cung cấp) **chưa tồn tại** trong code/DB và **không được thêm** trừ khi PRD/SRS được cập nhật có chủ đích.
 - **Core invariants phải giữ nguyên**: ledger-first inventory, UOM conversion, MAC valuation, maker≠checker, idempotency, audit append-only, SSE replay.
@@ -34,10 +35,11 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 | 7 | `reports/reports_screen.dart` (+ `reports_filter.dart`) | 7 Báo cáo | `/reports/*` | Hoạt động | Giữ; filter responsive |
 | 8 | `settings/settings_screen.dart` | 8 Cài đặt | `/auth/*` (profile) | Hoạt động | Giữ |
 | 9 | `admin/employee_management_screen.dart` | 9 Quản trị nhân viên | `/admin/users/*` | Theo capability | Giữ; role-aware |
-| — | `auth/login_screen.dart`, `accept_invite_screen.dart` | Public-ish | `/auth/login, /auth/accept-invite` | Hoạt động | Cần tách landing công khai |
+| — | `landing/landing_screen.dart` | Public (AuthGate khi chưa đăng nhập) | Không có API riêng | Hoạt động | Tái sử dụng khung hero/features; làm rõ CTA demo vì hiện dẫn vào login |
+| — | `auth/login_screen.dart`, `accept_invite_screen.dart`, `auth/widgets/register_dialog.dart` | Auth flow | `/auth/login, /auth/accept-invite, /auth/register` | Hoạt động theo flow hiện có | Giữ auth; đăng ký là dialog, invite là màn hình riêng |
 | — | `ai/ai_assistant_dialog.dart`, `ai_voucher_audit.dart` | Modal | `/ai/*` | Hoạt động (P3 gap G11) | Giữ như enhancement, không phải core module |
 
-**Navigation model hiện tại:** `RoleVisibility.visibleTabs()` trả list index; `hiddenPilotTabs={5}`; auditor-only ẩn tab 3/4. Không có sidebar đa cấp, không có breadcrumb, không có route URL state, không có public landing.
+**Navigation model hiện tại:** `RoleVisibility.visibleTabs()` trả list index; `hiddenPilotTabs={5}`; auditor-only ẩn tab 3/4. `_navRail` trong `app_shell.dart` hiển thị sidebar rộng 256 px trên màn hình wide, rail 88 px ở màn hình medium, có các section header tĩnh; màn hình compact dùng bottom bar + More sheet. Đây là nhóm mục phẳng, chưa phải menu cha/con có thể thu gọn. Chưa thấy breadcrumb được gắn vào app shell hoặc router duy trì URL theo tab. Landing công khai có trong `_AuthGate`, không phải route URL riêng.
 
 **Auth/RBAC client:** `RoleVisibility` là allowlist fail-open cho role lạ; backend là nguồn chuẩn. Capabilities: `iam:admin`, `etl:admin/design/run`, `cash:post_adjustment`. Vai trò seed: admin/staff/approver/auditor (backend) vs maker/checker/auditor (HTTP fallback).
 ## 3. Current-state matrix — Backend routes (không đổi)
@@ -84,7 +86,7 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 | 13 AI assist | Có (optional) | Modal | Giữ optional (G11) |
 | — Bán hàng / Sửa chữa / Trả hàng / Chi nhánh / Khách hàng / Nhà cung cấp | **Không có** | **Không có** | **Không thêm** cho đến khi PRD/SRS cập nhật + backend/model/migration được phê duyệt |
 
-**Kết luận gap:** Không có gap mới về correctness. Gap duy nhất là **UI shell/navigation/landing** chưa đạt hướng VKHO-inspired. Đây là enhancement, không phải bug. Không cần cập nhật `gap-register.md` (theo dõi P0–P3 correctness/verification) cho planning phase; nếu triển khai, có thể thêm entry P3 "UI shell redesign" vào backlog (`docs/13-backlog.md`) thay vì gap register.
+**Kết luận gap:** Landing và responsive navigation đã có nền tảng đáng tái sử dụng. Khoảng trống chính là **CTA/demo chưa có hành vi riêng; điều hướng chưa có menu con/breadcrumb/URL state; và shell chưa được chuẩn hóa theo sitemap mới**. Đây là enhancement, không phải bằng chứng cho thấy backend cần viết lại. Cần kiểm tra các thay đổi đang có trong working tree trước khi tiếp tục: hiện có chỉnh sửa `frontend/lib/src/core/i18n/app_i18n.dart` và các file chưa track dưới `frontend/lib/src/app/widgets/` cùng `frontend/test/sidebar_breadcrumb_test.dart`; không ghi đè hoặc quy chúng thành thay đổi của audit này.
 
 ## 5. Phase 1 scope — Shell, Navigation, Auth/Demo Landing
 
@@ -92,9 +94,9 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 
 ### 5.1 In scope (Phase 1)
 
-1. **Public landing route** (`/` hoặc `/welcome`): giới thiệu sản phẩm, CTA đăng nhập, đăng ký (nếu `/auth/register` hoặc invite flow hỗ trợ), demo (nếu `/demo` an toàn). Trạng thái loading/error/success rõ.
+1. **Public landing**: cải tiến `LandingScreen` hiện có; giữ CTA đăng nhập. Chỉ đổi CTA demo thành luồng thật sau khi xác minh demo endpoint/session an toàn. Đăng ký tiếp tục dùng flow hiện có trừ khi có yêu cầu sản phẩm cho route riêng.
 2. **Auth routes**: login, accept-invite, (register nếu backend có). Giữ JWT flow hiện tại.
-3. **App shell mới**: sidebar đa cấp (collapsible), header (search, notifications, profile menu), breadcrumb, content area theo route. Giữ 10 tab hiện có, nhóm theo nghiệp vụ:
+3. **App shell nâng cấp**: mở rộng sidebar/rail hiện có thành điều hướng có nhóm rõ ràng (menu con chỉ khi cần), header (search, notifications, profile menu), breadcrumb và trạng thái tab; chỉ thêm URL routing nếu phù hợp cấu trúc Flutter hiện có. Giữ 10 index tab hiện có, nhóm theo nghiệp vụ:
    - Tổng quan
    - Kho & kiểm kê (Kho, Kiểm kê, Sổ biến động, Giá vốn)
    - Giao dịch (Yêu cầu, Duyệt)
@@ -142,16 +144,9 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 
 ## 6. Branch sync strategy (trước khi implement)
 
-**Trạng thái hiện tại:** `main` ahead 3 / behind 1 vs `origin/main`; working tree sạch trừ untracked `docs/PLAN_UI_REDESIGN_VKHO_INSPIRED.md`.
+**Trạng thái lúc audit:** đang ở branch `feat/ui-shell-redesign-phase1`. Working tree đã có thay đổi chưa commit ở frontend (`app_i18n.dart`, `frontend/lib/src/app/widgets/`, `frontend/test/sidebar_breadcrumb_test.dart`). Đây là trạng thái quan sát được tại thời điểm audit; cần giữ nguyên và đọc diff trước khi sửa cùng khu vực.
 
-**Khuyến nghị (chưa thực thi — cần quyết định):**
-1. Commit/track plan doc (hoặc giữ untracked) trước khi sync.
-2. `git fetch origin && git pull --rebase origin main` (rebase 3 commit local lên origin/main mới). Nếu conflict ở merge commit `chore: merge cloudflare evidence`, giải quyết ưu tiên origin.
-3. Sau rebase, chạy `git diff --check` + `pytest backend/tests` (hoặc subset) để xác nhận.
-4. Tạo feature branch mới `feat/ui-shell-redesign-phase1` từ main đã sync; không implement trực tiếp trên main.
-5. Chỉ bắt đầu Phase 1 sau khi sync xong và CI green.
-
-**Quyết định cần người dùng:** rebase vs merge. Mặc định đề xuất rebase để giữ history tuyến tính; nếu muốn bảo toàn merge commit, dùng `git pull --no-rebase`.
+**Khuyến nghị:** không checkout/rebase/merge trong bước audit. Trước khi triển khai, xem diff của các file frontend chưa commit để tránh ghi đè công việc đang dở; chỉ sync branch nếu workflow hiện hành yêu cầu.
 
 ## 7. Deliverables đã có / sẽ có
 

@@ -13,16 +13,6 @@ DEMO_PASSWORD = "DemoPass123!"
 
 
 @pytest.fixture
-def demo_mode(monkeypatch):
-    """Bật demo mode TƯỜNG MINH (môi trường demo) cho test cần hành vi demo."""
-    from app.config import settings
-
-    monkeypatch.setattr(settings, "demo_mode", True)
-    assert settings.is_demo_mode is True
-    return settings
-
-
-@pytest.fixture
 def non_demo_mode(monkeypatch):
     """Tắt demo mode — môi trường thật: không được có bất kỳ đường tắt demo nào."""
     from app.config import settings

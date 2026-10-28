@@ -24,7 +24,7 @@ class TestRbacUatMatrix:
         protected_routes = [
             ("GET", "/inventory/items"),
             ("GET", "/inventory/balances"),
-            ("GET", "/reports/summary"),
+            ("GET", "/reports/inventory-daily"),
             ("GET", "/activity"),
             ("GET", "/api/v1/notifications/devices"),
         ]

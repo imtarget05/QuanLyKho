@@ -176,6 +176,15 @@ void main() {
       expect(find.text('YÊU CẦU ĐANG CHỜ DUYỆT'), findsOneWidget);
 
       // Maker request queue shows Yêu Cầu Của Bạn Đang Chờ Phê Duyệt
+      final dashboardScroll = find.descendant(
+        of: find.byType(CustomScrollView).first,
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        find.text('Yêu Cầu Của Bạn Đang Chờ Phê Duyệt'),
+        400,
+        scrollable: dashboardScroll.first,
+      );
       expect(find.text('Yêu Cầu Của Bạn Đang Chờ Phê Duyệt'), findsOneWidget);
 
       // Quick action shows Theo dõi Yêu cầu của tôi instead of Phê duyệt Kiểm Soát Kép
