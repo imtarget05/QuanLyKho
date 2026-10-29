@@ -739,3 +739,130 @@ async def reset_password(
 
     return {"message": "Khôi phục mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."}
 
+
+
+# --------------------------------------------------------------------------
+# OTP endpoints (durable, P0)
+# --------------------------------------------------------------------------
+
+from pydantic import BaseModel, Field  # noqa: E402  (local import to avoid touching header imports)
+
+
+class OtpSendRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    purpose: str = Field(default="password_reset", pattern=r"^(password_reset|login_2fa|sensitive_action)$")
+    channel: str = Field(default="email", pattern=r"^(email|sms)$")
+
+
+class OtpVerifyRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    otp: str = Field(pattern=r"^\d{6}$")
+    purpose: str = Field(default="password_reset", pattern=r"^(password_reset|login_2fa|sensitive_action)$")
+
+
+@router.post("/otp/send")
+async def otp_send(
+    body: OtpSendRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Gửi mã OTP (bền vững qua DB). Mã không trả về trong response ngoài demo mode."""
+    from app.services.otp import create_otp  # local import
+
+    client_ip = _client_ip(request)
+    code, created = await create_otp(
+        db,
+        username=body.username,
+        purpose=body.purpose,
+        channel=body.channel,
+        ip=client_ip,
+    )
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Đã gửi quá nhiều OTP. Vui lòng đợi trước khi gửi lại.",
+        )
+
+    # Gửi email (demo: in-memory/SMTP stub qua email_service nếu có).
+    email_sent = False
+    try:
+        from app.services.email_service import send_password_reset_email  # noqa: F811
+
+        target_email = body.username if "@" in body.username else ""
+        if target_email:
+            email_sent = await send_password_reset_email(
+                to_email=target_email,
+                username=body.username,
+                otp=code,
+            )
+    except Exception:  # noqa: BLE001 - email lỗi không chặn tạo OTP
+        pass
+
+    if settings.is_demo_mode:
+        return {
+            "message": "Mã xác thực OTP đã được tạo (demo mode).",
+            "email_sent": email_sent,
+            "expires_in_seconds": 900,
+            "otp_demo": code,
+        }
+    return {
+        "message": "Mã xác thực OTP đã được gửi." if email_sent else "Mã xác thực OTP đã được tạo (không thể gửi email).",
+        "email_sent": email_sent,
+        "expires_in_seconds": 900,
+    }
+
+
+@router.post("/otp/verify")
+async def otp_verify(
+    body: OtpVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify mã OTP và trả về token ngắn hạn (5p) cho bước tiếp theo."""
+    from app.services.otp import consume_otp, verify_otp  # local import
+
+    client_ip = _client_ip(request)
+    ok, error_code = await verify_otp(
+        db,
+        username=body.username,
+        code=body.otp,
+        purpose=body.purpose,
+        ip=client_ip,
+    )
+    if not ok:
+        status_map = {
+            "OTP_NOT_FOUND": status.HTTP_404_NOT_FOUND,
+            "OTP_EXPIRED": status.HTTP_400_BAD_REQUEST,
+            "OTP_INVALID": status.HTTP_400_BAD_REQUEST,
+            "OTP_LOCKED": status.HTTP_423_LOCKED,
+        }
+        raise HTTPException(
+            status_code=status_map.get(error_code, status.HTTP_400_BAD_REQUEST),
+            detail={
+                "OTP_NOT_FOUND": "Không tìm thấy mã OTP cho tài khoản này.",
+                "OTP_EXPIRED": "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.",
+                "OTP_INVALID": "Mã OTP không chính xác.",
+                "OTP_LOCKED": "Quá nhiều lần sai, tài khoản bị khóa tạm 15 phút.",
+            }.get(error_code, "Lỗi xác thực OTP."),
+        )
+
+    # Consume tất cả OTP của username+purpose sau khi verify thành công.
+    await consume_otp(db, body.username, body.purpose)
+
+    # Tạo token ngắn hạn (5p) đánh dấu OTP đã verify.
+    from app.api.routes.auth_utils import create_access_token  # noqa: F811
+
+    otp_token = create_access_token(
+        {
+            "sub": body.username,
+            "type": "otp_verified",
+            "purpose": body.purpose,
+        },
+        timedelta(minutes=5),
+    )
+    return {
+        "message": "Xác thực OTP thành công.",
+        "otp_verified_token": otp_token,
+        "expires_in_seconds": 300,
+    }
+

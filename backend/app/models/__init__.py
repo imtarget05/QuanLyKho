@@ -26,6 +26,7 @@ from app.models import (
     idempotency,  # noqa: F401
     integration,  # noqa: F401
     inventory,  # noqa: F401
+    otp,  # noqa: F401
     reconciliation,  # noqa: F401
     schema_parity,  # noqa: F401
     stock_level,  # noqa: F401
@@ -68,6 +69,7 @@ __all__ = [
     "idempotency",
     "integration",
     "inventory",
+    "otp",
     "reconciliation",
     "schema_parity",
     "stock_level",
