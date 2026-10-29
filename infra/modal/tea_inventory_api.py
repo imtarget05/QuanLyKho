@@ -101,7 +101,7 @@ image = (
             "FRONTEND_BASE_URL": "https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev",
             "SMTP_HOST": "smtp.gmail.com",
             "SMTP_PORT": "587",
-            "SMTP_USER": "binhtan5734@gmail.com",
+            "SMTP_USER": "admin@example.com",
             "SMTP_FROM_NAME": "quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev",
         }
     )
