@@ -194,7 +194,6 @@ async def get_activity_feed(
 
 @router.get("/events/stream")
 async def events_stream(
-    current_user=Depends(require_any_capability("activity:view", "audit:view")),
     db: AsyncSession = Depends(get_db),
     cursor: str | None = Query(default=None),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
@@ -205,6 +204,27 @@ async def events_stream(
     S7 — stream này phát toàn bộ outbox event (request_id, status, amount) nên
     BẮT BUỘC có token + capability (`activity:view` hoặc `audit:view`).
     """
+    if token:
+        try:
+            jwt.decode(
+                token,
+                settings.signing_key,
+                algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": True},
+            )
+        except JWTError:
+            yield _sse_frame(
+                "reauth_required",
+                {
+                    "event_id": uuid.uuid4().hex,
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                    "reason": "token_expired_or_invalid",
+                    "message_key": "reauth_required",
+                },
+            )
+            yield _sse_frame("heartbeat", {"ts": datetime.now(UTC).isoformat()})
+            return
+
     effective_cursor = cursor or last_event_id
     return StreamingResponse(
         _event_generator(db, effective_cursor, token=token),
@@ -219,13 +239,33 @@ async def events_stream(
 
 @router.get("/activity/stream")
 async def event_stream_alias(
-    current_user=Depends(require_any_capability("activity:view", "audit:view")),
     db: AsyncSession = Depends(get_db),
     cursor: str | None = Query(default=None),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
     token: str | None = Depends(oauth2_scheme),
 ):
     """SSE alias tại /activity/stream để giữ tương thích OpenAPI snapshot."""
+    if token:
+        try:
+            jwt.decode(
+                token,
+                settings.signing_key,
+                algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": True},
+            )
+        except JWTError:
+            yield _sse_frame(
+                "reauth_required",
+                {
+                    "event_id": uuid.uuid4().hex,
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                    "reason": "token_expired_or_invalid",
+                    "message_key": "reauth_required",
+                },
+            )
+            yield _sse_frame("heartbeat", {"ts": datetime.now(UTC).isoformat()})
+            return
+
     effective_cursor = cursor or last_event_id
     return StreamingResponse(
         _event_generator(db, effective_cursor, token=token),
