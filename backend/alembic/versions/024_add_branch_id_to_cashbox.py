@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "024_add_branch_id_to_cashbox"
-down_revision = "022_movement_cost_and_sub_kind"
+down_revision = "023_reversal_link"
 branch_labels = None
 depends_on = None
 

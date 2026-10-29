@@ -95,10 +95,17 @@ class InventoryRequest(Base, TimestampMixin):
     version: int = Column(Integer, default=1, nullable=False)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     created_by: str = Column(UUID(as_uuid=True), ForeignKey("iam_users.id"), nullable=False)
+    reversed_from_id: str | None = Column(
+        UUID(as_uuid=True),
+        ForeignKey("inv_requests.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __mapper_args__ = {
         "version_id_col": version
     }
+
+    reversal_of = relationship("InventoryRequest", remote_side=[id], backref="reversals")
 
     def __repr__(self):
         return f"<InventoryRequest {self.kind} {self.status}>"

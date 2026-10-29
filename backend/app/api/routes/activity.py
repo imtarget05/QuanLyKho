@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import StreamingResponse
+from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +20,10 @@ from app.api.pagination import (
     decode_cursor,
     encode_cursor,
 )
-from app.api.routes.auth_utils import require_any_capability
+from app.api.routes.auth_utils import (
+    oauth2_scheme,
+    require_any_capability,
+)
 from app.config import settings
 from app.database import get_db
 from app.models.activity import AuditEvent, Job, OutboxEvent
@@ -33,9 +37,33 @@ def _sse_frame(event_type: str, payload: dict, event_id: str | None = None) -> s
 
 
 async def _event_generator(
-    db: AsyncSession, cursor: str | None = None
+    db: AsyncSession, cursor: str | None = None, token: str | None = None
 ) -> AsyncGenerator[str, None]:
-    """At-least-once SSE stream: replay outbox/jobs từ cursor hoặc phát resync_required."""
+    """At-least-once SSE stream: replay outbox/jobs từ cursor hoặc phát resync_required.
+
+    Nếu token hết hạn trong khi stream đang mở → gửi `reauth_required` và đóng.
+    """
+    if token:
+        try:
+            jwt.decode(
+                token,
+                settings.signing_key,
+                algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": True},
+            )
+        except JWTError:
+            yield _sse_frame(
+                "reauth_required",
+                {
+                    "event_id": uuid.uuid4().hex,
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                    "reason": "token_expired_or_invalid",
+                    "message_key": "reauth_required",
+                },
+            )
+            yield _sse_frame("heartbeat", {"ts": datetime.now(UTC).isoformat()})
+            return
+
     cutoff = datetime.now(UTC) - timedelta(days=settings.sse_retention_days)
     anchor_time: datetime | None = None
 
@@ -170,6 +198,7 @@ async def events_stream(
     db: AsyncSession = Depends(get_db),
     cursor: str | None = Query(default=None),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+    token: str | None = Depends(oauth2_scheme),
 ):
     """SSE stream chuẩn docs/06: GET /events/stream?cursor= + Last-Event-ID.
 
@@ -178,7 +207,7 @@ async def events_stream(
     """
     effective_cursor = cursor or last_event_id
     return StreamingResponse(
-        _event_generator(db, effective_cursor),
+        _event_generator(db, effective_cursor, token=token),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -194,11 +223,12 @@ async def event_stream_alias(
     db: AsyncSession = Depends(get_db),
     cursor: str | None = Query(default=None),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+    token: str | None = Depends(oauth2_scheme),
 ):
     """SSE alias tại /activity/stream để giữ tương thích OpenAPI snapshot."""
     effective_cursor = cursor or last_event_id
     return StreamingResponse(
-        _event_generator(db, effective_cursor),
+        _event_generator(db, effective_cursor, token=token),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

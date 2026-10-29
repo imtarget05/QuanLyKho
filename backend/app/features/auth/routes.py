@@ -35,6 +35,7 @@ from app.database import get_db
 from app.models.activity import AuditEvent
 from app.models.iam import User, UserStatus
 from app.services.approval_controls import DEMO_SUPERVISOR_PIN
+from app.services.auth_events import auth_event_bus
 from app.services.email_service import (
     send_activation_confirmation_email,
     send_password_reset_email,
@@ -161,6 +162,14 @@ async def login(
         refresh_token_expires,
     )
 
+    await auth_event_bus.publish(
+        "auth.login",
+        {
+            "user_id": str(user.id),
+            "username": user.username,
+        },
+    )
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -176,6 +185,7 @@ async def login(
             "branch_id": str(user.branch_id) if getattr(user, "branch_id", None) else None,
         },
     }
+
 
 
 class RegisterRequest(BaseModel):
@@ -459,6 +469,15 @@ async def refresh_tokens(
 async def logout(token: str = Depends(oauth2_scheme)):
     """Logout: revoke access token hiện tại (denylist tới khi token hết hạn)."""
     revoke_token(token)
+    try:
+        payload = jwt_decode(token)
+        user_id = payload.get("sub")
+    except JWTError:
+        user_id = None
+    await auth_event_bus.publish(
+        "auth.logout",
+        {"user_id": user_id},
+    )
     return {"message": "Logged out successfully"}
 
 

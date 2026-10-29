@@ -86,6 +86,10 @@ class ApprovalInput(BaseModel):
     supervisor_pin: str | None = Field(default=None, min_length=1, max_length=128)
 
 
+class ReverseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(min_length=1, max_length=512)
+
 _SUBJECT = "inventory_request"
 _APPROVE_CAPS = ("inventory:create_request", "inventory:approve_request")
 _REQUEST_READ_CAPS = ("inventory:create_request", "inventory:approve_request", "inventory:review")
@@ -1270,6 +1274,110 @@ async def delete_request(
     return {"status": "deleted", "id": str(rid)}
 
 
+@router.post("/inventory/requests/{request_id}/reverse", status_code=201)
+async def reverse_request(
+    request_id: str,
+    body: ReverseRequest,
+    request: Request,
+    user=Depends(require_any_capability("inventory:create_request")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dao phieu kho: tao phieu moi nguoc chieu cac linha cua phieu da posted."""
+    key = _require_key(request)
+    original = await _load_request(db, request_id)
+    if original.status != "posted":
+        raise AppError(
+            409,
+            "CANNOT_REVERSE",
+            "Chi co the dao phieu khi dang o trang thai da ghi (posted)",
+        )
+
+    # Pham vi chi nhanh tren source/dest locations
+    if original.source_id is not None:
+        await _require_location_scope(db, user, original.source_id)
+    if original.dest_id is not None:
+        await _require_location_scope(db, user, original.dest_id)
+
+    cached = _replay(
+        key,
+        {"reason": body.reason.strip(), "original_request_id": str(original.id)},
+    )
+    if cached is not None:
+        return cached
+
+    lines = (
+        await db.execute(
+            select(InventoryRequestLine).where(
+                InventoryRequestLine.request_id == original.id
+            )
+        )
+    ).scalars().all()
+
+    reversal = InventoryRequest(
+        id=uuid.uuid4(),
+        kind=original.kind,
+        status="draft",
+        maker_id=user.id,
+        created_by=user.id,
+        source_id=original.source_id,
+        dest_id=original.dest_id,
+        reason=body.reason.strip() or None,
+        supplier=original.supplier,
+        invoice_no=original.invoice_no,
+        sub_kind=original.sub_kind,
+        received_at=original.received_at,
+        version=1,
+        reversed_from_id=original.id,
+    )
+    db.add(reversal)
+    await db.flush()
+
+    for ln in lines:
+        direction = (
+            "decrease" if getattr(ln, "direction", "increase") == "increase" else "increase"
+        )
+        db.add(
+            InventoryRequestLine(
+                id=uuid.uuid4(),
+                request_id=reversal.id,
+                item_id=ln.item_id,
+                quantity=ln.quantity,
+                direction=direction,
+                serial=ln.serial,
+                unit=ln.unit,
+                conversion_rate=ln.conversion_rate,
+                unit_price=ln.unit_price,
+                lot_no=ln.lot_no,
+                expiry_date=ln.expiry_date,
+            )
+        )
+
+    await _audit(
+        db,
+        user.id,
+        "inventory.request.reversed",
+        reversal,
+        {"status": None, "reversed_from": str(original.id)},
+    )
+    await _outbox(
+        db,
+        "inventory.request.reversed",
+        reversal,
+        {"reversed_from": str(original.id)},
+    )
+    await db.commit()
+    await db.refresh(reversal)
+    out_body = _req_out(reversal, await _load_lines(db, reversal.id))
+    idempotency.remember(
+        db,
+        key,
+        idempotency.payload_hash(
+            {"reason": body.reason.strip(), "original_request_id": str(original.id)}
+        ),
+        201,
+        out_body,
+    )
+    return out_body
 
 # --------------------------------------------------------------------------
 # Writes — create / submit
