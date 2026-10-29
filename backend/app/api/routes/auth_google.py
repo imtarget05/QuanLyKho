@@ -19,6 +19,7 @@ be committed — it stays in server env for a future code-exchange flow.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import timedelta
 
@@ -39,6 +40,8 @@ from app.database import get_db
 from app.models.iam import Role, User, UserRole, UserStatus
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
 
@@ -170,6 +173,9 @@ async def login_with_google(
         # tường minh thì từ chối, nếu không ai cũng tự tạo user (và nhận
         # role admin) chỉ bằng một chuỗi bất kỳ.
         if not settings.is_demo_mode:
+            logger.warning(
+                "Rejected mock Google token outside demo mode: %s", raw_token
+            )
             return error_envelope(
                 "GOOGLE_TOKEN_INVALID",
                 "Google token không hợp lệ hoặc hết hạn.",
