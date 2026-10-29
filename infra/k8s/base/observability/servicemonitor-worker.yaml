@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bankops-worker
+  labels:
+    app.kubernetes.io/name: bankops-worker
+    app.kubernetes.io/component: background-worker
+    app.kubernetes.io/part-of: bankops-system
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bankops-worker
+  namespaceSelector:
+    matchNames:
+      - quanlykho
+  endpoints:
+    - port: metrics
+      path: /metrics
+      targetPort: 9090
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true

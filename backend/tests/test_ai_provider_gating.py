@@ -23,7 +23,7 @@ from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy import select
 
-from app.api.routes import ai as ai_routes
+from app.features.ai import routes as ai_routes
 from app.config import Settings
 from app.database import AsyncSessionLocal
 from app.models.iam import User

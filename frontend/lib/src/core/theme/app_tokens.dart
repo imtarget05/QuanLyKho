@@ -16,6 +16,8 @@ abstract final class AppRadius {
   static const double sm = 8;
   static const double md = 12;
   static const double lg = 16;
+  /// Bán kính lớn kiểu Apple cho thẻ (card): 14px.
+  static const double card = 14;
 }
 
 /// Transition 150–250 ms theo đặc tả; trả về Duration(0) khi người dùng

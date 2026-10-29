@@ -7,13 +7,18 @@ resources:
 - ../../base
 - httproute.yaml
 
+# Image-sign policy (P2.9): images trong overlays/prod phai duoc digest-pinned
+# (bat buoc ky), khong duoc su dung :latest hoac tag mutability. Digest thuc
+# duoc scripts/gitops-pin-overlay.py (hoa CI) ghi vao sau khi build xong va
+# xac minh ky. Gia tri duoi la placeholder, CI se thay the boi digest chuan
+# xac nhan tu registry.
 images:
 - name: ghcr.io/imtarget05/bankops-api
   newName: ghcr.io/imtarget05/bankops-api
-  newTag: sha-df9f7fe
+  digest: sha256:PLACEHOLDER_DIGEST_API
 - name: ghcr.io/imtarget05/bankops-frontend
   newName: ghcr.io/imtarget05/bankops-frontend
-  newTag: v1.0.0
+  digest: sha256:PLACEHOLDER_DIGEST_FRONTEND
 
 replicas:
 - count: 1

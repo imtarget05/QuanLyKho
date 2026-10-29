@@ -1,6 +1,6 @@
 import pytest
 
-from app.api.routes.ai import ChatRequest, chat_stream
+from app.features.ai.routes import ChatRequest, chat_stream
 from app.services.ai_retrieval import grounded_prompt, retrieve
 
 
@@ -44,7 +44,7 @@ def test_retrieval_finds_reconciliation_discrepancy():
 
 @pytest.mark.asyncio
 async def test_chat_grounded_fallback_when_provider_fails():
-    from app.api.routes.ai import chat
+    from app.features.ai.routes import chat
     user = type('UserStub', (), {'id': 'retrieval-test-user', 'status': 'active'})()
     res = await chat(ChatRequest(message="Quy định duyệt phiếu trên 500 triệu?"), user)
     assert "answer" in res

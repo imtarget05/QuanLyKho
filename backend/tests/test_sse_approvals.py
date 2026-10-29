@@ -71,7 +71,7 @@ async def test_sse_stream_connects_and_receives_event():
                 return False
 
         user = User(id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2", username="demo_checker")
-        from app.api.routes.approvals import approval_event_generator
+        from app.features.approvals.routes import approval_event_generator
 
         generator = approval_event_generator(DummyRequest(), user)
         connected = await anext(generator)

@@ -4,7 +4,7 @@ import hashlib
 import uuid
 from decimal import Decimal
 
-from app.api.routes import ai as ai_routes
+from app.features.ai import routes as ai_routes
 
 
 def _headers(client, username: str) -> dict[str, str]:

@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.routes import ai_forecasting
+from app.features.ai_forecasting import routes as ai_forecasting
 from app.api.routes.auth_utils import get_current_user_with_capabilities
 from app.models.iam import User
 

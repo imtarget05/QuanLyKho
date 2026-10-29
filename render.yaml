@@ -1,3 +1,7 @@
+# DEPRECATED (ADR 022): Render is no longer the canonical production deploy target.
+# AKS + ArgoCD is the single canonical target (see docs/adr/022-single-canonical-deploy-target-aks-argocd.md).
+# Do not use this file for new production deployments. Secret/Render dashboard will be removed
+# after ArgoCD sync is confirmed stable.
 services:
   - type: web
     name: kho-tra-sua-fastapi

@@ -137,8 +137,8 @@ def bootstrap_production_model() -> int:
     This is a *real* MLflow run (train → log → register → promote), not a
     stub: the promoted model is the one that is served afterwards.
     """
+    from app.ai.training import run_full_pipeline
     from app.services import ml_registry
-    from app.services.ml_training import run_full_pipeline
 
     logger.warning(
         "No %s model in Production stage — training and promoting a baseline model",

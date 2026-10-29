@@ -124,7 +124,7 @@ class TestAuthRouteUsesSharedClientIp:
 
     def test_auth_module_delegates_to_shared_helper(self, monkeypatch):
         """`_client_ip` của route auth = `auth_utils.client_ip` (nguồn duy nhất)."""
-        from app.api.routes.auth import _client_ip as auth_client_ip
+        from app.api.routes.auth_utils import client_ip as _client_ip
 
         # (a) không cấu hình -> bỏ qua XFF
         monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)

@@ -95,7 +95,7 @@ async def test_balance_adjustment_preview_uses_exact_decimal_arithmetic():
 @pytest.mark.asyncio
 async def test_stage_run_commits_once_after_all_rows(monkeypatch):
     """`_stage_run` chỉ commit một lần ở cuối (không commit trong vòng lặp)."""
-    from app.api.routes import integrations as integrations_routes
+    from app.features.integrations import routes as integrations_routes
 
     commits: list[int] = []
 

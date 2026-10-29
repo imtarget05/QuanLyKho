@@ -201,7 +201,7 @@ class TestGoogleSheetsAndWebhooks:
                 return _FakeResp()
 
         monkeypatch.setattr(
-            "app.api.routes.integrations.httpx.AsyncClient", _FakeAsyncClient
+            "app.features.integrations.routes.httpx.AsyncClient", _FakeAsyncClient
         )
         ok = client.post(
             "/integrations/google-sheets/fetch",
@@ -427,7 +427,7 @@ class TestConnectionManagement:
                 raise httpx.ConnectError("refused")
 
         monkeypatch.setattr(
-            "app.api.routes.integrations.httpx.AsyncClient", _RaiseHTTPError
+            "app.features.integrations.routes.httpx.AsyncClient", _RaiseHTTPError
         )
 
         conn_r = client.post(
@@ -478,7 +478,7 @@ class TestConnectionManagement:
                 return _FakeResp()
 
         monkeypatch.setattr(
-            "app.api.routes.integrations.httpx.AsyncClient", _FakeClient
+            "app.features.integrations.routes.httpx.AsyncClient", _FakeClient
         )
 
         conn_r = client.post(

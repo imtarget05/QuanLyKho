@@ -15,7 +15,7 @@ def _login(client, username: str) -> dict[str, str]:
 
 class TestReportsUnit:
     def test_severity_thresholds_cover_all_levels(self):
-        from app.api.routes.reports import _severity
+        from app.features.reports.routes import _severity
 
         assert _severity(None, 30, 60, 90) == "critical"
         assert _severity(95, 30, 60, 90) == "critical"

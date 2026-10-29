@@ -1,0 +1,83 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "bankops-overview",
+    "title": "QuanLyKho / BankOps Overview",
+    "timezone": "UTC",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "type": "stat",
+        "title": "HTTP Request Rate (api)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_total{app=\"bankops-api\"}[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "decimals": 2
+          }
+        },
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 4}
+      },
+      {
+        "type": "stat",
+        "title": "Error Rate (api)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_total{app=\"bankops-api\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_total{app=\"bankops-api\"}[5m])) * 100",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2
+          }
+        },
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 4}
+      },
+      {
+        "type": "graph",
+        "title": "Request Duration p95 (api)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{app=\"bankops-api\"}[5m])) by (le))",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 24, "h": 6}
+      },
+      {
+        "type": "stat",
+        "title": "Worker Outbox Lag",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "bankops_worker_outbox_lag",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"x": 0, "y": 10, "w": 12, "h": 4}
+      }
+    ]
+  },
+  "overwrite": true
+}

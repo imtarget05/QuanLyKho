@@ -163,7 +163,7 @@ class TestReviewerReadOnly:
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ):
         """/demo/reset fail-closed: 404 khi KHÔNG ở demo mode (dù đã auth admin)."""
-        import app.api.routes.demo as demo_mod
+        import app.features.demo.routes as demo_mod
 
         monkeypatch.setattr(
             demo_mod.settings.__class__,
@@ -181,7 +181,7 @@ class TestReviewerReadOnly:
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ):
         """/demo/reset trả 200 và gọi reset_demo_database khi ở demo mode."""
-        import app.api.routes.demo as demo_mod
+        import app.features.demo.routes as demo_mod
 
         called = {"reset": False}
 

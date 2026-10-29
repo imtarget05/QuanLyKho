@@ -9,7 +9,7 @@ import pytest
 from starlette.requests import Request
 
 from app.api.errors import AppError
-from app.api.routes import inventory
+from app.features.inventory import routes as inventory
 
 ALLOWED_LOCATION = uuid.UUID("22222222-2222-4222-8222-222222222222")
 OTHER_LOCATION = uuid.UUID("33333333-3333-4333-8333-333333333333")

@@ -11,6 +11,8 @@ resources:
   - deployment-frontend.yaml
   - cloudflare-tunnel.yaml
   - cronjob-backup.yaml
+  - observability/servicemonitor-fastapi.yaml
+  - observability/servicemonitor-worker.yaml
 
 labels:
   - pairs:

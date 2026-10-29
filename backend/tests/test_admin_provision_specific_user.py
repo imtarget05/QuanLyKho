@@ -180,7 +180,7 @@ class TestAdminProvisionSpecificUser:
                 "message": "Kết nối và xác thực SMTP thành công",
             }
 
-        monkeypatch.setattr("app.api.routes.admin_users.check_smtp_health", _mock_check)
+        monkeypatch.setattr("app.features.admin.routes.check_smtp_health", _mock_check)
         admin_auth = _login(client, "demo_admin")
         res = client.get("/admin/smtp-status", headers=admin_auth)
         assert res.status_code == 200, res.text

@@ -15,27 +15,6 @@ from app.api.middleware.correlation import CorrelationIdMiddleware
 from app.api.observability import configure_metrics
 from app.api.openapi import custom_openapi
 from app.api.request_context import correlation_id_var, request_id_var
-from app.api.routes import (
-    activity,
-    admin_users,
-    ai,
-    ai_forecasting,
-    approvals,
-    auth,
-    auth_google,
-    cash_sim,
-    dashboard,
-    demo,
-    etl,
-    events,
-    health,
-    intake,
-    integrations,
-    inventory,
-    notifications,
-    reconciliations,
-    reports,
-)
 from app.api.structured_logging import configure_json_logging
 from app.api.telemetry import (
     create_tracer_provider,
@@ -44,6 +23,31 @@ from app.api.telemetry import (
 )
 from app.config import settings
 from app.database import init_db
+from app.features.activity.routes import router as activity_router
+from app.features.admin.routes import router as admin_router
+from app.features.ai.routes import router as ai_router
+from app.features.ai_forecasting.routes import router as ai_forecasting_router
+from app.features.approvals.routes import router as approvals_router
+from app.features.auth.routes import (
+    get_current_user_info,
+    update_profile,
+)
+from app.features.auth.routes import (
+    router as auth_router,
+)
+from app.features.auth_google.routes import router as auth_google_router
+from app.features.cash.routes import router as cash_router
+from app.features.dashboard.routes import router as dashboard_router
+from app.features.demo.routes import router as demo_router
+from app.features.etl.routes import router as etl_router
+from app.features.events.routes import router as events_router
+from app.features.health.routes import router as health_router
+from app.features.intake.routes import router as intake_router
+from app.features.integrations.routes import router as integrations_router
+from app.features.inventory.routes import router as inventory_router
+from app.features.notifications.routes import router as notifications_router
+from app.features.reconciliations.routes import router as reconciliations_router
+from app.features.reports.routes import router as reports_router
 
 PUBLIC_WEB_ORIGIN = "https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev"
 
@@ -278,28 +282,28 @@ async def unhandled_exception_envelope(request: Request, exc: Exception):
 register_error_handlers(app)
 
 def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True) -> None:
-    target.include_router(ai.router, tags=["ai"], include_in_schema=include_in_schema)
-    target.include_router(ai_forecasting.router, tags=["ai-forecasting"], include_in_schema=include_in_schema)
-    target.include_router(health.router, prefix="/health", tags=["health"], include_in_schema=include_in_schema)
-    target.include_router(auth.router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
-    target.include_router(auth_google.router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
-    target.include_router(admin_users.router, tags=["admin"], include_in_schema=include_in_schema)
-    target.include_router(inventory.router, tags=["inventory"], include_in_schema=include_in_schema)
-    target.include_router(intake.router, tags=["intake"], include_in_schema=include_in_schema)
-    target.include_router(dashboard.router, tags=["dashboard"], include_in_schema=include_in_schema)
-    target.include_router(cash_sim.router, tags=["cash-sim"], include_in_schema=include_in_schema)
-    target.include_router(approvals.router, prefix="/approvals", tags=["approvals"], include_in_schema=include_in_schema)
-    target.include_router(activity.router, tags=["activity"], include_in_schema=include_in_schema)
-    target.include_router(events.router, tags=["events"], include_in_schema=include_in_schema)
-    target.include_router(reports.router, prefix="/reports", tags=["reports"], include_in_schema=include_in_schema)
-    target.include_router(notifications.router, prefix="/notifications", tags=["notifications"], include_in_schema=include_in_schema)
-    target.include_router(etl.router, tags=["etl"], include_in_schema=include_in_schema)
-    target.include_router(integrations.router, tags=["integrations"], include_in_schema=include_in_schema)
-    target.include_router(reconciliations.router, tags=["reconciliations"], include_in_schema=include_in_schema)
-    target.include_router(demo.router, tags=["demo"], include_in_schema=include_in_schema)
-    # docs/06:9 khai báo `GET /me` (không qua /auth) — alias tới cùng handler.
-    target.add_api_route("/me", auth.get_current_user_info, methods=["GET"], tags=["auth"], include_in_schema=include_in_schema)
-    target.add_api_route("/me", auth.update_profile, methods=["PUT"], tags=["auth"], include_in_schema=include_in_schema)
+    target.include_router(ai_router, tags=["ai"], include_in_schema=include_in_schema)
+    target.include_router(ai_forecasting_router, tags=["ai-forecasting"], include_in_schema=include_in_schema)
+    target.include_router(health_router, prefix="/health", tags=["health"], include_in_schema=include_in_schema)
+    target.include_router(auth_router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
+    target.include_router(auth_google_router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
+    target.include_router(admin_router, tags=["admin"], include_in_schema=include_in_schema)
+    target.include_router(inventory_router, tags=["inventory"], include_in_schema=include_in_schema)
+    target.include_router(intake_router, tags=["intake"], include_in_schema=include_in_schema)
+    target.include_router(dashboard_router, tags=["dashboard"], include_in_schema=include_in_schema)
+    target.include_router(cash_router, tags=["cash-sim"], include_in_schema=include_in_schema)
+    target.include_router(approvals_router, prefix="/approvals", tags=["approvals"], include_in_schema=include_in_schema)
+    target.include_router(activity_router, tags=["activity"], include_in_schema=include_in_schema)
+    target.include_router(events_router, tags=["events"], include_in_schema=include_in_schema)
+    target.include_router(reports_router, prefix="/reports", tags=["reports"], include_in_schema=include_in_schema)
+    target.include_router(notifications_router, prefix="/notifications", tags=["notifications"], include_in_schema=include_in_schema)
+    target.include_router(etl_router, tags=["etl"], include_in_schema=include_in_schema)
+    target.include_router(integrations_router, tags=["integrations"], include_in_schema=include_in_schema)
+    target.include_router(reconciliations_router, tags=["reconciliations"], include_in_schema=include_in_schema)
+    target.include_router(demo_router, tags=["demo"], include_in_schema=include_in_schema)
+    # docs/06:9 khai bao `GET /me` (khong qua /auth) — alias toi cung handler.
+    target.add_api_route("/me", get_current_user_info, methods=["GET"], tags=["auth"], include_in_schema=include_in_schema)
+    target.add_api_route("/me", update_profile, methods=["PUT"], tags=["auth"], include_in_schema=include_in_schema)
 
 
 _mount_routes(app, include_in_schema=True)

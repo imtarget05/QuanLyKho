@@ -256,7 +256,7 @@ class TestR1ConcurrentApprove:
     def test_two_concurrent_approvals_do_not_double_spend(self, api, monkeypatch):
         import asyncio as _asyncio
 
-        from app.api.routes import cash_sim as cash_mod
+        from app.features.cash import routes as cash_mod
 
         api.login("demo_checker")
         api.login("demo_approver2")

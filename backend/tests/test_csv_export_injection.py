@@ -7,7 +7,7 @@ while leaving plain numbers (including negatives) untouched.
 
 import pytest
 
-from app.api.routes.etl import _csv_safe
+from app.features.etl.routes import _csv_safe
 
 
 @pytest.mark.parametrize(
