@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from app.api.routes.auth_utils import (
     _revoked_token_hashes,
     _token_hash,

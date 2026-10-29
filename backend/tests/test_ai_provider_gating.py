@@ -23,9 +23,9 @@ from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy import select
 
-from app.features.ai import routes as ai_routes
 from app.config import Settings
 from app.database import AsyncSessionLocal
+from app.features.ai import routes as ai_routes
 from app.models.iam import User
 from app.models.inventory import InventoryRequest, InventoryRequestLine, Item
 from app.services.ai import assess_request, generate, stream_ollama

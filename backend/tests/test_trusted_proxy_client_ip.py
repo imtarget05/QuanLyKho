@@ -129,20 +129,20 @@ class TestAuthRouteUsesSharedClientIp:
         # (a) không cấu hình -> bỏ qua XFF
         monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
         monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
-        assert auth_client_ip(_FakeRequest("10.0.0.1", "203.0.113.7, 198.51.100.2")) == "10.0.0.1"
+        assert _client_ip(_FakeRequest("10.0.0.1", "203.0.113.7, 198.51.100.2")) == "10.0.0.1"
 
         # (b) TRUSTED_PROXY_COUNT=1 -> IP client thật
         monkeypatch.setenv("TRUSTED_PROXY_COUNT", "1")
-        assert auth_client_ip(_FakeRequest("198.51.100.2", "203.0.113.7")) == "203.0.113.7"
+        assert _client_ip(_FakeRequest("198.51.100.2", "203.0.113.7")) == "203.0.113.7"
 
         # (c) thiếu hop -> fail-closed, giữ IP peer
         monkeypatch.setenv("TRUSTED_PROXY_COUNT", "3")
-        assert auth_client_ip(_FakeRequest("192.0.2.9", "203.0.113.7")) == "192.0.2.9"
+        assert _client_ip(_FakeRequest("192.0.2.9", "203.0.113.7")) == "192.0.2.9"
 
         # (d) TRUSTED_PROXY_IPS + CIDR -> IP client thật
         monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
         monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.0/24")
-        assert auth_client_ip(_FakeRequest("10.0.0.5", "203.0.113.7")) == "203.0.113.7"
+        assert _client_ip(_FakeRequest("10.0.0.5", "203.0.113.7")) == "203.0.113.7"
 
     def test_auth_module_does_not_duplicate_xff_policy(self):
         """`auth.py` không được tự đọc `request.client.host` (chính sách nhân bản)."""
