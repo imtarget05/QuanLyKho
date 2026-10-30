@@ -201,10 +201,21 @@ class _AiAssistantDialogState extends State<AiAssistantDialog> {
             throw _ChatRequestFailure(response.statusCode);
           }
           final data = json.decode(utf8.decode(response.bodyBytes));
-          if (data is! Map || data['answer'] is! String) {
+          if (data is! Map) {
             throw const _ChatRequestFailure(503);
           }
-          answer = data['answer'] as String;
+          if (data['chunks'] is List) {
+            final chunks = (data['chunks'] as List)
+                .whereType<Map>()
+                .map((c) => c['chunk'] as String?)
+                .whereType<String>()
+                .where((s) => s.isNotEmpty);
+            answer = chunks.join('\n\n');
+          } else if (data['answer'] is String) {
+            answer = data['answer'] as String;
+          } else {
+            throw const _ChatRequestFailure(503);
+          }
           if (data['sources'] is List) {
             sources.addAll((data['sources'] as List)
                 .whereType<Map>()
@@ -524,12 +535,80 @@ class _AiAssistantDialogState extends State<AiAssistantDialog> {
   }
 
   Widget _buildFormattedText(String text, Color baseColor) {
-    if (!text.contains('**')) {
-      return Text(
-        text,
-        style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.48),
+    final blocks = text.split('\n\n')
+        .map((block) => block.trim())
+        .where((block) => block.isNotEmpty)
+        .toList();
+    final children = <Widget>[];
+    for (int i = 0; i < blocks.length; i++) {
+      if (i > 0) children.add(const SizedBox(height: 6));
+      final block = blocks[i];
+      if (block.startsWith('# ')) {
+        children.add(
+            _buildHeading(block.substring(2), baseColor, 16.0, FontWeight.w800));
+      } else if (block.startsWith('## ')) {
+        children.add(
+            _buildHeading(block.substring(3), baseColor, 14.5, FontWeight.w700));
+      } else if (block.startsWith('- ') || block.startsWith('\u2022 ')) {
+        children.add(_buildBullet(block, baseColor));
+      } else {
+        children.add(_buildParagraph(block, baseColor));
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+
+  Widget _buildHeading(String text, Color baseColor, double fontSize,
+      FontWeight weight) {
+    final trimmed = text.trim();
+    if (trimmed.contains('**')) {
+      return RichText(
+        text: TextSpan(
+          style: TextStyle(color: baseColor, fontSize: fontSize, height: 1.48),
+          children: _parseInlineSpans(trimmed, baseColor,
+              fontSize: fontSize, weight: weight),
+        ),
       );
     }
+    return Text(
+      trimmed,
+      style: TextStyle(color: baseColor, fontSize: fontSize, fontWeight: weight),
+    );
+  }
+
+  Widget _buildParagraph(String block, Color baseColor) {
+    final lines = block.split('\n');
+    final spans = <InlineSpan>[];
+    for (int i = 0; i < lines.length; i++) {
+      if (i > 0) spans.add(const TextSpan(text: '\n'));
+      spans.addAll(_parseInlineSpans(lines[i], baseColor));
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
+
+  Widget _buildBullet(String block, Color baseColor) {
+    final content = block.substring(2).trim();
+    final lines = content.split('\n');
+    final spans = <InlineSpan>[];
+    for (int i = 0; i < lines.length; i++) {
+      if (i > 0) spans.add(const TextSpan(text: '\n'));
+      if (i == 0) spans.add(const TextSpan(text: '\u2022 '));
+      spans.addAll(_parseInlineSpans(lines[i], baseColor));
+    }
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(color: baseColor, fontSize: 13.5, height: 1.48),
+        children: spans,
+      ),
+    );
+  }
+
+  List<InlineSpan> _parseInlineSpans(String text, Color baseColor,
+      {double fontSize = 13.5, FontWeight weight = FontWeight.w400}) {
     final spans = <InlineSpan>[];
     final parts = text.split('**');
     for (int i = 0; i < parts.length; i++) {
@@ -540,16 +619,14 @@ class _AiAssistantDialogState extends State<AiAssistantDialog> {
           text: parts[i],
           style: TextStyle(
             color: baseColor,
-            fontSize: 13.5,
-            fontWeight: isBold ? FontWeight.w800 : FontWeight.w400,
+            fontSize: fontSize,
+            fontWeight: isBold ? FontWeight.w800 : weight,
             height: 1.48,
           ),
         ),
       );
     }
-    return RichText(
-      text: TextSpan(children: spans),
-    );
+    return spans;
   }
 
   Widget _buildComposer() => Container(

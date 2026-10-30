@@ -206,6 +206,7 @@ async def chat_stream(body: ChatRequest, user: User = Depends(get_current_user))
     async def events():
         refs = [{k: v for k, v in source.items() if k != 'content'} for source in sources]
         yield f"event: sources\ndata: {json.dumps(refs, ensure_ascii=False)}\n\n"
+        chunks = []
         if not sources:
             answer = 'Chưa tìm thấy thông tin phù hợp trong tài liệu nghiệp vụ.'
         else:
@@ -219,12 +220,16 @@ async def chat_stream(body: ChatRequest, user: User = Depends(get_current_user))
                         yield 'event: done\ndata: {}\n\n'
                         return
                     result = await generate(prompt, settings, client, provider=provider)
-                    answer = result['answer']
+                    chunks = result.get('chunks', [])
+                    answer = '\n\n'.join(c['chunk'] for c in chunks) if chunks else result.get('answer', '')
             except HTTPException:
                 top = sources[0]
                 answer = f"Theo tài liệu nghiệp vụ ({top['source']} · {top['section']}):\n{top['content']}"
-        for offset in range(0, len(answer), 80):
-            yield f"event: delta\ndata: {json.dumps({'text': answer[offset:offset + 80]}, ensure_ascii=False)}\n\n"
+        if chunks:
+            for chunk in chunks:
+                yield f"event: delta\ndata: {json.dumps({'text': chunk['chunk']}, ensure_ascii=False)}\n\n"
+        elif answer:
+            yield f"event: delta\ndata: {json.dumps({'text': answer}, ensure_ascii=False)}\n\n"
         yield 'event: done\ndata: {}\n\n'
 
     return StreamingResponse(events(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})

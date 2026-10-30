@@ -98,7 +98,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Poetry
-        run: pip install poetry poetry-plugin-export
+        run: pip install poetry==2.5.1 poetry-plugin-export==1.10.1
       - name: Install dependencies
         run: |
           cd backend

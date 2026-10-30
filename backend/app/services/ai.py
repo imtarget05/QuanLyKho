@@ -267,6 +267,23 @@ async def assess_request(
     return result
 
 
+def chunk_and_embed(answer: str, provider: str, model: str) -> dict:
+    """Chia câu trả lời thành các chunk theo đoạn văn để phục vụ embedding sau này."""
+    text = answer.strip()
+    chunks = text.split('\n\n')
+    if len(chunks) == 1:
+        chunks = text.split('\n')
+    return {
+        'chunks': [
+            {'chunk': chunk, 'type': 'text', 'order': index}
+            for index, chunk in enumerate(chunks, start=1)
+        ],
+        'provider': provider,
+        'model': model,
+        'simulation': True,
+    }
+
+
 async def generate(message: str, settings: Settings, client: httpx.AsyncClient, provider: str | None = None) -> dict:
     provider = provider or settings.ai_provider
     messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': message}]
@@ -344,7 +361,10 @@ async def generate(message: str, settings: Settings, client: httpx.AsyncClient, 
         settings=settings,
     )
     flush_langfuse(settings)
-    return {'answer': answer.strip(), 'provider': provider, 'model': model, 'simulation': True}
+    answer = answer.strip()
+    result = chunk_and_embed(answer, provider, model)
+    result['answer'] = answer
+    return result
 
 
 async def stream_ollama(message: str, settings: Settings, client: httpx.AsyncClient):

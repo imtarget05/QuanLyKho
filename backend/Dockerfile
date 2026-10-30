@@ -3,10 +3,10 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 
 # Install poetry
-RUN pip install --no-cache-dir poetry==1.8.3
+RUN pip install --no-cache-dir poetry==2.5.1 poetry-plugin-export==1.10.1
 
 # Copy poetry files
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml poetry.lock ./
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 # Install dependencies

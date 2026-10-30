@@ -63,7 +63,7 @@ jobs:
       - name: Install Poetry
         # poetry-plugin-export: workflow cần `poetry export` để dựng venv Airflow
         # cô lập từ đúng bộ dependency đã khoá.
-        run: pip install poetry poetry-plugin-export
+        run: pip install poetry==2.5.1 poetry-plugin-export==1.10.1
 
       # ---------------------------------------------------------------------
       # FIX 1 — dependency phải được cài TRƯỚC mọi step chạy test.
