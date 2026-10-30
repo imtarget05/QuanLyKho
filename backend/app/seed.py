@@ -189,7 +189,10 @@ async def seed_demo():
                 "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
                 "username": "demo_admin",
                 "display_name_demo": "Phạm Minh Trị (Admin)",
-                "roles": ["admin", "staff", "approver"],
+                # Reviewer mode (approval:view_inbox) is DISABLED for this
+                # real user account — only role approver can access the
+                # Reviewer tab. Remove "approver" to turn reviewer OFF.
+                "roles": ["admin", "staff"],
             },
             {
                 "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",

@@ -101,8 +101,8 @@ class _AppShellState extends State<AppShell> {
   double? _pendingStockQuantity;
   int _inventoryNavKey = 0;
 
-  /// Tạm thời ẩn chat bot trợ lý theo yêu cầu người dùng
-  static const bool _enableAiAssistant = false;
+  /// Chat bot trợ lý (Khai) — bật theo yêu cầu người dùng
+  static const bool _enableAiAssistant = true;
   bool _aiUnavailable = false;
   bool _isUpdateAvailable = false;
   Timer? _offlinePingTimer;
@@ -228,8 +228,9 @@ class _AppShellState extends State<AppShell> {
     try {
       final res = await http
           .get(Uri.parse(OfflineHub.instance.pingUrl))
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 3));
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        // ✅ Có mạng → sync data + enable AI
         OfflineHub.instance.markOnline();
         OfflineHub.instance.flushNow();
         _aiUnavailable = false;
@@ -248,10 +249,14 @@ class _AppShellState extends State<AppShell> {
         }
         OfflineHub.instance.markOffline();
       } else {
+        // ❌ Network có nhưng backend lỗi → offline + ẩn FAB
         OfflineHub.instance.markOffline();
+        _aiUnavailable = true;
       }
     } catch (_) {
+      // ❌ Không có mạng (timeout, socket exception) → bật offline mode
       OfflineHub.instance.markOffline();
+      _aiUnavailable = true; // Ẩn FAB chatbot khi thực sự offline
     }
   }
 
