@@ -8,12 +8,18 @@ Authentication: Bearer token via `?token=` query param (EventSource standard) or
 
 Reconnection/replay: the `Last-Event-ID` header resumes delivery from the last
 received event id using the bus's in-memory ring buffer.
+
+Multi-replica: ``publish_sse_event`` publishes to Redis channel ``sse:events`` so
+all worker replicas can forward real-time events to their connected SSE clients.
 """
 
 import asyncio
 import json
+import logging
+import os
 from collections.abc import AsyncGenerator
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,9 +29,57 @@ from app.database import get_db
 from app.models.iam import User
 from app.services.auth_events import auth_event_bus
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 _AUTH_EVENTS = ("auth.login", "auth.logout", "auth.session_revoked")
+_SSE_REDIS_CHANNEL = "sse:events"
+_redis_client: aioredis.Redis | None = None
+_redis_ready = False
+
+
+def _get_redis_url() -> str | None:
+    return os.environ.get("REDIS_URL")
+
+
+async def _get_redis() -> aioredis.Redis | None:
+    """Lazily create a Redis client for SSE pub/sub."""
+    global _redis_client, _redis_ready
+    if _redis_ready:
+        return _redis_client
+    _redis_ready = True
+    url = _get_redis_url()
+    if not url:
+        return None
+    try:
+        _redis_client = aioredis.from_url(url, decode_responses=True)
+        await _redis_client.ping()
+        logger.info("Redis SSE pub/sub connected: %s", url)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Redis SSE unavailable (falling back to in-memory bus): %s", exc)
+        _redis_client = None
+    return _redis_client
+
+
+async def publish_sse_event(event_type: str, payload: dict, event_id: str | None = None) -> None:
+    """Publish an SSE event to Redis so all replicas can fan out to clients."""
+    client = await _get_redis()
+    if client is None:
+        return
+    message = json.dumps(
+        {
+            "event_type": event_type,
+            "payload": payload,
+            "event_id": event_id,
+            "ts": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+        },
+        ensure_ascii=False,
+    )
+    try:
+        await client.publish(_SSE_REDIS_CHANNEL, message)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Redis SSE publish failed: %s", exc)
 
 
 async def auth_event_generator(request: Request, user: User) -> AsyncGenerator[str, None]:

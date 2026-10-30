@@ -20,6 +20,7 @@ from datetime import UTC, datetime, timedelta
 
 from passlib.context import CryptContext
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.otp import OtpCode
@@ -89,8 +90,6 @@ async def create_otp(
             select(OtpCode).where(
                 OtpCode.username == username.strip().lower(),
                 OtpCode.purpose == purpose,
-                OtpCode.consumed_at.is_(None),
-                OtpCode.expires_at > now,
             )
         )
     ).scalar_one_or_none()
@@ -102,11 +101,18 @@ async def create_otp(
         existing.expires_at = now + timedelta(seconds=ttl_seconds)
         existing.attempts = 0
         existing.locked_until = None
+        existing.consumed_at = None  # reset consumed state
+        existing.channel = channel
         existing.updated_at = now
         db.add(existing)
         await db.commit()
         _record_send_attempt(username, ip)
         return code, True
+
+    # Nếu existing đã consumed hoặc locked, xóa row cũ để tạo mới.
+    if existing is not None:
+        await db.delete(existing)
+        await db.flush()
 
     # Tạo OTP mới.
     code = f"{secrets.randbelow(1_000_000):06d}"
@@ -124,7 +130,33 @@ async def create_otp(
         updated_at=now,
     )
     db.add(otp)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # Race condition: row đã tồn tại, thử lại
+        existing = (
+            await db.execute(
+                select(OtpCode).where(
+                    OtpCode.username == username.strip().lower(),
+                    OtpCode.purpose == purpose,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            code = f"{secrets.randbelow(1_000_000):06d}"
+            existing.code_hash = _hash_code(code, existing.username)
+            existing.expires_at = now + timedelta(seconds=ttl_seconds)
+            existing.attempts = 0
+            existing.locked_until = None
+            existing.consumed_at = None
+            existing.channel = channel
+            existing.updated_at = now
+            db.add(existing)
+            await db.commit()
+            _record_send_attempt(username, ip)
+            return code, True
+        raise
     _record_send_attempt(username, ip)
     return code, True
 
@@ -156,6 +188,17 @@ async def verify_otp(
     ).scalar_one_or_none()
 
     if otp is None:
+        # Kiểm tra xem có OTP đã consumed không (để trả lỗi đúng)
+        consumed_otp = (
+            await db.execute(
+                select(OtpCode).where(
+                    OtpCode.username == username_l,
+                    OtpCode.purpose == purpose,
+                )
+            )
+        ).scalar_one_or_none()
+        if consumed_otp is not None and consumed_otp.consumed_at is not None:
+            return False, "OTP_CONSUMED"
         return False, "OTP_NOT_FOUND"
 
     if otp.is_locked(now):

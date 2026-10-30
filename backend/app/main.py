@@ -15,6 +15,7 @@ from app.api.middleware.correlation import CorrelationIdMiddleware
 from app.api.observability import configure_metrics
 from app.api.openapi import custom_openapi
 from app.api.request_context import correlation_id_var, request_id_var
+from app.api.routes.stocktake_agent import router as stocktake_agent_router
 from app.api.structured_logging import configure_json_logging
 from app.api.telemetry import (
     create_tracer_provider,
@@ -283,6 +284,7 @@ register_error_handlers(app)
 
 def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True) -> None:
     target.include_router(ai_router, tags=["ai"], include_in_schema=include_in_schema)
+    target.include_router(stocktake_agent_router, tags=["ai-stocktake"], include_in_schema=include_in_schema)
     target.include_router(ai_forecasting_router, tags=["ai-forecasting"], include_in_schema=include_in_schema)
     target.include_router(health_router, prefix="/health", tags=["health"], include_in_schema=include_in_schema)
     target.include_router(auth_router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)

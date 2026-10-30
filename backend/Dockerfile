@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir poetry==1.8.3
 
 # Copy poetry files
 COPY pyproject.toml poetry.lock* ./
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+RUN poetry lock --no-update && poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt

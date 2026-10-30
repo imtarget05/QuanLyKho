@@ -169,6 +169,7 @@ class Settings(BaseSettings):
     modal_llm_model: str = Field(default='Qwen2.5-1.5B-Instruct.Q4_K_M')
     ai_timeout_seconds: int = Field(default=120, ge=1, le=300)
     ai_requests_per_minute: int = Field(default=10, ge=1, le=100)
+    ai_agent_enabled: bool = Field(default=False)
     supervisor_pin: SecretStr = SecretStr('')
 
     # Langfuse AI Observability (opt-in)
@@ -302,6 +303,8 @@ class Settings(BaseSettings):
                 "set MODAL_LLM_URL/MODAL_LLM_MODEL trỏ đúng space đã deploy."
             )
         return self
+
+from app.ai.stocktake_agent import StocktakeAssessmentOptions  # noqa: E402, I001, F401
 
 
 settings = Settings()

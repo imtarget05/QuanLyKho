@@ -322,6 +322,10 @@ def _req_out(req: InventoryRequest, lines: list | None = None) -> dict:
         body["dest_id"] = str(req.dest_id)
     if getattr(req, "return_reason", None):
         body["return_reason"] = req.return_reason
+    reversed_from = getattr(req, "reversed_from_id", None)
+    if reversed_from:
+        body["reversed_from"] = str(reversed_from)
+        body["original_request_id"] = str(reversed_from)
     if getattr(req, "supplier", None):
         body["supplier"] = req.supplier
     if getattr(req, "invoice_no", None):
@@ -1291,6 +1295,8 @@ async def reverse_request(
             "CANNOT_REVERSE",
             "Chi co the dao phieu khi dang o trang thai da ghi (posted)",
         )
+    if str(original.maker_id) == str(user.id):
+        raise AppError(403, "SELF_REVERSAL_FORBIDDEN", "Không được tự đảo phiếu của chính mình.")
 
     # Pham vi chi nhanh tren source/dest locations
     if original.source_id is not None:
@@ -1378,6 +1384,211 @@ async def reverse_request(
         out_body,
     )
     return out_body
+
+
+# --------------------------------------------------------------------------
+# P6: Balance Lock / Reservation (giữ chở tồn khi phiếu chờ duyệt)
+# --------------------------------------------------------------------------
+
+class ReserveStockRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    location_id: str = Field(min_length=1)
+    item_id: str = Field(min_length=1)
+    quantity: float = Field(gt=0)
+    purpose: str = Field(default="pending_outbound")
+    ttl_minutes: int = Field(default=30, ge=5, le=1440)
+
+
+@router.post("/inventory/balances/reserve", status_code=201)
+async def reserve_stock(
+    body: ReserveStockRequest,
+    request: Request,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Giữ chở tồn kho cho phiếu xuất chờ duyệt."""
+    key = _require_key(request)
+    cached = _replay(key, body.model_dump())
+    if cached is not None:
+        return cached
+
+    await _require_location_scope(db, user, body.location_id)
+
+    bal = (
+        await db.execute(
+            select(Balance).where(
+                Balance.location_id == body.location_id,
+                Balance.item_id == body.item_id,
+            ).with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if bal is None:
+        bal = Balance(
+            location_id=body.location_id,
+            item_id=body.item_id,
+            quantity=0,
+            reserved_quantity=0,
+            version=1,
+        )
+        db.add(bal)
+        await db.flush()
+
+    available = Decimal(str(bal.quantity or 0)) - Decimal(
+        str(getattr(bal, "reserved_quantity", 0) or 0)
+    )
+    if available < Decimal(str(body.quantity)):
+        raise AppError(
+            409,
+            "INSUFFICIENT_STOCK",
+            f"Không đủ tồn để giữ chở. Có sẵn: {available}, yêu cầu: {body.quantity}",
+        )
+
+    from datetime import timedelta
+
+    expires_at = datetime.now(UTC) + timedelta(minutes=body.ttl_minutes)
+
+    # Tạo reservation record (nếu model StockReservation tồn tại)
+    try:
+        from app.models.inventory import StockReservation
+
+        reservation = StockReservation(
+            id=uuid.uuid4(),
+            location_id=body.location_id,
+            item_id=body.item_id,
+            quantity=Decimal(str(body.quantity)),
+            purpose=body.purpose,
+            status="active",
+            expires_at=expires_at,
+        )
+        db.add(reservation)
+        await db.flush()
+        reservation_id = str(reservation.id)
+    except (ImportError, AttributeError):
+        reservation_id = uuid.uuid4().hex
+
+    bal.reserved_quantity = Decimal(
+        str(getattr(bal, "reserved_quantity", 0) or 0)
+    ) + Decimal(str(body.quantity))
+    bal.version = (bal.version or 1) + 1
+    bal.updated_at = datetime.now(UTC)
+
+    result = {
+        "reservation_id": reservation_id,
+        "location_id": body.location_id,
+        "item_id": body.item_id,
+        "reserved_quantity": body.quantity,
+        "available_after_reserve": float(
+            available - Decimal(str(body.quantity))
+        ),
+        "expires_at": expires_at.isoformat(),
+        "message": f"Đã giữ chở {body.quantity} đơn vị. Hết hạn vào {expires_at.strftime('%H:%M:%S %d/%m/%Y')}.",
+    }
+    idempotency.remember(db, key, idempotency.payload_hash(body.model_dump()), 201, result)
+    await db.commit()
+    return result
+
+
+@router.delete("/inventory/balances/reservations/{reservation_id}", status_code=200)
+async def release_reservation(
+    reservation_id: str,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Giải phóng reservation khi phiếu xuất bị từ chối hoặc hủy."""
+    try:
+        from app.models.inventory import Balance, StockReservation
+
+        rid = _uuid(reservation_id, "reservation_id")
+        reservation = (
+            await db.execute(select(StockReservation).where(StockReservation.id == rid))
+        ).scalar_one_or_none()
+        if reservation is None:
+            raise AppError(404, "RESERVATION_NOT_FOUND", "Không tìm thấy reservation")
+        if reservation.status != "active":
+            return {
+                "message": f"Reservation đã có trạng thái {reservation.status}, không cần giải phóng"
+            }
+
+        bal = (
+            await db.execute(
+                select(Balance).where(
+                    Balance.location_id == reservation.location_id,
+                    Balance.item_id == reservation.item_id,
+                ).with_for_update()
+            )
+        ).scalar_one_or_none()
+        if bal is not None:
+            bal.reserved_quantity = max(
+                Decimal(0),
+                Decimal(str(getattr(bal, "reserved_quantity", 0) or 0))
+                - reservation.quantity,
+            )
+            bal.version = (bal.version or 1) + 1
+            bal.updated_at = datetime.now(UTC)
+
+        reservation.status = "released"
+        reservation.updated_at = datetime.now(UTC)
+        await db.commit()
+        return {
+            "reservation_id": reservation_id,
+            "status": "released",
+            "released_quantity": float(reservation.quantity),
+            "message": "Đã giải phóng tồn kho giữ chở.",
+        }
+    except (ImportError, AttributeError):
+        raise AppError(501, "NOT_IMPLEMENTED", "StockReservation model chưa được định nghĩa.") from None
+
+
+@router.post("/inventory/balances/cleanup-expired-reservations", status_code=200)
+async def cleanup_expired_reservations(
+    user=Depends(require_any_capability("inventory:manage_catalog")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dọn dẹp các reservation hết hạn (chạy định kỳ qua cron/worker)."""
+    try:
+
+        from app.models.inventory import Balance, StockReservation
+
+        now = datetime.now(UTC)
+        expired = (
+            await db.execute(
+                select(StockReservation).where(
+                    StockReservation.status == "active",
+                    StockReservation.expires_at < now,
+                )
+            )
+        ).scalars().all()
+
+        released_count = 0
+        for res in expired:
+            bal = (
+                await db.execute(
+                    select(Balance).where(
+                        Balance.location_id == res.location_id,
+                        Balance.item_id == res.item_id,
+                    ).with_for_update()
+                )
+            ).scalar_one_or_none()
+            if bal is not None:
+                bal.reserved_quantity = max(
+                    Decimal(0),
+                    Decimal(str(getattr(bal, "reserved_quantity", 0) or 0)) - res.quantity,
+                )
+                bal.version = (bal.version or 1) + 1
+                bal.updated_at = now
+            res.status = "expired"
+            res.updated_at = now
+            released_count += 1
+
+        await db.commit()
+        return {
+            "expired_reservations_count": released_count,
+            "message": f"Đã giải phóng {released_count} reservation hết hạn.",
+        }
+    except (ImportError, AttributeError):
+        raise AppError(501, "NOT_IMPLEMENTED", "StockReservation model chưa được định nghĩa.") from None
+
 
 # --------------------------------------------------------------------------
 # Writes — create / submit
@@ -1864,16 +2075,18 @@ async def approve_request(
     db: AsyncSession = Depends(get_db),
 ):
     """Duyệt + post trong một transaction (docs/06 cấm 202 cho approve)."""
-    key = _require_key(request)
+    raw_key = request.headers.get("idempotency-key")
+    key = raw_key.strip() if raw_key and raw_key.strip() else None
     req = await _load_request(db, request_id)
     # Branch-scope guard: checker must have access to source/dest locations.
     if req.source_id is not None:
         await _require_location_scope(db, user, req.source_id)
     if req.dest_id is not None:
         await _require_location_scope(db, user, req.dest_id)
-    cached = _replay(key, {"approve": str(req.id)})
-    if cached is not None:
-        return cached
+    if key is not None:
+        cached = _replay(key, {"approve": str(req.id)})
+        if cached is not None:
+            return cached
 
     # A maker receives the domain-specific A1 result even if their normal
     # role has no approval capability.  The final state is still rechecked
@@ -2397,7 +2610,8 @@ async def approve_request(
         meta={"sub_kind": req.kind, "approver_id": str(user.id)},
     )
     body = _req_out(req)
-    idempotency.remember(db, key, idempotency.payload_hash({"approve": str(req.id)}), 200, body)
+    if key is not None:
+        idempotency.remember(db, key, idempotency.payload_hash({"approve": str(req.id)}), 200, body)
     return body
 
 

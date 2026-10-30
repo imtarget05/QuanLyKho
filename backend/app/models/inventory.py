@@ -1,4 +1,5 @@
 """Inventory models."""
+import uuid
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -206,6 +207,21 @@ class Balance(Base):
 
     def __repr__(self):
         return f"<Balance loc={self.location_id} item={self.item_id} qty={self.quantity} reserved={self.reserved_quantity}>"
+
+
+class StockReservation(Base, TimestampMixin):
+    __tablename__ = "inv_stock_reservations"
+
+    id: str = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: str = Column(UUID(as_uuid=True), ForeignKey("inv_locations.id", ondelete="RESTRICT"), nullable=False)
+    item_id: str = Column(UUID(as_uuid=True), ForeignKey("inv_items.id", ondelete="RESTRICT"), nullable=False)
+    quantity = Column(Numeric(20, 3), nullable=False, default=0)
+    purpose: str = Column(String(64), nullable=False, default="pending_outbound")
+    status: str = Column(String(32), nullable=False, default="active")
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    def __repr__(self):
+        return f"<StockReservation {self.id} loc={self.location_id} item={self.item_id} qty={self.quantity} status={self.status}>"
 
 
 class LotBalance(Base, TimestampMixin):

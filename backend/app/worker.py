@@ -85,7 +85,8 @@ async def claim_job(session: AsyncSession) -> Job | None:
     job.lease_until = now + timedelta(seconds=LEASE_SECONDS)
     job.heartbeat_at = now
     job.next_attempt = None
-    if job.retry_count is None:
+    # Handle both ORM model (has column) and test mocks (may not have attribute)
+    if getattr(job, "retry_count", None) is None:
         job.retry_count = 0
     await session.commit()
     logger.info(
@@ -310,7 +311,7 @@ async def _record_job_failure(
         await session.rollback()
         return False
 
-    retry_count = (job.retry_count or 0) + 1
+    retry_count = (getattr(job, "retry_count", None) or 0) + 1
     job.retry_count = retry_count
     job.error_code = type(error).__name__[:64]
     job.heartbeat_at = _utcnow()

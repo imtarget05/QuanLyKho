@@ -757,3 +757,111 @@ async def reset_password(
 
     return {"message": "Khôi phục mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."}
 
+
+class SendOTPRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    purpose: str = Field(default="password_reset")
+    channel: str = Field(default="email")
+    ip: str | None = None
+
+
+class VerifyOTPRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    code: str = Field(pattern=r"^\d{6}$")
+    purpose: str = Field(default="password_reset")
+
+
+@router.post("/otp/send")
+async def send_otp(
+    body: SendOTPRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Gửi mã OTP xác thực (password reset / login 2FA / sensitive action)."""
+    from app.services.otp import _is_send_rate_limited, create_otp
+
+    ip = body.ip or client_ip(request)
+    username_clean = body.username.strip().lower()
+
+    if _is_send_rate_limited(username_clean, ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Quá nhiều lần gửi OTP. Vui lòng thử lại sau.",
+        )
+
+    code, created = await create_otp(
+        db, username_clean, body.purpose, body.channel, ip=ip
+    )
+
+    if not created:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Đã đạt giới hạn gửi OTP. Vui lòng thử lại sau.",
+        )
+
+    target_email = ""
+    user = await db.execute(
+        select(User).where(User.username == username_clean)
+    )
+    user_row = user.scalar_one_or_none()
+    if user_row and user_row.email:
+        target_email = user_row.email.strip()
+
+    email_sent = False
+    if target_email:
+        try:
+            from app.services.email_service import send_password_reset_email
+            email_sent = await send_password_reset_email(
+                to_email=target_email,
+                username=user_row.display_name_demo or user_row.username,
+                otp=code,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Không gửi được OTP email: %s", exc)
+
+    payload = {
+        "message": "OTP đã được gửi." if email_sent else "OTP đã tạo (chưa gửi được email).",
+        "username": username_clean,
+        "purpose": body.purpose,
+        "email_sent": email_sent,
+        "expires_in_seconds": 900,
+    }
+    if settings.is_demo_mode:
+        payload["otp_demo"] = code
+    return payload
+
+
+@router.post("/otp/verify")
+async def verify_otp_endpoint(
+    body: VerifyOTPRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Xác thực mã OTP (single-use)."""
+    from app.services.otp import verify_otp
+
+    ip = body.ip or client_ip(request)
+    username_clean = body.username.strip().lower()
+
+    ok, error_code = await verify_otp(db, username_clean, body.code, body.purpose, ip=ip)
+
+    if not ok:
+        error_messages = {
+            "OTP_NOT_FOUND": "Mã OTP không tồn tại.",
+            "OTP_EXPIRED": "Mã OTP đã hết hạn.",
+            "OTP_CONSUMED": "Mã OTP đã được sử dụng.",
+            "OTP_LOCKED": "Tài khoản đã bị khóa do sai quá nhiều lần.",
+            "OTP_INVALID": "Mã OTP không chính xác.",
+        }
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_messages.get(error_code, "Lỗi xác thực OTP."),
+        )
+
+    return {
+        "success": True,
+        "message": "Xác thực OTP thành công.",
+        "username": username_clean,
+        "purpose": body.purpose,
+    }
+

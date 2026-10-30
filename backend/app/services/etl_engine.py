@@ -669,6 +669,7 @@ async def _create_pending_balance_adjustment(
     await db.flush()
 
     lines_count = 0
+    affected_items: set[uuid.UUID] = set()
     for r in valid_rows:
         preview = r.action_preview or {}
         sku = str(preview.get("sku") or "").upper()
@@ -678,6 +679,7 @@ async def _create_pending_balance_adjustment(
         item = item_by_sku.get(sku)
         if not item:
             continue
+        affected_items.add(item.id)
         db.add(
             InventoryRequestLine(
                 id=uuid.uuid4(),
@@ -688,6 +690,31 @@ async def _create_pending_balance_adjustment(
             )
         )
         lines_count += 1
+
+    # Ensure a balance row exists for the affected item/location even though no
+    # movement is written yet (pending approval).  Balance rows otherwise only
+    # appear after a posted receipt/issue; keep the same quantity (0 if absent).
+    if pipeline.location_id is not None:
+        for item_id in affected_items:
+            existing = (
+                await db.execute(
+                    select(Balance).where(
+                        Balance.location_id == pipeline.location_id,
+                        Balance.item_id == item_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing is None:
+                db.add(
+                    Balance(
+                        location_id=pipeline.location_id,
+                        item_id=item_id,
+                        quantity=Decimal("0"),
+                        reserved_quantity=Decimal("0"),
+                        version=1,
+                    )
+                )
+        await db.flush()
 
     run.status = "pending_approval"
     run.reviewer_id = actor.id

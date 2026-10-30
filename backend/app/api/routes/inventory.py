@@ -1141,6 +1141,35 @@ async def list_movements(
     }
 
 
+
+@router.post("/inventory/movements/{movement_id}/reverse", status_code=201)
+async def reverse_movement(
+    movement_id: str,
+    body: MovementReverseInput,
+    current_user=Depends(require_any_capability("inventory:approve_request", "inventory:manage_catalog")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Đảo chiều một LotMovement (không sửa entry cũ — tạo movement mới).
+
+    Tạo một LotMovement mới với quantity_signed ngược chiều, phản ánh
+    sự kiện reversed_from của movement gốc.
+    """
+    from app.services.inventory_reversal import reverse_movement_service
+
+    result = await reverse_movement_service(
+        user_id=current_user.id,
+        movement_id=movement_id,
+        reason=body.reason,
+        db=db,
+        approve_caps=_APPROVE_CAPS,
+    )
+    await _audit(db, current_user.id, "reverse", result, {"reversed_from": movement_id})
+    await _outbox(db, "inventory.movement.reversed", result, {"reversed_from": movement_id})
+    return result
+
+
+
+
 @router.get("/inventory/requests")
 async def list_requests(
     current_user=Depends(require_any_capability(*_REQUEST_READ_CAPS)),
@@ -2414,6 +2443,76 @@ async def return_request(
         meta={"sub_kind": req.kind, "approver_id": str(user.id), "reason": reason},
     )
     return _req_out(req)
+
+
+
+@router.post("/inventory/requests/{request_id}/reverse", status_code=201)
+async def reverse_request(
+    request_id: str,
+    request: Request,
+    payload: dict | None = None,
+    user=Depends(require_any_capability("inventory:approve_request")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Đảo phiếu đã post: tạo phiếu draft mới (reduction) liên kết từ phiếu gốc."""
+    key = _require_key(request)
+    req = await _load_request(db, request_id)
+    if req.status != "posted":
+        raise AppError(409, "STATE_CONFLICT", f"Không thể đảo phiếu khi đang ở trạng thái {req.status}.")
+    if str(req.maker_id) == str(user.id):
+        raise AppError(403, "SELF_APPROVAL_FORBIDDEN", "Bạn không được tự đảo phiếu của chính mình.")
+
+    cached = _replay(key, {"reverse": str(req.id)})
+    if cached is not None:
+        return cached
+
+    lines = (
+        await db.execute(
+            select(InventoryRequestLine).where(InventoryRequestLine.request_id == req.id)
+        )
+    ).scalars().all()
+
+    reason = (payload or {}).get("reason", "") or "Đảo phiếu"
+    reversal_req = InventoryRequest(
+        id=uuid.uuid4(),
+        kind="adjustment",
+        status="draft",
+        maker_id=user.id,
+        source_id=req.dest_id or req.source_id,
+        dest_id=req.source_id or req.dest_id,
+        reason=f"Đảo phiếu {req.id}: {reason}",
+        created_by=user.id,
+        version=1,
+    )
+    db.add(reversal_req)
+    await db.flush()
+
+    for ln in lines:
+        db.add(
+            InventoryRequestLine(
+                id=uuid.uuid4(),
+                request_id=reversal_req.id,
+                item_id=ln.item_id,
+                quantity=ln.quantity,
+                direction="decrease" if getattr(ln, "direction", "increase") == "increase" else "increase",
+                unit=getattr(ln, "unit", None),
+            )
+        )
+
+    await _audit(db, user.id, "inventory.request.reversed", reversal_req, {"original_request_id": str(req.id)})
+    await _outbox(db, "inventory.request.reversed", reversal_req, {"original_request_id": str(req.id)})
+    await db.commit()
+    await db.refresh(reversal_req)
+
+    body = {
+        "id": str(reversal_req.id),
+        "original_request_id": str(req.id),
+        "reversed_from": str(req.id),
+        "status": reversal_req.status,
+        "kind": reversal_req.kind,
+    }
+    idempotency.remember(db, key, idempotency.payload_hash({"reverse": str(req.id)}), 201, body)
+    return body
 
 
 @router.post("/inventory/assets", status_code=201)
