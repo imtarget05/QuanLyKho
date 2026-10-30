@@ -163,3 +163,6 @@ Kho-Trà-Sữa/
 >
 > Chưa triển khai (cần consent của TEAM): offline chốt ca + outbox đồng bộ (Phase 6),
 > FCM/push real, tích hợp Google Sheets/APPs Script, deploy staging + UAT luồng ca.
+
+(Trivial smoke-test commit to trigger `ci.yml` CI on push to main.)
+
