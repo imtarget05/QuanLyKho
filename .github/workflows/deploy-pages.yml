@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Canonical FastAPI path through Cloudflare Edge and Azure Gateway.
-  API_BASE_URL: "https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho"
+  # Canonical production FastAPI deployment on Modal.
+  API_BASE_URL: "https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1"
 
 jobs:
   build-and-deploy:
@@ -67,7 +67,7 @@ jobs:
       - name: Build Flutter Web (release)
         working-directory: frontend
         env:
-          # FastAPI on AKS, reached through the portfolio Cloudflare Edge.
+          # FastAPI production endpoint on Modal.
           API_BASE_URL: ${{ env.API_BASE_URL }}
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
