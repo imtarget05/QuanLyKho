@@ -1,0 +1,24 @@
+# Keep local credentials, development environments, and mutable data out of images.
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/.venv*
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage*
+**/htmlcov
+**/node_modules
+**/.dart_tool
+**/build
+**/mlruns
+**/.mlflow
+**/*.db
+**/*.sqlite*
+**/.DS_Store
+**/*.log

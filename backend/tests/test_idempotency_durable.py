@@ -35,7 +35,7 @@ async def _ensure_idempotency_table():
         await session.commit()
 
 
-def _login(client, username: str = "demo_admin") -> dict[str, str]:
+def _login(client, username: str = "demo_checker") -> dict[str, str]:
     r = client.post("/auth/login", data={"username": username, "password": DEMO_PASSWORD})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
