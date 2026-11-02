@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../app/app_shell.dart';
 import '../../core/util/error_text.dart';
@@ -8,6 +9,10 @@ import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../data/models/dtos.dart';
+import '../../data/repositories/bankops_repository.dart';
+import '../../data/repositories/fake_repository.dart';
+import '../../data/repositories/http_bankops_repository.dart';
+import '../auth/auth_service.dart';
 
 /// Màn hình Quản trị Nhân viên & Cấp phát IAM (Phase 1).
 /// Chỉ người dùng có capability `iam:admin` hoặc role `admin` mới được truy cập.
@@ -45,7 +50,18 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> {
   }
 
   Future<void> _loadData() async {
-    final repo = RepositoryScope.maybeOf(context);
+    BankOpsRepository? repo = RepositoryScope.maybeOf(context);
+    if (repo == null && mounted) {
+      final auth = Provider.of<AuthService?>(context, listen: false);
+      if (auth != null) {
+        repo = auth.isOfflineSession
+            ? FakeBankOpsRepository()
+            : HttpBankOpsRepository(
+                baseUrl: auth.apiBaseUrl,
+                tokenProvider: auth.getAccessToken,
+              );
+      }
+    }
     if (repo == null) return;
 
     setState(() {
@@ -951,30 +967,46 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> {
   @override
   Widget build(BuildContext context) {
     final session = SessionScope.maybeOf(context);
-    final currentUser = session?.user;
+    final currentUser = session?.user ??
+        (context.mounted
+            ? Provider.of<AuthService?>(context, listen: false)?.user
+            : null);
 
     // Kiểm tra quyền
     if (!RoleVisibility.canManageEmployees(currentUser)) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.gpp_bad_outlined, size: 64, color: Color(0xFFF59E0B)),
-              SizedBox(height: 16),
-              Text(
-                'Từ chối quyền truy cập',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Tài khoản của bạn không có capability iam:admin hoặc quyền Quản trị viên để quản lý danh sách nhân sự.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF64748B)),
-              ),
-            ],
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Phân quyền nhân viên & vai trò (RBAC)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          leading: const BackButton(),
+        ),
+        body: Center(
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.gpp_bad_outlined, size: 64, color: Color(0xFFF59E0B)),
+                const SizedBox(height: 16),
+                const Text(
+                  'Từ chối quyền truy cập',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tài khoản của bạn (${currentUser?.email ?? currentUser?.username ?? "chưa đăng nhập"}) không có capability iam:admin hoặc quyền Quản trị viên để quản lý danh sách nhân sự.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Quay lại Cài đặt'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -990,6 +1022,15 @@ class _EmployeeManagementScreenState extends State<EmployeeManagementScreen> {
     final isCompact = width < 750;
 
     return Scaffold(
+      appBar: Navigator.of(context).canPop()
+          ? AppBar(
+              title: const Text(
+                'Phân quyền & Nhân sự',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              leading: const BackButton(),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: _loadData,
         child: CustomScrollView(

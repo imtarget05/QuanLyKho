@@ -13,8 +13,11 @@ import 'commerce_memory_store.dart';
 import 'commerce_api.dart';
 import 'commerce_reports_page.dart';
 import 'commerce_settings_view.dart';
+import '../../core/i18n/app_i18n.dart';
+import '../../core/util/role_visibility.dart';
 import '../../core/widgets/store_logo.dart';
 import '../../core/widgets/animated_count_up.dart';
+import '../../data/models/dtos.dart';
 
 class CommerceWorkspace extends StatefulWidget {
   const CommerceWorkspace({
@@ -23,6 +26,7 @@ class CommerceWorkspace extends StatefulWidget {
     this.api,
     this.onRefresh,
     this.userName = 'Chủ cửa hàng',
+    this.user,
     this.onSignOut,
     this.capabilities,
     this.roles,
@@ -32,6 +36,7 @@ class CommerceWorkspace extends StatefulWidget {
   final CommerceApi? api;
   final Future<void> Function()? onRefresh;
   final String userName;
+  final AppUser? user;
   final Future<void> Function()? onSignOut;
   final Set<String>? capabilities;
   final Set<String>? roles;
@@ -44,25 +49,16 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
   int _index = 1;
   static const _navigationPages = [0, 1, 2, 3, 4, 5, 6, 7];
   static const _mobilePages = [0, 1, 2, 3];
-  static const _pageTitles = [
-    'Tổng quan',
-    'Bán hàng',
-    'Mua hàng',
-    'Kho hàng',
-    'Công nợ',
-    'Báo cáo',
-    'Duyệt phiếu',
-    'Cài đặt',
-  ];
-  static const _navigationNames = [
-    'Tổng quan',
-    'Bán hàng',
-    'Mua hàng',
-    'Kho hàng',
-    'Công nợ',
-    'Báo cáo',
-    'Duyệt phiếu',
-    'Cài đặt',
+
+  static List<String> pageTitles(BuildContext context) => [
+    context.tr('workspace_overview'),
+    context.tr('workspace_sales'),
+    context.tr('workspace_purchases'),
+    context.tr('workspace_inventory'),
+    context.tr('workspace_debt'),
+    context.tr('workspace_reports'),
+    context.tr('workspace_approvals'),
+    context.tr('workspace_settings'),
   ];
   static const _navigationIcons = [
     Icons.dashboard_outlined,
@@ -147,7 +143,8 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     final canViewOwnerData = _canViewOwnerData;
     final pageIndex =
         !canViewOwnerData && (_index == 4 || _index == 5) ? 0 : _index;
-    final name = _pageTitles[pageIndex];
+    final titles = pageTitles(context);
+    final name = titles[pageIndex];
     final pages = [
       _OverviewPage(
           store: store,
@@ -195,12 +192,26 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
       CommerceSettingsView(
           store: store,
           userName: widget.userName,
+          user: widget.user,
           onSignOut: widget.onSignOut,
           canManageUsers: canViewOwnerData,
           canResetDemoData: widget.api == null),
     ];
 
-    return Scaffold(
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      autofocus: false,
+      onKeyEvent: (event) {
+        if (event is! KeyDownEvent) return;
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.f2) {
+          FocusScope.of(context).requestFocus(FocusNode());
+        } else if (key == LogicalKeyboardKey.escape) {
+          final nav = Navigator.maybeOf(context);
+          if (nav != null && nav.canPop()) nav.pop();
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF6F7F5),
       body: SafeArea(
         child: Row(
@@ -210,6 +221,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                   index: pageIndex,
                   onSelect: (i) => setState(() => _index = i),
                   userName: widget.userName,
+                  user: widget.user,
                   onSignOut: widget.onSignOut,
                   canApprove: canApprove,
                   canViewOwnerData: canViewOwnerData),
@@ -228,8 +240,9 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                             ? () => _create('purchase')
                             : null,
                     createLabel:
-                        pageIndex == 1 ? 'Tạo phiếu bán' : 'Tạo phiếu nhập',
+                        pageIndex == 1 ? context.tr('workspace_create_sale') : context.tr('workspace_create_purchase'),
                     userName: widget.userName,
+                    user: widget.user,
                     onSignOut: widget.onSignOut,
                   ),
                   Expanded(
@@ -262,7 +275,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                 ListTile(
                                     leading: const Icon(
                                         Icons.account_balance_wallet_outlined),
-                                    title: const Text('Công nợ'),
+                                    title: Text(context.tr('workspace_debt')),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
                                       setState(() => _index = 4);
@@ -271,7 +284,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                   ListTile(
                                       leading:
                                           const Icon(Icons.bar_chart_outlined),
-                                      title: const Text('Báo cáo'),
+                                      title: Text(context.tr('workspace_reports')),
                                       onTap: () {
                                         Navigator.pop(sheetContext);
                                         setState(() => _index = 5);
@@ -280,7 +293,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                   ListTile(
                                       leading:
                                           const Icon(Icons.fact_check_outlined),
-                                      title: const Text('Duyệt phiếu'),
+                                      title: Text(context.tr('workspace_approvals')),
                                       onTap: () {
                                         Navigator.pop(sheetContext);
                                         setState(() => _index = 6);
@@ -288,7 +301,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                 ListTile(
                                     leading:
                                         const Icon(Icons.settings_outlined),
-                                    title: const Text('Cài đặt'),
+                                    title: Text(context.tr('workspace_settings')),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
                                       setState(() => _index = 7);
@@ -296,15 +309,15 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                 const Divider(),
                                 ListTile(
                                   leading: const StoreLogo(size: 28),
-                                  title: Text(widget.userName),
-                                  subtitle: const Text('Optimate x NexUp ERP',
-                                      style: TextStyle(fontSize: 11)),
+                                  title: Text(widget.user?.displayName ?? widget.userName),
+                                  subtitle: Text(widget.user?.email ?? 'Optimate x NexUp ERP',
+                                      style: const TextStyle(fontSize: 11)),
                                 ),
                                 ListTile(
                                     leading: const Icon(Icons.logout_rounded,
                                         color: Color(0xFFDC2626)),
-                                    title: const Text('Đăng xuất',
-                                        style: TextStyle(
+                                    title: Text(context.tr('workspace_logout'),
+                                        style: const TextStyle(
                                             color: Color(0xFFDC2626),
                                             fontWeight: FontWeight.w600)),
                                     onTap: () {
@@ -319,34 +332,35 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
               height: 68,
               backgroundColor: Colors.white,
               indicatorColor: const Color(0xFFEDE8FC),
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard),
-                  label: 'Tổng quan',
+                  icon: const Icon(Icons.dashboard_outlined),
+                  selectedIcon: const Icon(Icons.dashboard),
+                  label: context.tr('workspace_overview'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.point_of_sale_outlined),
-                  selectedIcon: Icon(Icons.point_of_sale),
-                  label: 'Bán hàng',
+                  icon: const Icon(Icons.point_of_sale_outlined),
+                  selectedIcon: const Icon(Icons.point_of_sale),
+                  label: context.tr('workspace_sales'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.shopping_cart_outlined),
-                  selectedIcon: Icon(Icons.shopping_cart),
-                  label: 'Mua hàng',
+                  icon: const Icon(Icons.shopping_cart_outlined),
+                  selectedIcon: const Icon(Icons.shopping_cart),
+                  label: context.tr('workspace_purchases'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.inventory_2_outlined),
-                  selectedIcon: Icon(Icons.inventory_2),
-                  label: 'Kho hàng',
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  selectedIcon: const Icon(Icons.inventory_2),
+                  label: context.tr('workspace_inventory'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.more_horiz_outlined),
-                  selectedIcon: Icon(Icons.more_horiz),
-                  label: 'Thêm',
+                  icon: const Icon(Icons.more_horiz_outlined),
+                  selectedIcon: const Icon(Icons.more_horiz),
+                  label: context.tr('workspace_more'),
                 ),
               ],
             ),
+      ),
     );
   }
 }
@@ -356,6 +370,7 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.index,
     required this.onSelect,
     required this.userName,
+    this.user,
     required this.onSignOut,
     required this.canApprove,
     required this.canViewOwnerData,
@@ -363,16 +378,38 @@ class _WorkspaceSidebar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
   final String userName;
+  final AppUser? user;
   final Future<void> Function()? onSignOut;
   final bool canApprove;
   final bool canViewOwnerData;
 
-  static const names = _CommerceWorkspaceState._navigationNames;
   static const icons = _CommerceWorkspaceState._navigationIcons;
   static const pages = _CommerceWorkspaceState._navigationPages;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final titles = [
+      context.tr('workspace_overview'),
+      context.tr('workspace_sales'),
+      context.tr('workspace_purchases'),
+      context.tr('workspace_inventory'),
+      context.tr('workspace_debt'),
+      context.tr('workspace_reports'),
+      context.tr('workspace_approvals'),
+      context.tr('workspace_settings'),
+    ];
+    final displayName = user?.displayName.isNotEmpty == true
+        ? user!.displayName
+        : (userName.isEmpty ? 'Người dùng' : userName);
+    final avatarUrl = user?.avatarUrl;
+    final roles = RoleVisibility.rolesOf(user);
+    final roleLabel = roles.isNotEmpty
+        ? RoleVisibility.roleLabel(roles.first)
+        : (RoleVisibility.canManageEmployees(user)
+            ? 'Chủ Quán (Admin)'
+            : 'Nhân viên');
+
+    return Container(
         width: 232,
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -421,11 +458,11 @@ class _WorkspaceSidebar extends StatelessWidget {
                       letterSpacing: 1,
                       fontWeight: FontWeight.w800)),
             ),
-            for (var i = 0; i < names.length; i++)
+            for (var i = 0; i < titles.length; i++)
               if ((pages[i] != 6 || canApprove) &&
                   (canViewOwnerData || pages[i] != 5))
                 _SideNavItem(
-                    label: names[i],
+                    label: titles[i],
                     icon: icons[i],
                     selected: index == pages[i],
                     onTap: () => onSelect(pages[i])),
@@ -436,31 +473,37 @@ class _WorkspaceSidebar extends StatelessWidget {
               leading: CircleAvatar(
                   radius: 17,
                   backgroundColor: const Color(0xFFE9E4F8),
-                  child: Text(
-                      userName.trim().isEmpty
-                          ? 'A'
-                          : userName.trim()[0].toUpperCase(),
-                      style: const TextStyle(
-                          color: Color(0xFF6244BA),
-                          fontWeight: FontWeight.w800))),
-              title: Text(userName.isEmpty ? 'An Nguyễn' : userName,
+                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: (avatarUrl == null || avatarUrl.isEmpty)
+                      ? Text(
+                          displayName.trim().isEmpty
+                              ? 'U'
+                              : displayName.trim()[0].toUpperCase(),
+                          style: const TextStyle(
+                              color: Color(0xFF6244BA),
+                              fontWeight: FontWeight.w800),
+                        )
+                      : null),
+              title: Text(displayName,
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w700)),
-              subtitle: const Text('Quản lý cửa hàng',
-                  style: TextStyle(fontSize: 10)),
+              subtitle: Text(roleLabel,
+                  style: const TextStyle(fontSize: 10)),
               trailing: PopupMenuButton<String>(
                 icon: const Icon(Icons.more_horiz, size: 19),
                 tooltip: 'Tài khoản & Đăng xuất',
                 onSelected: (v) {
                   if (v == 'signout') onSignOut?.call();
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'profile',
                     child: ListTile(
-                      leading: Icon(Icons.person_outline, size: 18),
-                      title: Text('Hồ sơ tài khoản',
-                          style: TextStyle(fontSize: 13)),
+                      leading: const Icon(Icons.person_outline, size: 18),
+                      title: Text(context.tr('workspace_account'),
+                          style: const TextStyle(fontSize: 13)),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -468,10 +511,10 @@ class _WorkspaceSidebar extends StatelessWidget {
                   PopupMenuItem(
                     value: 'signout',
                     child: ListTile(
-                      leading: Icon(Icons.logout_rounded,
+                      leading: const Icon(Icons.logout_rounded,
                           size: 18, color: Colors.red),
-                      title: Text('Đăng xuất',
-                          style: TextStyle(
+                      title: Text(context.tr('workspace_logout'),
+                          style: const TextStyle(
                               fontSize: 13,
                               color: Colors.red,
                               fontWeight: FontWeight.w700)),
@@ -487,6 +530,7 @@ class _WorkspaceSidebar extends StatelessWidget {
           ],
         ),
       );
+  }
 }
 
 class _SideNavItem extends StatelessWidget {
@@ -555,6 +599,7 @@ class _WorkspaceTopbar extends StatelessWidget {
     required this.locationId,
     required this.onLocationChanged,
     required this.userName,
+    this.user,
     required this.onSignOut,
   });
   final String title;
@@ -565,6 +610,7 @@ class _WorkspaceTopbar extends StatelessWidget {
   final String? locationId;
   final ValueChanged<String?> onLocationChanged;
   final String userName;
+  final AppUser? user;
   final Future<void> Function()? onSignOut;
 
   @override
@@ -607,8 +653,8 @@ class _WorkspaceTopbar extends StatelessWidget {
                 decoration: BoxDecoration(
                     color: const Color(0xFFE7F6EF),
                     borderRadius: BorderRadius.circular(18)),
-                child: const Text('KẾT NỐI MÁY CHỦ',
-                    style: TextStyle(
+                child: Text(context.tr('workspace_connected_server'),
+                    style: const TextStyle(
                         fontSize: 9,
                         color: Color(0xFF168256),
                         fontWeight: FontWeight.w800))),
@@ -669,59 +715,107 @@ class _WorkspaceTopbar extends StatelessWidget {
           if (screenWidth < 700) ...[
             const SizedBox(width: 8),
             PopupMenuButton<String>(
-              tooltip: 'Tài khoản',
+              tooltip: context.tr('topbar_account'),
               offset: const Offset(0, 42),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECE8F9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF7555D1)),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                  style: const TextStyle(
-                      color: Color(0xFF6746C3),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECE8F9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF7555D1)),
+                  ),
+                  alignment: Alignment.center,
+                  child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                      ? Image.network(
+                          user!.avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Text(
+                            (user?.displayName.isNotEmpty == true ? user!.displayName : userName).isNotEmpty
+                                ? (user?.displayName.isNotEmpty == true ? user!.displayName : userName)[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                                color: Color(0xFF6746C3),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13),
+                          ),
+                        )
+                      : Text(
+                          (user?.displayName.isNotEmpty == true ? user!.displayName : userName).isNotEmpty
+                              ? (user?.displayName.isNotEmpty == true ? user!.displayName : userName)[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                              color: Color(0xFF6746C3),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13),
+                        ),
                 ),
               ),
-              itemBuilder: (context) => [
-                PopupMenuItem<String>(
-                  enabled: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(userName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E1736))),
-                      const Text('Optimate x NexUp ERP',
-                          style: TextStyle(
-                              fontSize: 11, color: Color(0xFF888D87))),
-                    ],
+              itemBuilder: (context) {
+                final userDisplayName = user?.displayName;
+                final displayName = (userDisplayName != null && userDisplayName.isNotEmpty)
+                    ? userDisplayName
+                    : (userName.isEmpty ? 'Người dùng' : userName);
+                final userEmail = user?.email;
+                final email = (userEmail != null && userEmail.isNotEmpty)
+                    ? userEmail
+                    : 'Optimate x NexUp ERP';
+                final roles = RoleVisibility.rolesOf(user);
+                final roleLabel = roles.isNotEmpty
+                    ? RoleVisibility.roleLabel(roles.first)
+                    : (RoleVisibility.canManageEmployees(user)
+                        ? 'Chủ Quán (Admin)'
+                        : 'Nhân viên');
+                return [
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(displayName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E1736))),
+                        Text(email,
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF475569))),
+                        const SizedBox(height: 3),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDE8FC),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(roleLabel,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF553C9A))),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout_rounded,
-                          color: Color(0xFFDC2626), size: 18),
-                      SizedBox(width: 8),
-                      Text('Đăng xuất',
-                          style: TextStyle(
-                              color: Color(0xFFDC2626),
-                              fontWeight: FontWeight.w600)),
-                    ],
+                  const PopupMenuDivider(),
+                  PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.logout_rounded,
+                            color: Color(0xFFDC2626), size: 18),
+                        const SizedBox(width: 8),
+                        Text(context.tr('workspace_logout'),
+                            style: const TextStyle(
+                                color: Color(0xFFDC2626),
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ];
+              },
               onSelected: (val) {
                 if (val == 'logout') {
                   onSignOut?.call();
@@ -825,62 +919,78 @@ class _OverviewPage extends StatelessWidget {
     final cards = [
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Doanh thu thuần',
+            label: context.tr('overview_kpi_net_revenue'),
             value: _money(totalRevenue),
+            numericValue: totalRevenue,
+            isCurrency: true,
             icon: Icons.payments_outlined,
             color: const Color(0xFF7555D1),
             foot: 'Tổng đơn hoàn tất'),
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Lợi nhuận gộp',
+            label: context.tr('overview_kpi_gross_profit'),
             value: _money(totalGrossProfit),
+            numericValue: totalGrossProfit,
+            isCurrency: true,
             icon: Icons.trending_up_rounded,
             color: const Color(0xFF15966A),
             foot: 'Tỷ suất: $profitMargin%'),
       _MetricCard(
-          label: 'Số đơn hàng',
+          label: context.tr('overview_kpi_sales_count'),
           value: '${store.confirmedSales.length} đơn',
+          numericValue: store.confirmedSales.length,
+          suffix: 'đơn',
           icon: Icons.receipt_long_outlined,
           color: const Color(0xFF2980B9),
           foot: 'Hoàn tất giao hàng'),
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Giá trị tồn kho',
+            label: context.tr('overview_kpi_inventory_value'),
             value: _money(store.inventoryValue.round()),
+            numericValue: store.inventoryValue.round(),
+            isCurrency: true,
             icon: Icons.inventory_2_outlined,
             color: const Color(0xFF0284C7),
             foot: '${store.products.length} mặt hàng'),
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Tỷ suất lợi nhuận',
+            label: context.tr('overview_kpi_profit_margin'),
             value: '$profitMargin%',
+            numericValue: double.tryParse(profitMargin) ?? 0.0,
+            suffix: '%',
+            decimalDigits: 1,
             icon: Icons.percent_rounded,
             color: const Color(0xFFD97706),
             foot: 'Biên lợi nhuận gộp'),
       _MetricCard(
-          label: 'Cảnh báo tồn kho',
+          label: context.tr('overview_kpi_stock_warning'),
           value: '${store.lowStockCount} mặt hàng',
+          numericValue: store.lowStockCount,
+          suffix: 'mặt hàng',
           icon: Icons.warning_amber_rounded,
           color: const Color(0xFFE11D48),
           foot: 'Cần bổ sung kho ngay'),
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Công nợ phải thu KH',
+            label: context.tr('overview_kpi_receivable'),
             value: _money(store.receivableTotal),
+            numericValue: store.receivableTotal,
+            isCurrency: true,
             icon: Icons.call_received_rounded,
             color: const Color(0xFF8B5CF6),
             foot: '${store.receivables.length} hóa đơn chưa thu'),
       if (canViewOwnerData)
         _MetricCard(
-            label: 'Công nợ phải trả NCC',
+            label: context.tr('overview_kpi_payable'),
             value: _money(store.payableTotal),
+            numericValue: store.payableTotal,
+            isCurrency: true,
             icon: Icons.call_made_rounded,
             color: const Color(0xFFDC2626),
             foot: '${store.payables.length} phiếu cần thanh toán'),
     ];
     return _PageFrame(children: [
-      const _PageHeading('Tổng quan vận hành',
-          'Theo dõi doanh thu, chi phí, mua bán và công nợ theo thời gian thực.'),
+      _PageHeading(context.tr('overview_title'), context.tr('overview_subtitle')),
       GridView.count(
           crossAxisCount: cols,
           shrinkWrap: true,
@@ -893,32 +1003,32 @@ class _OverviewPage extends StatelessWidget {
       Wrap(spacing: 12, runSpacing: 10, children: [
         if (canWrite)
           _QuickAction(
-              label: 'Tạo đơn bán',
+              label: context.tr('overview_action_create_sale'),
               icon: Icons.add_shopping_cart,
               onTap: () => onNavigate(1)),
         if (canWrite)
           _QuickAction(
-              label: 'Tạo phiếu nhập',
+              label: context.tr('overview_action_create_purchase'),
               icon: Icons.add_box_outlined,
               onTap: () => onNavigate(2)),
         if (canWrite)
           _QuickAction(
-              label: 'Kiểm kê kho',
+              label: context.tr('overview_action_stocktake'),
               icon: Icons.fact_check_outlined,
               onTap: () => onNavigate(3)),
         if (canViewOwnerData)
           _QuickAction(
-              label: 'Theo dõi công nợ',
+              label: context.tr('overview_action_debt'),
               icon: Icons.account_balance_wallet_outlined,
               onTap: () => onNavigate(4)),
         if (canViewOwnerData)
           _QuickAction(
-              label: 'Xem báo cáo',
+              label: context.tr('overview_action_reports'),
               icon: Icons.bar_chart_rounded,
               onTap: () => onNavigate(5)),
         if (canApprove)
           _QuickAction(
-              label: 'Phiếu chờ duyệt',
+              label: context.tr('overview_action_approvals'),
               icon: Icons.fact_check_outlined,
               onTap: () => onNavigate(6)),
       ]),
@@ -1177,13 +1287,22 @@ class _OverviewRanking extends StatelessWidget {
                         fontSize: 10, fontWeight: FontWeight.w700)),
               ]),
               const SizedBox(height: 5),
-              ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: LinearProgressIndicator(
-                      value: rows[i].$3 / maximum,
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: rows[i].$3 / maximum),
+                duration: const Duration(milliseconds: 750),
+                curve: Curves.easeOutCubic,
+                builder: (context, animatedRatio, _) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: LinearProgressIndicator(
+                      value: animatedRatio,
                       minHeight: 4,
                       color: color,
-                      backgroundColor: const Color(0xFFF0F1EF))),
+                      backgroundColor: const Color(0xFFF0F1EF),
+                    ),
+                  );
+                },
+              ),
               if (i != rows.length - 1) const SizedBox(height: 10),
             ]
         ]));
@@ -1221,12 +1340,31 @@ class _RevenueTrendCard extends StatelessWidget {
           SizedBox(
             height: 180,
             child: BarChart(
+              swapAnimationDuration: const Duration(milliseconds: 650),
+              swapAnimationCurve: Curves.easeOutCubic,
               BarChartData(
                 maxY: maxY == 0 ? 1 : maxY * 1.18,
                 minY: 0,
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
-                barTouchData: BarTouchData(enabled: false),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => const Color(0xFF1E1736),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final monthName = 'T${months[group.x.toInt()].month}';
+                      return BarTooltipItem(
+                        '$monthName\n${_money(rod.toY.toInt())}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false)),
@@ -1280,17 +1418,27 @@ class _RevenueTrendCard extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color,
-      required this.foot});
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.foot,
+    this.numericValue,
+    this.isCurrency = false,
+    this.suffix = '',
+    this.decimalDigits = 0,
+  });
   final String label;
   final String value;
   final IconData icon;
   final Color color;
   final String foot;
+  final num? numericValue;
+  final bool isCurrency;
+  final String suffix;
+  final int decimalDigits;
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1317,14 +1465,27 @@ class _MetricCard extends StatelessWidget {
                     child: Icon(icon, color: color, size: 16))
               ]),
               FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Text(value,
-                      style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -.6))),
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: numericValue != null
+                    ? AnimatedCountUp(
+                        value: numericValue!,
+                        isCurrency: isCurrency,
+                        suffix: suffix,
+                        decimalDigits: decimalDigits,
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -.6),
+                      )
+                    : Text(value,
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -.6)),
+              ),
               Text(foot,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1528,14 +1689,14 @@ class _OrderListPageState extends State<_OrderListPage> {
             party.phone.toLowerCase().contains(_query.toLowerCase()))
         .toList(growable: false);
     final headingTitle = customerDirectory
-        ? 'Khách hàng'
+        ? context.tr('orders_customers_title')
         : supplierDirectory
-            ? 'Nhà cung cấp'
+            ? context.tr('orders_suppliers_title')
             : quote
-                ? 'Quản lý báo giá'
+                ? context.tr('orders_quote_title')
                 : sale
-                    ? 'Quản lý bán hàng'
-                    : 'Quản lý mua hàng';
+                    ? context.tr('orders_sale_title')
+                    : context.tr('orders_purchase_title');
     final headingSubtitle = customerDirectory
         ? 'Danh sách khách hàng và thông tin liên hệ.'
         : supplierDirectory
@@ -1790,13 +1951,21 @@ class _OrderListPageState extends State<_OrderListPage> {
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF0F172A))),
               const SizedBox(height: 10),
-              Row(children: [
-                Expanded(child: searchField(null)),
+              if (pageWidth < 480) ...[
+                searchField(null),
                 if (widget.canWrite) ...[
-                  const SizedBox(width: 8),
-                  createButton,
+                  const SizedBox(height: 8),
+                  SizedBox(width: double.infinity, child: createButton),
                 ],
-              ]),
+              ] else ...[
+                Row(children: [
+                  Expanded(child: searchField(null)),
+                  if (widget.canWrite) ...[
+                    const SizedBox(width: 8),
+                    createButton,
+                  ],
+                ]),
+              ],
             ] else
               Row(children: [
                 Expanded(
@@ -2036,7 +2205,9 @@ class _MiniSummaryRow extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: MediaQuery.sizeOf(context).width < 600 ? 2.65 : 3.6,
+        childAspectRatio: MediaQuery.sizeOf(context).width < 380
+            ? 2.2
+            : (MediaQuery.sizeOf(context).width < 600 ? 2.5 : 3.6),
         children: items.asMap().entries.map((entry) {
           final idx = entry.key % colors.length;
           final (fg, bg) = colors[idx];
@@ -3236,26 +3407,25 @@ class _DebtPage extends StatelessWidget {
   Widget build(BuildContext context) => DefaultTabController(
       length: 2,
       child: _PageFrame(children: [
-        const _PageHeading('Công nợ phải thu & phải trả',
-            'Theo dõi số tiền còn lại theo khách hàng và nhà cung cấp.'),
+        _PageHeading(context.tr('debt_title'), context.tr('debt_subtitle')),
         _MiniSummaryRow(items: [
           (
-            'Khách hàng còn nợ',
+            context.tr('debt_kpi_receivable'),
             _money(store.receivableTotal),
             Icons.call_received_rounded
           ),
           (
-            'Nhà cung cấp cần trả',
+            context.tr('debt_kpi_payable'),
             _money(store.payableTotal),
             Icons.call_made_rounded
           ),
           (
-            'Đơn cần thu',
+            context.tr('debt_kpi_orders_to_collect'),
             '${store.receivables.length}',
             Icons.receipt_long_outlined
           ),
           (
-            'Phiếu cần trả',
+            context.tr('debt_kpi_bills_to_pay'),
             '${store.payables.length}',
             Icons.request_quote_outlined
           )
@@ -3264,15 +3434,15 @@ class _DebtPage extends StatelessWidget {
         Container(
             decoration: _cardDecoration(),
             child: Column(children: [
-              const TabBar(
+              TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  labelColor: Color(0xFF6848BC),
-                  unselectedLabelColor: Color(0xFF7F857D),
-                  indicatorColor: Color(0xFF6848BC),
+                  labelColor: const Color(0xFF6848BC),
+                  unselectedLabelColor: const Color(0xFF7F857D),
+                  indicatorColor: const Color(0xFF6848BC),
                   tabs: [
-                    Tab(text: 'Phải thu khách hàng'),
-                    Tab(text: 'Phải trả nhà cung cấp')
+                    Tab(text: context.tr('debt_tab_receivable')),
+                    Tab(text: context.tr('debt_tab_payable'))
                   ]),
               SizedBox(
                   height: 480,
@@ -3313,7 +3483,7 @@ class _DebtList extends StatefulWidget {
 
 class _DebtListState extends State<_DebtList> {
   String _query = '';
-  String _dueFilter = 'Tất cả hạn thanh toán';
+  String _dueFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -3326,8 +3496,8 @@ class _DebtListState extends State<_DebtList> {
       final due =
           order.dueDate == null ? null : DateUtils.dateOnly(order.dueDate!);
       return switch (_dueFilter) {
-        'Quá hạn' => due != null && due.isBefore(today),
-        'Còn hạn' => due == null || !due.isBefore(today),
+        'overdue' => due != null && due.isBefore(today),
+        'due' => due == null || !due.isBefore(today),
         _ => true,
       };
     }).toList()
@@ -3349,37 +3519,49 @@ class _DebtListState extends State<_DebtList> {
                   height: 38,
                   child: TextField(
                     onChanged: (value) => setState(() => _query = value),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search, size: 17),
-                      hintText: 'Tìm mã phiếu, khách hàng...',
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 17),
+                      hintText: context.tr('debt_search_hint'),
                       isDense: true,
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               _OrderFilterSelect(
-                value: _dueFilter,
-                items: const [
-                  'Tất cả hạn thanh toán',
-                  'Quá hạn',
-                  'Còn hạn',
+                value: switch (_dueFilter) {
+                  'overdue' => context.tr('debt_filter_overdue'),
+                  'due' => context.tr('debt_filter_due'),
+                  _ => context.tr('debt_filter_all'),
+                },
+                items: [
+                  context.tr('debt_filter_all'),
+                  context.tr('debt_filter_overdue'),
+                  context.tr('debt_filter_due'),
                 ],
                 icon: Icons.schedule_rounded,
-                onChanged: (value) => setState(() => _dueFilter = value),
+                onChanged: (value) => setState(() {
+                  if (value == context.tr('debt_filter_overdue')) {
+                    _dueFilter = 'overdue';
+                  } else if (value == context.tr('debt_filter_due')) {
+                    _dueFilter = 'due';
+                  } else {
+                    _dueFilter = 'all';
+                  }
+                }),
               ),
             ],
           ),
         ),
         Expanded(
           child: orders.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Không có khoản công nợ phù hợp.',
+                    padding: const EdgeInsets.all(24),
+                    child: Text(context.tr('debt_empty'),
                         style:
-                            TextStyle(fontSize: 12, color: Color(0xFF81877F))),
+                            const TextStyle(fontSize: 12, color: Color(0xFF81877F))),
                   ),
                 )
               : compact
@@ -3484,7 +3666,7 @@ class _DebtListState extends State<_DebtList> {
                         fontSize: 10, color: Color(0xFF81877F))),
                 if (order.dueDate != null)
                   Text(
-                    '${order.dueDate!.isBefore(DateTime.now()) ? 'Quá hạn · ' : 'Hạn · '}${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
+                    '${order.dueDate!.isBefore(DateTime.now()) ? '${context.tr('debt_filter_overdue')} · ' : '${context.tr('debt_col_due_date')} · '}${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
                     style: TextStyle(
                       fontSize: 10,
                       color: order.dueDate!.isBefore(DateTime.now())
@@ -3497,12 +3679,12 @@ class _DebtListState extends State<_DebtList> {
                   ),
               ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('Còn ${_money(order.outstanding)}',
+            Text('${context.tr('debt_remaining_prefix')} ${_money(order.outstanding)}',
                 style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFFB34B43),
                     fontWeight: FontWeight.w800)),
-            Text('Tổng ${_money(order.total)}',
+            Text('${context.tr('debt_total_prefix')} ${_money(order.total)}',
                 style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)))
           ]),
           if (widget.canWrite) ...[
@@ -3747,6 +3929,10 @@ class _DraftLine {
   double quantity;
   String lotNo = '';
   String expiryDate = '';
+
+  /// Convenience getter — returns the parsed DateTime if [expiryDate] is a
+  /// valid ISO-8601 date string, otherwise null.
+  DateTime? get expiryDateTime => expiryDate.isEmpty ? null : DateTime.tryParse(expiryDate);
 }
 
 Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
@@ -4132,15 +4318,26 @@ Future<void> _showCreateOrder(
                                                   v ?? lines[i].productId))),
                                   const SizedBox(width: 8),
                                   SizedBox(
-                                      width: 92,
+                                      width: 110,
                                       child: TextFormField(
                                           initialValue: '${lines[i].quantity}',
                                           keyboardType: const TextInputType
                                               .numberWithOptions(decimal: true),
-                                          decoration: const InputDecoration(
+                                          decoration: InputDecoration(
                                               labelText: 'Số lượng',
-                                              border: OutlineInputBorder(),
-                                              isDense: true),
+                                              border: const OutlineInputBorder(),
+                                              isDense: true,
+                                              helperText: kind == 'sale'
+                                                  ? 'Tồn: ${store.product(lines[i].productId).stock}'
+                                                  : null,
+                                              helperStyle: TextStyle(
+                                                fontSize: 9,
+                                                color: (kind == 'sale' &&
+                                                        lines[i].quantity >
+                                                            store.product(lines[i].productId).stock)
+                                                    ? const Color(0xFFB34B43)
+                                                    : const Color(0xFF737971),
+                                              )),
                                           onChanged: (v) => setState(() =>
                                               lines[i].quantity =
                                                   double.tryParse(v) ?? 0))),
@@ -4170,16 +4367,71 @@ Future<void> _showCreateOrder(
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: TextFormField(
-                                      initialValue: lines[i].expiryDate,
-                                      keyboardType: TextInputType.datetime,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Hạn dùng (YYYY-MM-DD)',
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                      onChanged: (value) =>
-                                          lines[i].expiryDate = value,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        TextFormField(
+                                          key: ValueKey('expiry_${lines[i].expiryDate}_$i'),
+                                          initialValue: lines[i].expiryDate,
+                                          keyboardType: TextInputType.datetime,
+                                          decoration: InputDecoration(
+                                            labelText: 'Hạn dùng (YYYY-MM-DD)',
+                                            border: const OutlineInputBorder(),
+                                            isDense: true,
+                                            suffixIcon: IconButton(
+                                              icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                                              tooltip: 'Chọn hạn dùng trên lịch',
+                                              onPressed: () async {
+                                                final now = DateTime.now();
+                                                final cur = lines[i].expiryDateTime ?? now.add(const Duration(days: 90));
+                                                final picked = await showDatePicker(
+                                                  context: context,
+                                                  initialDate: cur.isBefore(now) ? now : cur,
+                                                  firstDate: now,
+                                                  lastDate: DateTime(now.year + 10),
+                                                );
+                                                if (picked != null) {
+                                                  setState(() {
+                                                    lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(picked);
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                          onChanged: (value) =>
+                                              lines[i].expiryDate = value,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 4,
+                                          children: [
+                                            ActionChip(
+                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+                                              visualDensity: VisualDensity.compact,
+                                              label: const Text('+30n', style: TextStyle(fontSize: 10)),
+                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)))),
+                                            ),
+                                            ActionChip(
+                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+                                              visualDensity: VisualDensity.compact,
+                                              label: const Text('+90n', style: TextStyle(fontSize: 10)),
+                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 90)))),
+                                            ),
+                                            ActionChip(
+                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+                                              visualDensity: VisualDensity.compact,
+                                              label: const Text('+6th', style: TextStyle(fontSize: 10)),
+                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 180)))),
+                                            ),
+                                            ActionChip(
+                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+                                              visualDensity: VisualDensity.compact,
+                                              label: const Text('+1năm', style: TextStyle(fontSize: 10)),
+                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 365)))),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ]),
@@ -4203,7 +4455,7 @@ Future<void> _showCreateOrder(
                                 controller: shipping,
                                 onChanged: () => setState(() {})),
                           SizedBox(
-                            width: 180,
+                            width: 210,
                             child: TextField(
                               controller: dueDate,
                               keyboardType: TextInputType.datetime,
@@ -4213,6 +4465,23 @@ Future<void> _showCreateOrder(
                                     : 'Hạn thanh toán (YYYY-MM-DD)',
                                 border: const OutlineInputBorder(),
                                 isDense: true,
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.event_outlined, size: 16),
+                                  tooltip: 'Chọn ngày trên lịch',
+                                  onPressed: () async {
+                                    final now = DateTime.now();
+                                    final cur = DateTime.tryParse(dueDate.text.trim()) ?? now.add(const Duration(days: 30));
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: cur.isBefore(DateTime(2020)) ? now : cur,
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime(now.year + 10),
+                                    );
+                                    if (picked != null) {
+                                      dueDate.text = DateFormat('yyyy-MM-dd').format(picked);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ),
@@ -4405,8 +4674,8 @@ Future<void> _showPayment(
       builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) => AlertDialog(
                   title: Text(order.kind == 'sale'
-                      ? 'Ghi nhận thu nợ'
-                      : 'Ghi nhận trả nợ'),
+                      ? context.tr('debt_record_receipt')
+                      : context.tr('debt_record_deduction')),
                   content: SizedBox(
                       width: 360,
                       child: Column(
@@ -4416,7 +4685,9 @@ Future<void> _showPayment(
                             Text('${order.partyName} · ${order.code}',
                                 style: const TextStyle(fontSize: 12)),
                             const SizedBox(height: 5),
-                            Text('Còn lại ${_money(order.outstanding)}',
+                            Text(
+                                context.tr('debt_dialog_remaining',
+                                    {'amount': _money(order.outstanding)}),
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 12)),
                             const SizedBox(height: 14),
@@ -4424,22 +4695,23 @@ Future<void> _showPayment(
                                 controller: amount,
                                 autofocus: true,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                    labelText: 'Số tiền thanh toán (₫)',
-                                    border: OutlineInputBorder())),
+                                decoration: InputDecoration(
+                                    labelText: context.tr('debt_dialog_amount_label'),
+                                    border: const OutlineInputBorder())),
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
                               initialValue: method,
-                              decoration: const InputDecoration(
-                                  labelText: 'Phương thức',
-                                  border: OutlineInputBorder(),
+                              decoration: InputDecoration(
+                                  labelText: context.tr('debt_dialog_method'),
+                                  border: const OutlineInputBorder(),
                                   isDense: true),
-                              items: const [
+                              items: [
                                 DropdownMenuItem(
-                                    value: 'cash', child: Text('Tiền mặt')),
+                                    value: 'cash',
+                                    child: Text(context.tr('debt_method_cash'))),
                                 DropdownMenuItem(
                                     value: 'bank_transfer',
-                                    child: Text('Chuyển khoản')),
+                                    child: Text(context.tr('debt_method_transfer'))),
                               ],
                               onChanged: (value) => setDialogState(
                                   () => method = value ?? 'cash'),
@@ -4447,15 +4719,15 @@ Future<void> _showPayment(
                             const SizedBox(height: 10),
                             TextField(
                                 controller: reference,
-                                decoration: const InputDecoration(
-                                    labelText: 'Mã giao dịch (không bắt buộc)',
-                                    border: OutlineInputBorder(),
+                                decoration: InputDecoration(
+                                    labelText: context.tr('debt_dialog_ref'),
+                                    border: const OutlineInputBorder(),
                                     isDense: true))
                           ])),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Hủy')),
+                        child: Text(context.tr('btn_cancel'))),
                     FilledButton(
                         onPressed: () async {
                           try {
@@ -4475,8 +4747,8 @@ Future<void> _showPayment(
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(api == null
-                                    ? 'Đã ghi nhận thanh toán trong phiên RAM.'
-                                    : 'Đã ghi nhận thanh toán.'),
+                                    ? context.tr('debt_snack_ram')
+                                    : context.tr('debt_snack_saved')),
                               ),
                             );
                           } catch (error) {
@@ -4484,7 +4756,7 @@ Future<void> _showPayment(
                                 SnackBar(content: Text('$error')));
                           }
                         },
-                        child: const Text('Lưu thanh toán'))
+                        child: Text(context.tr('debt_dialog_btn_save')))
                   ])));
   amount.dispose();
   reference.dispose();

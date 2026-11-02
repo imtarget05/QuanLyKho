@@ -14,6 +14,8 @@ class CommerceProduct {
     required this.minimum,
     required this.cost,
     required this.price,
+    this.purchaseUnit = '',
+    this.conversionRate = 1.0,
   });
 
   final String id;
@@ -25,11 +27,19 @@ class CommerceProduct {
   final double minimum;
   final int cost;
   final int price;
+  final String purchaseUnit;
+  final double conversionRate;
+
+  String get effectivePurchaseUnit => purchaseUnit.isEmpty ? unit : purchaseUnit;
+  bool get hasConversion =>
+      purchaseUnit.isNotEmpty && purchaseUnit != unit && conversionRate != 1.0;
 
   CommerceProduct copyWith({
     double? stock,
     int? cost,
     int? price,
+    String? purchaseUnit,
+    double? conversionRate,
   }) =>
       CommerceProduct(
         id: id,
@@ -41,6 +51,8 @@ class CommerceProduct {
         minimum: minimum,
         cost: cost ?? this.cost,
         price: price ?? this.price,
+        purchaseUnit: purchaseUnit ?? this.purchaseUnit,
+        conversionRate: conversionRate ?? this.conversionRate,
       );
 }
 
@@ -226,6 +238,48 @@ class CommerceStocktake {
       );
 }
 
+@immutable
+class CommerceLocation {
+  const CommerceLocation({
+    required this.id,
+    required this.name,
+    required this.code,
+    this.isDefault = false,
+  });
+
+  final String id;
+  final String name;
+  final String code;
+  final bool isDefault;
+}
+
+@immutable
+class CommerceTransfer {
+  const CommerceTransfer({
+    required this.id,
+    required this.code,
+    required this.productId,
+    required this.productName,
+    required this.fromLocationId,
+    required this.toLocationId,
+    required this.quantity,
+    required this.unit,
+    required this.createdAt,
+    this.note = '',
+  });
+
+  final String id;
+  final String code;
+  final String productId;
+  final String productName;
+  final String fromLocationId;
+  final String toLocationId;
+  final double quantity;
+  final String unit;
+  final DateTime createdAt;
+  final String note;
+}
+
 class _LotBalance {
   _LotBalance({
     required this.lotNo,
@@ -240,6 +294,40 @@ class _LotBalance {
 /// Offline business state. All collections live in process memory, start empty,
 /// and are discarded when the app session ends; this class has no I/O.
 class CommerceMemoryStore extends ChangeNotifier {
+  final List<CommerceLocation> _locations = const [
+    CommerceLocation(id: 'loc-main', name: 'Kho Tổng (Central)', code: 'MAIN', isDefault: true),
+    CommerceLocation(id: 'loc-bar', name: 'Quầy Pha Chế (Bar)', code: 'BAR'),
+    CommerceLocation(id: 'loc-cold', name: 'Kho Lạnh (Cold)', code: 'COLD'),
+  ];
+  List<CommerceLocation> get locations => List.unmodifiable(_locations);
+
+  final List<CommerceTransfer> _transfers = [];
+  List<CommerceTransfer> get transfers => List.unmodifiable(_transfers);
+
+  void transferStock({
+    required String productId,
+    required String fromLocationId,
+    required String toLocationId,
+    required double quantity,
+    String note = '',
+  }) {
+    if (quantity <= 0) return;
+    final p = product(productId);
+    final transfer = CommerceTransfer(
+      id: 'trf-${DateTime.now().millisecondsSinceEpoch}',
+      code: 'CK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      productId: productId,
+      productName: p.name,
+      fromLocationId: fromLocationId,
+      toLocationId: toLocationId,
+      quantity: quantity,
+      unit: p.unit,
+      createdAt: DateTime.now(),
+      note: note,
+    );
+    _transfers.insert(0, transfer);
+    notifyListeners();
+  }
   CommerceMemoryStore._({
     required List<CommerceProduct> products,
     required List<CommerceParty> customers,
@@ -1442,6 +1530,8 @@ class CommerceMemoryStore extends ChangeNotifier {
     required int cost,
     required int price,
     required double minimum,
+    String purchaseUnit = '',
+    double conversionRate = 1.0,
   }) {
     final cleanSku = sku.trim();
     final cleanName = name.trim();
@@ -1466,6 +1556,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       minimum: minimum,
       cost: cost,
       price: price,
+      purchaseUnit: purchaseUnit.trim(),
+      conversionRate: conversionRate <= 0 ? 1.0 : conversionRate,
     );
     _products.add(product);
     notifyListeners();

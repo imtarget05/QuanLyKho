@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/i18n/app_i18n.dart';
 import '../../core/util/csv_export.dart';
 import 'commerce_memory_store.dart';
 
@@ -155,23 +156,23 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Báo cáo Xuất Nhập Tồn NVL & TP',
-                    style: TextStyle(
+                    context.tr('reports_lenakolia_title'),
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: _slate900,
                       letterSpacing: -.5,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'Tổng hợp doanh thu, giá vốn, lợi nhuận gộp và sổ kho nguyên vật liệu - thành phẩm.',
-                    style: TextStyle(fontSize: 12, color: _slate500),
+                    context.tr('reports_lenakolia_subtitle'),
+                    style: const TextStyle(fontSize: 12, color: _slate500),
                   ),
                 ],
               ),
@@ -187,7 +188,15 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
           children: [
             for (final p in _periods)
               ChoiceChip(
-                label: Text(p),
+                label: Text(p == 'Hôm nay'
+                    ? context.tr('orders_filter_today')
+                    : p == '7 ngày qua'
+                        ? context.tr('orders_filter_7d')
+                        : p == '30 ngày qua'
+                            ? context.tr('orders_filter_30d')
+                            : p == 'Năm nay'
+                                ? context.tr('reports_period_this_year')
+                                : context.tr('reports_period_custom')),
                 selected: _period == p,
                 onSelected: (_) => p == 'Tùy chỉnh'
                     ? _chooseRange()
@@ -245,13 +254,13 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: _slate900),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
-                        value: 'Tất cả', child: Text('Tất cả phân loại')),
+                        value: 'Tất cả', child: Text(context.tr('reports_cat_all'))),
                     DropdownMenuItem(
-                        value: 'NVL', child: Text('Nguyên vật liệu (NVL)')),
+                        value: 'NVL', child: Text(context.tr('reports_cat_raw'))),
                     DropdownMenuItem(
-                        value: 'TP', child: Text('Thành phẩm (TP)')),
+                        value: 'TP', child: Text(context.tr('reports_cat_finished'))),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _itemTypeFilter = val);
@@ -273,7 +282,7 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
         OutlinedButton.icon(
           onPressed: _exportExcel,
           icon: const Icon(Icons.table_chart_outlined, size: 16),
-          label: const Text('Xuất Excel (XLSX)'),
+          label: Text(context.tr('reports_export_xlsx')),
           style: OutlinedButton.styleFrom(
             foregroundColor: _slate900,
             side: const BorderSide(color: _border),
