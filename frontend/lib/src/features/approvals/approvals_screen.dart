@@ -1130,6 +1130,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final user = SessionScope.maybeOf(context)?.user;
+        final currentUserId = user?.id ?? '';
         final roles = RoleVisibility.rolesOf(user);
         final canApprove = RoleVisibility.canApprove(roles);
 
@@ -1681,6 +1682,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                                                       vertical: 10),
                                             ),
                                           ),
+                                          // Chặn tự duyệt: người tạo yêu cầu không được duyệt phiếu của chính mình (4 mắt)
+                                          if (canApprove && item.maker != currentUserId)
                                           FilledButton.icon(
                                             key: Key('btn-approve-${item.id}'),
                                             onPressed: _busy

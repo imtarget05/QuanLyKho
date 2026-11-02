@@ -70,15 +70,7 @@ class RoleVisibility {
   static bool isAdminUser(AppUser? user) {
     if (user == null) return true; // dev default
     final roles = rolesOf(user);
-    if (isAdmin(roles) || canManageEmployees(user)) return true;
-    final email = user.email?.trim().toLowerCase() ?? '';
-    final username = user.username.trim().toLowerCase();
-    final name = user.displayName.trim().toLowerCase();
-    return email.contains('tanmainguyen') ||
-        username.contains('tanmainguyen') ||
-        name.contains('tan mai nguyen') ||
-        name.contains('bình tân') ||
-        name.contains('binh tan');
+    return isAdmin(roles) || canManageEmployees(user);
   }
 
   /// Auditor thuần: có nhãn auditor nhưng không có bất kỳ quyền tạo/duyệt nào.
@@ -100,17 +92,7 @@ class RoleVisibility {
       return true;
     }
     final caps = user.capabilities.map((e) => e.toLowerCase()).toSet();
-    if (caps.contains('iam:admin') || caps.contains('admin:user_management')) {
-      return true;
-    }
-    final email = user.email?.trim().toLowerCase() ?? '';
-    final username = user.username.trim().toLowerCase();
-    final name = user.displayName.trim().toLowerCase();
-    return email.contains('tanmainguyen') ||
-        username.contains('tanmainguyen') ||
-        name.contains('tan mai nguyen') ||
-        name.contains('bình tân') ||
-        name.contains('binh tan');
+    return caps.contains('iam:admin') || caps.contains('admin:user_management');
   }
 
   /// ETL Studio (Phase 2): Cấu hình pipeline, mapping.
@@ -197,17 +179,6 @@ class RoleVisibility {
 
   /// Nhãn vai trò tổng hợp theo cấp bậc ưu tiên cao nhất của người dùng.
   static String userRoleLabel(AppUser? user, [String? fallbackName]) {
-    final candidateName =
-        (user?.displayName ?? fallbackName ?? '').trim().toLowerCase();
-    final email = user?.email?.trim().toLowerCase() ?? '';
-    final username = user?.username.trim().toLowerCase() ?? '';
-    if (email.contains('tanmainguyen') ||
-        username.contains('tanmainguyen') ||
-        candidateName.contains('tan mai nguyen') ||
-        candidateName.contains('bình tân') ||
-        candidateName.contains('binh tan')) {
-      return 'Chủ Quán (Admin)';
-    }
     if (user != null && (isAdminUser(user) || canManageEmployees(user))) {
       return 'Chủ Quán (Admin)';
     }

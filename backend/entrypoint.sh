@@ -42,20 +42,12 @@ if [ -z "${BANKOPS_SIGNING_KEY:-}" ]; then
     esac
 fi
 
-# --- Migrations: FAIL FAST -----------------------------------------------
-# Migration lỗi => KHÔNG được start server với schema cũ (app sẽ chạy nhưng
-# mọi truy vấn vào bảng/cột chưa migrate sẽ vỡ lúc runtime, lúc đó mới lộ
-# lỗi). `set -e` + `if ! ...` -> exit code khác 0 => container dừng, orchestrator
-# rollback, không phục vụ người dùng với dữ liệu nửa vời.
-if [ -n "${DATABASE_URL:-}" ]; then
-    echo "[Entrypoint] Running database migrations (alembic upgrade head)..."
-    if ! alembic upgrade head; then
-        echo "[Entrypoint] FATAL: 'alembic upgrade head' thất bại -> DỪNG khởi động server (không chạy với schema cũ)." >&2
-        exit 1
-    fi
-else
-    echo "[Entrypoint] DATABASE_URL is not set. Skipping alembic upgrade head."
-fi
+# --- Migrations: SKIP (handled by ArgoCD PreSync Job) --------------------
+# Migration chạy riêng qua ArgoCD PreSync Hook Job
+# (infra/k8s/base/migration-job.yaml, argocd.argoproj.io/hook: PreSync)
+# trước khi Deployment rollout. Mỗi pod khởi động KHÔNG tự chạy alembic
+# để tránh race condition database lock khi HPA scale lên nhiều pod cùng lúc.
+echo "[Entrypoint] Skipping alembic upgrade head — migration được xử lý bởi ArgoCD PreSync Job (migration-job.yaml)."
 
 # --- Reverse proxy --------------------------------------------------------
 # Sau nginx/Cloudflare/Traefik, mọi request đến từ IP của proxy. uvicorn chỉ

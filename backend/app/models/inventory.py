@@ -325,3 +325,41 @@ class StocktakeLine(Base):
 
     def __repr__(self):
         return f"<StocktakeLine item={self.item_id} book={self.book_qty} counted={self.counted_qty} diff={self.variance}>"
+
+
+# Sub-ledger kho (bút toán kép, docs/04). Mỗi inv_request có tối đa một journal;
+# reversal là journal mới đảo chiều, liên kết original qua reversal_of (không sửa
+# entry cũ). Tương tự CashJournal/CashEntry trong cash_sim.py.
+class InventoryJournal(Base, TimestampMixin):
+    __tablename__ = "inv_journals"
+
+    id: str = Column(UUID(as_uuid=True), primary_key=True)
+    request_id: str = Column(
+        UUID(as_uuid=True), ForeignKey("inv_requests.id"), unique=True, nullable=False
+    )
+    posted_at = Column(DateTime(timezone=True), nullable=True)
+    reversal_of: str = Column(UUID(as_uuid=True), ForeignKey("inv_journals.id"), nullable=True)
+    correlation_id: str = Column(String(64), nullable=False)
+
+    def __repr__(self):
+        return f"<InventoryJournal request={self.request_id}>"
+
+
+class InventoryEntry(Base):
+    __tablename__ = "inv_journal_entries"
+    __table_args__ = (
+        CheckConstraint("debit >= 0 AND credit >= 0", name="debit_credit_non_negative"),
+        CheckConstraint(
+            "(debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0)",
+            name="exactly_one_positive",
+        ),
+    )
+
+    id: str = Column(UUID(as_uuid=True), primary_key=True)
+    journal_id: str = Column(UUID(as_uuid=True), ForeignKey("inv_journals.id"), nullable=False)
+    account_code: str = Column(String(128), nullable=False)
+    debit = Column(Numeric(20, 2), nullable=False, default=0)
+    credit = Column(Numeric(20, 2), nullable=False, default=0)
+
+    def __repr__(self):
+        return f"<InventoryEntry {self.account_code} dr={self.debit} cr={self.credit}>"

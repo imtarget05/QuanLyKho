@@ -47,6 +47,8 @@ from app.models.inventory import (
     Asset,
     AssetLog,
     Balance,
+    InventoryEntry,
+    InventoryJournal,
     InventoryRequest,
     InventoryRequestLine,
     Item,
@@ -1722,6 +1724,72 @@ async def _deduct_stock_fefo(
     return deductions
 
 
+async def _post_inventory_journal(
+    db: AsyncSession,
+    req: InventoryRequest,
+    lines: list[InventoryRequestLine],
+    now: datetime,
+    correlation_id: str,
+) -> None:
+    """Ghi bút toán kế toán kép vào inv_journals / inv_journal_entries (P0-3 GL Silo)."""
+    journal = InventoryJournal(
+        id=uuid.uuid4(),
+        request_id=req.id,
+        posted_at=now,
+        correlation_id=correlation_id,
+        reversal_of=None,
+    )
+    db.add(journal)
+    await db.flush()
+
+    amount = _ZERO
+    for ln in lines:
+        qty = Decimal(str(ln.quantity))
+        unit_price = getattr(ln, "unit_price", None)
+        if unit_price is not None:
+            amount += qty * Decimal(str(unit_price))
+        else:
+            amount += qty
+
+    if amount <= _ZERO:
+        return
+
+    entries: list[InventoryEntry] = []
+    kind = req.kind
+    if kind == "receipt":
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=amount, credit=Decimal("0"))
+        )
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="331", debit=Decimal("0"), credit=amount)
+        )
+    elif kind == "issue":
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="632", debit=amount, credit=Decimal("0"))
+        )
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=Decimal("0"), credit=amount)
+        )
+    elif kind == "transfer":
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=amount, credit=Decimal("0"))
+        )
+        entries.append(
+            InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=Decimal("0"), credit=amount)
+        )
+    elif kind == "adjustment":
+        direction = getattr(lines[0], "direction", "increase") if lines else "increase"
+        if direction == "decrease":
+            entries.append(
+                InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=Decimal("0"), credit=amount)
+            )
+        else:
+            entries.append(
+                InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=amount, credit=Decimal("0"))
+            )
+    db.add_all(entries)
+
+
 @router.post("/inventory/requests/{request_id}/approve")
 async def approve_request(
     request_id: str,
@@ -2264,6 +2332,14 @@ async def approve_request(
     )
     await _audit(db, user.id, "inventory.request.approved", req, before)
     await _outbox(db, "inventory.request.approved", req, {})
+    existing_journal = (
+        await db.execute(
+            select(InventoryJournal).where(InventoryJournal.request_id == req.id)
+        )
+    ).scalar_one_or_none()
+    if existing_journal is None:
+        correlation_id = uuid.uuid4().hex[:12]
+        await _post_inventory_journal(db, req, lines, now, correlation_id)
     await db.commit()
     record_approval_decision("inventory", "approved", req.submitted_at)
     await db.refresh(req)

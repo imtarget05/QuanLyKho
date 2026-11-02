@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -36,6 +37,12 @@ class HttpBankOpsRepository implements BankOpsRepository {
   late final StreamController<String> _approvalStreamCtrl;
   bool _sseActive = false;
   bool _disposed = false;
+  late final String _idemKeyInstance =
+      'idem-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1 << 31)}';
+  late final Map<String, String> _idemInstance = {
+    'Idempotency-Key':
+        'fe_${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(1 << 31)}',
+  };
 
   void _startSse() {
     if (_sseActive || _disposed) return;
@@ -111,9 +118,7 @@ class HttpBankOpsRepository implements BankOpsRepository {
     return headers;
   }
 
-  Map<String, String> _idem() => {
-        'Idempotency-Key': 'fe_${DateTime.now().microsecondsSinceEpoch}',
-      };
+  Map<String, String> _idem() => _idemInstance;
 
   Never _throwEnvelope(http.Response resp) {
     String code = 'HTTP_${resp.statusCode}';
@@ -1507,8 +1512,7 @@ class HttpBankOpsRepository implements BankOpsRepository {
 
   // ---- integrations / reconciliations / reports ----
 
-  String _idemKey() =>
-      'idem-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(this)}';
+  String _idemKey() => _idemKeyInstance;
 
   StagingPreview _parseStagingPreview(Map<String, dynamic> body) {
     final rows = _asList(body, 'rows').whereType<Map>().map((r) {

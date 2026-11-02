@@ -1,12 +1,16 @@
-"""STEP 5 — `entrypoint.sh` phải FAIL-FAST khi migration lỗi.
+"""P0-7 — `entrypoint.sh` KHÔNG gọi alembic (migration do ArgoCD PreSync Job),
+vẫn start uvicorn thành công, exit 0.
 
-Residual: `alembic upgrade head || echo "WARNING ... Proceeding with server
-start"` -> app vẫn khởi động với schema cũ, lỗi chỉ lộ ra lúc runtime.
+Migration chạy riêng qua ArgoCD PreSync Job (infra/k8s/base/migration-job.yaml,
+argocd.argoproj.io/hook: PreSync) trước khi Deployment rollout. Mỗi pod khởi
+động KHÔNG tự chạy alembic để tránh race condition database lock khi HPA scale
+lên nhiều pod cùng lúc.
 
 Test chạy THẬT `backend/entrypoint.sh` với `alembic`/`uvicorn` giả (trong
-thư mục tạm, đưa vào PATH) để kiểm chứng **hành vi**:
-- migration fail -> script exit khác 0 và KHÔNG gọi uvicorn;
-- migration ok   -> script gọi uvicorn (và truyền `--forwarded-allow-ips`).
+thư mục tạm, đưa vào PATH), `APP_ENV=demo` để kiểm chứng **hành vi**:
+- alembic KHÔNG được gọi (`alembic-called` KHÔNG tồn tại);
+- log có "Skipping alembic upgrade head";
+- uvicorn được start với `app.main:app`, exit 0.
 """
 from __future__ import annotations
 
@@ -20,14 +24,16 @@ ENTRYPOINT = BACKEND_DIR / "entrypoint.sh"
 
 
 def _make_fake_bin(tmp_path: Path, alembic_exit: int) -> tuple[Path, Path]:
-    """Tạo thư mục bin giả với `alembic` (exit code cho trước) và `uvicorn`."""
+    """Tạo thư mục bin giả với `alembic` (ghi marker `alembic-called`) và `uvicorn`."""
     bindir = tmp_path / "bin"
     bindir.mkdir()
     marker = tmp_path / "uvicorn-args.txt"
+    alembic_called = tmp_path / "alembic-called"
 
     alembic = bindir / "alembic"
     alembic.write_text(
         "#!/bin/sh\n"
+        f'touch "{alembic_called}"\n'
         f'echo "fake alembic called" >&2\n'
         f"exit {alembic_exit}\n",
         encoding="utf-8",
@@ -69,20 +75,22 @@ def _run_entrypoint(tmp_path: Path, alembic_exit: int, extra_env: dict | None = 
     return proc, args
 
 
-def test_migration_failure_aborts_before_starting_server(tmp_path):
-    """Migration lỗi -> script exit != 0 và KHÔNG start uvicorn."""
-    proc, uvicorn_args = _run_entrypoint(tmp_path, alembic_exit=1)
+def test_entrypoint_skips_alembic_and_starts_server(tmp_path):
+    """P0-7: entrypoint KHÔNG gọi alembic, vẫn start uvicorn thành công, exit 0."""
+    alembic_called = tmp_path / "alembic-called"
+    proc, uvicorn_args = _run_entrypoint(tmp_path, alembic_exit=0)
 
-    assert proc.returncode != 0, (
-        f"entrypoint phải FAIL khi 'alembic upgrade head' lỗi, nhưng exit "
-        f"{proc.returncode}.\nstdout: {proc.stdout}\nstderr: {proc.stderr}"
+    assert proc.returncode == 0, (
+        f"entrypoint phải exit 0 khi bỏ qua alembic, thấy {proc.returncode}: "
+        f"{proc.stdout}\n{proc.stderr}"
     )
-    assert uvicorn_args is None, (
-        f"entrypoint KHÔNG được start server khi migration lỗi, nhưng đã gọi "
-        f"uvicorn với: {uvicorn_args!r}"
+    assert not alembic_called.exists(), (
+        f"entrypoint KHÔNG được gọi alembic (P0-7), nhưng marker đã tạo: {alembic_called}"
     )
-    assert "FATAL" in (proc.stderr + proc.stdout), (
-        f"phải log rõ lý do dừng, thấy: {proc.stdout}\n{proc.stderr}"
+    assert uvicorn_args is not None, "entrypoint phải start uvicorn khi bỏ qua alembic"
+    assert "app.main:app" in uvicorn_args, uvicorn_args
+    assert "Skipping alembic upgrade head" in (proc.stdout + proc.stderr), (
+        f"phải log 'Skipping alembic upgrade head', thấy: {proc.stdout}\n{proc.stderr}"
     )
 
 

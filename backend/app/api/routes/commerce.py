@@ -27,6 +27,8 @@ from app.models.commerce import (
 from app.models.expense import Supplier
 from app.models.inventory import (
     Balance,
+    InventoryEntry,
+    InventoryJournal,
     InventoryRequest,
     InventoryRequestLine,
     Item,
@@ -673,6 +675,42 @@ async def create_document(
                 )
             )
     await db.flush()
+
+    if inventory_request is not None and payload.document_type in ("sale", "purchase"):
+        if payload.document_type == "sale":
+            debit_code, credit_code = "111", "632"
+        else:
+            debit_code, credit_code = "156", "331"
+        journal = InventoryJournal(
+            id=uuid.uuid4(),
+            request_id=inventory_request.id,
+            posted_at=datetime.now(UTC),
+            correlation_id=code,
+            reversal_of=None,
+        )
+        db.add(journal)
+        await db.flush()  # flush journal trước để có id trong inv_journals
+
+        db.add_all(
+            [
+                InventoryEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code=debit_code,
+                    debit=total,
+                    credit=Decimal("0"),
+                ),
+                InventoryEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code=credit_code,
+                    debit=Decimal("0"),
+                    credit=total,
+                ),
+            ]
+        )
+        await db.flush()  # rồi flush entries
+
     lines = (await db.execute(select(CommerceDocumentLine).where(CommerceDocumentLine.document_id == document.id))).scalars().all()
     response = _document_out(document, lines)
     await _audit_and_outbox(db, user, "commerce.document.created", document, {"code": code, "status": status})

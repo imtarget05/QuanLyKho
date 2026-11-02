@@ -15,6 +15,7 @@ from app.api.observability import record_approval_decision
 from app.api.routes.auth import get_current_user
 from app.api.routes.auth_utils import (
     get_accessible_cashbox_ids,
+    get_user_scope_grants,
     require_any_capability,
 )
 from app.config import settings
@@ -86,6 +87,28 @@ def _now() -> datetime:
 async def _visible_cashbox_ids(db: AsyncSession, user) -> set[uuid.UUID] | None:
     """Wrapper cục bộ -> helper dùng chung trong `auth_utils`."""
     return await get_accessible_cashbox_ids(db, user)
+
+async def _require_cashbox_scope(
+    db: AsyncSession, user, cashbox_id: uuid.UUID
+) -> None:
+    """Chặn IDOR liên chi nhánh: két phải thuộc chi nhánh của user hiện tại.
+
+    User KHÔNG bị giới hạn chi nhánh (không có branch_id và không có ScopeGrant
+    có branch_id) -> cho phép tất cả két. Ngược lại dùng
+    `get_accessible_cashbox_ids` (None = admin, hoặc kiểm tra cashbox_id trong
+    visible). Nếu `cashbox_id` không trong `visible` -> 403 FORBIDDEN.
+    """
+    user_branch_id = getattr(user, "branch_id", None)
+    grants = await get_user_scope_grants(db, user.id)
+    if user_branch_id is None and not any(
+        getattr(g, "branch_id", None) is not None for g in grants
+    ):
+        return
+    visible = await get_accessible_cashbox_ids(db, user)
+    if visible is None:
+        return
+    if cashbox_id not in visible:
+        raise AppError(403, "FORBIDDEN", "Két tiền không thuộc chi nhánh của bạn")
 
 
 def _cashbox_id(payload: dict[str, Any]) -> uuid.UUID | None:
@@ -601,6 +624,7 @@ async def delete_cash_request(
     req = (await db.execute(select(CashRequest).where(CashRequest.id == rid))).scalars().first()
     if not req:
         raise AppError(404, "REQUEST_NOT_FOUND", "Không tìm thấy phiếu quỹ")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     # S5 (IDOR) — chỉ chủ sở hữu phiếu mới được xoá phiếu nháp.
     if str(req.maker_id) != str(user.id):
         raise AppError(403, "FORBIDDEN", "Chỉ người lập phiếu mới được xoá phiếu này.")
@@ -657,6 +681,7 @@ async def create_cash_request(
         raise AppError(422, "INVALID_AMOUNT", f"amount phải > 0, nhận {amount}")
     if cashbox_id is None:
         raise AppError(422, "CASHBOX_NOT_FOUND", "Két quỹ không tồn tại.")
+    await _require_cashbox_scope(db, user, cashbox_id)
 
     # Key đã dùng trước đó và còn sống trong DB (bền vững qua restart, R2):
     # replay phiếu cũ, không tạo phiếu trùng. Tra trước store in-memory để
@@ -716,6 +741,7 @@ async def submit_cash_request(
     req = await _load_request(db, uuid.UUID(request_id))
     if req is None:
         raise AppError(404, "NOT_FOUND", "Phiếu không tồn tại")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     if str(req.maker_id) != str(user.id):
         raise AppError(403, "FORBIDDEN", "Chỉ người lập phiếu mới được gửi đi duyệt.")
     if req.status not in ("draft", "returned"):
@@ -793,6 +819,7 @@ async def approve_cash_request(
     box = await _balance_for_box(db, req.cashbox_id, for_update=True)
     if box is None:
         raise AppError(404, "CASHBOX_NOT_FOUND", "Két quỹ không tồn tại.")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     amount = Decimal(str(req.amount))
     is_receipt = req.kind == "receipt"
     # Chiều TĂNG quỹ = tiền VÀO két (`receipt`, `adjustment_in`); chiều còn
@@ -893,6 +920,7 @@ async def reject_cash_request(
     req = await _load_request(db, uuid.UUID(request_id))
     if req is None:
         raise AppError(404, "NOT_FOUND", "Phiếu không tồn tại")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     if str(req.maker_id) == str(user.id):
         raise AppError(403, "SELF_APPROVAL_FORBIDDEN", "Bạn không được tự từ chối phiếu của chính mình.")
     caps = await _user_capabilities(db, user.id)
@@ -932,6 +960,7 @@ async def return_cash_request(
     req = await _load_request(db, uuid.UUID(request_id))
     if req is None:
         raise AppError(404, "NOT_FOUND", "Phiếu không tồn tại")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     if str(req.maker_id) == str(user.id):
         raise AppError(403, "SELF_APPROVAL_FORBIDDEN", "Bạn không được tự trả về phiếu của chính mình.")
     caps = await _user_capabilities(db, user.id)
@@ -1021,6 +1050,7 @@ async def reverse_cash_request(
     box = await _balance_for_box(db, req.cashbox_id, for_update=True)
     if box is None:
         raise AppError(404, "CASHBOX_NOT_FOUND", "Két quỹ không tồn tại.")
+    await _require_cashbox_scope(db, user, req.cashbox_id)
     amount = Decimal(str(req.amount))
     # Đảo phiếu gốc làm TĂNG quỹ (`receipt`, `adjustment_in`) -> đảo lại làm
     # GIẢM quỹ (cần đủ tiền trong két). Ngược lại, đảo phiếu chi làm TĂNG quỹ.
