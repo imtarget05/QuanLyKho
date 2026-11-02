@@ -205,6 +205,7 @@ class CommerceStocktake {
     }
     return c;
   }
+
   int get decreaseCount {
     var c = 0;
     for (final e in counts.entries) {
@@ -261,46 +262,254 @@ class CommerceMemoryStore extends ChangeNotifier {
 
   factory CommerceMemoryStore.demo() {
     final products = <CommerceProduct>[
-      const CommerceProduct(id: 'p-sy001', sku: 'SY001', name: 'Đường syrup', category: 'Nguyên liệu', unit: 'chai', stock: 0, minimum: 20, cost: 120000, price: 160000),
-      const CommerceProduct(id: 'p-bm02', sku: 'BM02', name: 'Bánh Tiramisu', category: 'Thực phẩm', unit: 'cái', stock: 15, minimum: 15, cost: 25000, price: 45000),
-      const CommerceProduct(id: 'p-mp015', sku: 'MP015', name: 'Máy pha mini', category: 'Thiết bị', unit: 'máy', stock: 2, minimum: 3, cost: 1500000, price: 2300000),
-      const CommerceProduct(id: 'p-bt018', sku: 'BT018', name: 'Bánh cheesecake', category: 'Thực phẩm', unit: 'cái', stock: 3, minimum: 10, cost: 28000, price: 50000),
-      const CommerceProduct(id: 'p-nl023', sku: 'NL023', name: 'Bột quế', category: 'Nguyên liệu', unit: 'gói', stock: 3, minimum: 6, cost: 106666, price: 150000),
-      const CommerceProduct(id: 'p-hg005', sku: 'HG005', name: 'Hộp giấy', category: 'Bao bì', unit: 'hộp', stock: 181, minimum: 50, cost: 71050, price: 95000),
-      const CommerceProduct(id: 'p-tc099', sku: 'TC099', name: 'Trân châu', category: 'Nguyên liệu', unit: 'kg', stock: 223, minimum: 20, cost: 40000, price: 75000),
-      const CommerceProduct(id: 'p-tm027', sku: 'TM027', name: 'Máy xay lớn', category: 'Thiết bị', unit: 'máy', stock: 59, minimum: 2, cost: 511000, price: 850000),
-      const CommerceProduct(id: 'p-cp001', sku: 'CP001', name: 'Cà phê rang xay', category: 'Nguyên liệu', unit: 'kg', stock: 304, minimum: 50, cost: 125000, price: 180000),
-      const CommerceProduct(id: 'p-cc002', sku: 'CC002', name: 'Bột cacao', category: 'Nguyên liệu', unit: 'hộp', stock: 84, minimum: 20, cost: 90000, price: 135000),
-      const CommerceProduct(id: 'p-st010', sku: 'ST010', name: 'Sữa tươi', category: 'Nguyên liệu', unit: 'hộp', stock: 179, minimum: 30, cost: 18000, price: 28000),
-      const CommerceProduct(id: 'p-td011', sku: 'TD011', name: 'Trà đào túi lọc', category: 'Nguyên liệu', unit: 'gói', stock: 80, minimum: 25, cost: 35000, price: 55000),
-      const CommerceProduct(id: 'p-ln001', sku: 'LN001', name: 'Ly nhựa', category: 'Bao bì', unit: 'ly', stock: 600, minimum: 100, cost: 1000, price: 2000),
-      const CommerceProduct(id: 'p-kb003', sku: 'KB003', name: 'Kem béo', category: 'Nguyên liệu', unit: 'hộp', stock: 45, minimum: 15, cost: 65000, price: 95000),
-      const CommerceProduct(id: 'p-bc016', sku: 'BC016', name: 'Bánh croissant', category: 'Thực phẩm', unit: 'cái', stock: 45, minimum: 10, cost: 22000, price: 39000),
+      const CommerceProduct(
+          id: 'p-sy001',
+          sku: 'SY001',
+          name: 'Đường syrup',
+          category: 'Nguyên liệu',
+          unit: 'chai',
+          stock: 0,
+          minimum: 20,
+          cost: 120000,
+          price: 160000),
+      const CommerceProduct(
+          id: 'p-bm02',
+          sku: 'BM02',
+          name: 'Bánh Tiramisu',
+          category: 'Thực phẩm',
+          unit: 'cái',
+          stock: 15,
+          minimum: 15,
+          cost: 25000,
+          price: 45000),
+      const CommerceProduct(
+          id: 'p-mp015',
+          sku: 'MP015',
+          name: 'Máy pha mini',
+          category: 'Thiết bị',
+          unit: 'máy',
+          stock: 2,
+          minimum: 3,
+          cost: 1500000,
+          price: 2300000),
+      const CommerceProduct(
+          id: 'p-bt018',
+          sku: 'BT018',
+          name: 'Bánh cheesecake',
+          category: 'Thực phẩm',
+          unit: 'cái',
+          stock: 3,
+          minimum: 10,
+          cost: 28000,
+          price: 50000),
+      const CommerceProduct(
+          id: 'p-nl023',
+          sku: 'NL023',
+          name: 'Bột quế',
+          category: 'Nguyên liệu',
+          unit: 'gói',
+          stock: 3,
+          minimum: 6,
+          cost: 106666,
+          price: 150000),
+      const CommerceProduct(
+          id: 'p-hg005',
+          sku: 'HG005',
+          name: 'Hộp giấy',
+          category: 'Bao bì',
+          unit: 'hộp',
+          stock: 181,
+          minimum: 50,
+          cost: 71050,
+          price: 95000),
+      const CommerceProduct(
+          id: 'p-tc099',
+          sku: 'TC099',
+          name: 'Trân châu',
+          category: 'Nguyên liệu',
+          unit: 'kg',
+          stock: 223,
+          minimum: 20,
+          cost: 40000,
+          price: 75000),
+      const CommerceProduct(
+          id: 'p-tm027',
+          sku: 'TM027',
+          name: 'Máy xay lớn',
+          category: 'Thiết bị',
+          unit: 'máy',
+          stock: 59,
+          minimum: 2,
+          cost: 511000,
+          price: 850000),
+      const CommerceProduct(
+          id: 'p-cp001',
+          sku: 'CP001',
+          name: 'Cà phê rang xay',
+          category: 'Nguyên liệu',
+          unit: 'kg',
+          stock: 304,
+          minimum: 50,
+          cost: 125000,
+          price: 180000),
+      const CommerceProduct(
+          id: 'p-cc002',
+          sku: 'CC002',
+          name: 'Bột cacao',
+          category: 'Nguyên liệu',
+          unit: 'hộp',
+          stock: 84,
+          minimum: 20,
+          cost: 90000,
+          price: 135000),
+      const CommerceProduct(
+          id: 'p-st010',
+          sku: 'ST010',
+          name: 'Sữa tươi',
+          category: 'Nguyên liệu',
+          unit: 'hộp',
+          stock: 179,
+          minimum: 30,
+          cost: 18000,
+          price: 28000),
+      const CommerceProduct(
+          id: 'p-td011',
+          sku: 'TD011',
+          name: 'Trà đào túi lọc',
+          category: 'Nguyên liệu',
+          unit: 'gói',
+          stock: 80,
+          minimum: 25,
+          cost: 35000,
+          price: 55000),
+      const CommerceProduct(
+          id: 'p-ln001',
+          sku: 'LN001',
+          name: 'Ly nhựa',
+          category: 'Bao bì',
+          unit: 'ly',
+          stock: 600,
+          minimum: 100,
+          cost: 1000,
+          price: 2000),
+      const CommerceProduct(
+          id: 'p-kb003',
+          sku: 'KB003',
+          name: 'Kem béo',
+          category: 'Nguyên liệu',
+          unit: 'hộp',
+          stock: 45,
+          minimum: 15,
+          cost: 65000,
+          price: 95000),
+      const CommerceProduct(
+          id: 'p-bc016',
+          sku: 'BC016',
+          name: 'Bánh croissant',
+          category: 'Thực phẩm',
+          unit: 'cái',
+          stock: 45,
+          minimum: 10,
+          cost: 22000,
+          price: 39000),
     ];
 
     final customers = <CommerceParty>[
-      const CommerceParty(id: 'c-1', name: 'Quán Trà Nhà Gió', kind: 'customer', phone: '0901234567'),
-      const CommerceParty(id: 'c-2', name: 'Thanh Tuyền', kind: 'customer', phone: '0912345678'),
-      const CommerceParty(id: 'c-3', name: 'NexUp', kind: 'customer', phone: '0988776655'),
-      const CommerceParty(id: 'c-4', name: 'Cửa hàng An Nhiên', kind: 'customer', phone: '0933221100'),
-      const CommerceParty(id: 'c-5', name: 'Đại lý Hoàng Gia', kind: 'customer', phone: '0944556677'),
-      const CommerceParty(id: 'c-6', name: 'Shop Mộc Nhiên', kind: 'customer', phone: '0922334455'),
-      const CommerceParty(id: 'c-7', name: 'Công ty Minh An', kind: 'customer', phone: '0966778899'),
-      const CommerceParty(id: 'c-8', name: 'Khách vãng lai', kind: 'customer', phone: '0900000000'),
-      const CommerceParty(id: 'c-9', name: 'Công ty Gia Phát', kind: 'customer', phone: '0977889900'),
-      const CommerceParty(id: 'c-10', name: 'Siêu thị Mini Hòa Bình', kind: 'customer', phone: '0911223344'),
-      const CommerceParty(id: 'c-11', name: 'Cafe Mây Trắng', kind: 'customer', phone: '0955667788'),
+      const CommerceParty(
+          id: 'c-1',
+          name: 'Quán Trà Nhà Gió',
+          kind: 'customer',
+          phone: '0901234567'),
+      const CommerceParty(
+          id: 'c-2',
+          name: 'Thanh Tuyền',
+          kind: 'customer',
+          phone: '0912345678'),
+      const CommerceParty(
+          id: 'c-3', name: 'NexUp', kind: 'customer', phone: '0988776655'),
+      const CommerceParty(
+          id: 'c-4',
+          name: 'Cửa hàng An Nhiên',
+          kind: 'customer',
+          phone: '0933221100'),
+      const CommerceParty(
+          id: 'c-5',
+          name: 'Đại lý Hoàng Gia',
+          kind: 'customer',
+          phone: '0944556677'),
+      const CommerceParty(
+          id: 'c-6',
+          name: 'Shop Mộc Nhiên',
+          kind: 'customer',
+          phone: '0922334455'),
+      const CommerceParty(
+          id: 'c-7',
+          name: 'Công ty Minh An',
+          kind: 'customer',
+          phone: '0966778899'),
+      const CommerceParty(
+          id: 'c-8',
+          name: 'Khách vãng lai',
+          kind: 'customer',
+          phone: '0900000000'),
+      const CommerceParty(
+          id: 'c-9',
+          name: 'Công ty Gia Phát',
+          kind: 'customer',
+          phone: '0977889900'),
+      const CommerceParty(
+          id: 'c-10',
+          name: 'Siêu thị Mini Hòa Bình',
+          kind: 'customer',
+          phone: '0911223344'),
+      const CommerceParty(
+          id: 'c-11',
+          name: 'Cafe Mây Trắng',
+          kind: 'customer',
+          phone: '0955667788'),
     ];
 
     final suppliers = <CommerceParty>[
-      const CommerceParty(id: 's-1', name: 'Nguyên Liệu Pha Chế Pro', kind: 'supplier', phone: '0283838383'),
-      const CommerceParty(id: 's-2', name: 'Thực phẩm GreenFarm', kind: 'supplier', phone: '0283939393'),
-      const CommerceParty(id: 's-3', name: 'NCC An Phát', kind: 'supplier', phone: '0283737373'),
-      const CommerceParty(id: 's-4', name: 'Nông sản Sạch Việt', kind: 'supplier', phone: '0283636363'),
-      const CommerceParty(id: 's-5', name: 'Sản xuất Bao Bì Tấn Việt', kind: 'supplier', phone: '0283535353'),
-      const CommerceParty(id: 's-6', name: 'Nhà phân phối Đông Á', kind: 'supplier', phone: '0283434343'),
-      const CommerceParty(id: 's-7', name: 'Công ty Hoàng Nam', kind: 'supplier', phone: '0283333333'),
-      const CommerceParty(id: 's-8', name: 'Bao bì Việt Phú', kind: 'supplier', phone: '0283232323'),
+      const CommerceParty(
+          id: 's-1',
+          name: 'Nguyên Liệu Pha Chế Pro',
+          kind: 'supplier',
+          phone: '0283838383'),
+      const CommerceParty(
+          id: 's-2',
+          name: 'Thực phẩm GreenFarm',
+          kind: 'supplier',
+          phone: '0283939393'),
+      const CommerceParty(
+          id: 's-3',
+          name: 'NCC An Phát',
+          kind: 'supplier',
+          phone: '0283737373'),
+      const CommerceParty(
+          id: 's-4',
+          name: 'Nông sản Sạch Việt',
+          kind: 'supplier',
+          phone: '0283636363'),
+      const CommerceParty(
+          id: 's-5',
+          name: 'Sản xuất Bao Bì Tấn Việt',
+          kind: 'supplier',
+          phone: '0283535353'),
+      const CommerceParty(
+          id: 's-6',
+          name: 'Nhà phân phối Đông Á',
+          kind: 'supplier',
+          phone: '0283434343'),
+      const CommerceParty(
+          id: 's-7',
+          name: 'Công ty Hoàng Nam',
+          kind: 'supplier',
+          phone: '0283333333'),
+      const CommerceParty(
+          id: 's-8',
+          name: 'Bao bì Việt Phú',
+          kind: 'supplier',
+          phone: '0283232323'),
     ];
 
     final now = DateTime.now();
@@ -315,8 +524,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 7, 5),
         dueDate: DateTime(now.year, 7, 20),
         lines: const [
-          CommerceLine(productId: 'p-cp001', name: 'Cà phê rang xay', unit: 'kg', quantity: 15, unitPrice: 180000, unitCost: 125000),
-          CommerceLine(productId: 'p-cc002', name: 'Bột cacao', unit: 'hộp', quantity: 6, unitPrice: 135000, unitCost: 90000),
+          CommerceLine(
+              productId: 'p-cp001',
+              name: 'Cà phê rang xay',
+              unit: 'kg',
+              quantity: 15,
+              unitPrice: 180000,
+              unitCost: 125000),
+          CommerceLine(
+              productId: 'p-cc002',
+              name: 'Bột cacao',
+              unit: 'hộp',
+              quantity: 6,
+              unitPrice: 135000,
+              unitCost: 90000),
         ],
         subtotal: 3510000,
         discount: 0,
@@ -335,8 +556,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 7, 4),
         dueDate: DateTime(now.year, 7, 18),
         lines: const [
-          CommerceLine(productId: 'p-tc099', name: 'Trân châu', unit: 'kg', quantity: 80, unitPrice: 75000, unitCost: 40000),
-          CommerceLine(productId: 'p-st010', name: 'Sữa tươi', unit: 'hộp', quantity: 45, unitPrice: 28000, unitCost: 18000),
+          CommerceLine(
+              productId: 'p-tc099',
+              name: 'Trân châu',
+              unit: 'kg',
+              quantity: 80,
+              unitPrice: 75000,
+              unitCost: 40000),
+          CommerceLine(
+              productId: 'p-st010',
+              name: 'Sữa tươi',
+              unit: 'hộp',
+              quantity: 45,
+              unitPrice: 28000,
+              unitCost: 18000),
         ],
         subtotal: 7260000,
         discount: 0,
@@ -355,8 +588,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 7, 3),
         dueDate: DateTime(now.year, 7, 7),
         lines: const [
-          CommerceLine(productId: 'p-bm02', name: 'Bánh Tiramisu', unit: 'cái', quantity: 10, unitPrice: 45000, unitCost: 25000),
-          CommerceLine(productId: 'p-bc016', name: 'Bánh croissant', unit: 'cái', quantity: 10, unitPrice: 39000, unitCost: 22000),
+          CommerceLine(
+              productId: 'p-bm02',
+              name: 'Bánh Tiramisu',
+              unit: 'cái',
+              quantity: 10,
+              unitPrice: 45000,
+              unitCost: 25000),
+          CommerceLine(
+              productId: 'p-bc016',
+              name: 'Bánh croissant',
+              unit: 'cái',
+              quantity: 10,
+              unitPrice: 39000,
+              unitCost: 22000),
         ],
         subtotal: 840000,
         discount: 84000,
@@ -375,8 +620,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 27),
         dueDate: DateTime(now.year, 7, 15),
         lines: const [
-          CommerceLine(productId: 'p-td011', name: 'Trà đào túi lọc', unit: 'gói', quantity: 50, unitPrice: 55000, unitCost: 35000),
-          CommerceLine(productId: 'p-kb003', name: 'Kem béo', unit: 'hộp', quantity: 4, unitPrice: 95000, unitCost: 65000),
+          CommerceLine(
+              productId: 'p-td011',
+              name: 'Trà đào túi lọc',
+              unit: 'gói',
+              quantity: 50,
+              unitPrice: 55000,
+              unitCost: 35000),
+          CommerceLine(
+              productId: 'p-kb003',
+              name: 'Kem béo',
+              unit: 'hộp',
+              quantity: 4,
+              unitPrice: 95000,
+              unitCost: 65000),
         ],
         subtotal: 3130000,
         discount: 31200,
@@ -395,7 +652,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 22),
         dueDate: DateTime(now.year, 7, 2),
         lines: const [
-          CommerceLine(productId: 'p-cp001', name: 'Cà phê rang xay', unit: 'kg', quantity: 16, unitPrice: 180000, unitCost: 125000),
+          CommerceLine(
+              productId: 'p-cp001',
+              name: 'Cà phê rang xay',
+              unit: 'kg',
+              quantity: 16,
+              unitPrice: 180000,
+              unitCost: 125000),
         ],
         subtotal: 2880000,
         discount: 0,
@@ -414,7 +677,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 17),
         dueDate: DateTime(now.year, 6, 25),
         lines: const [
-          CommerceLine(productId: 'p-hg005', name: 'Hộp giấy', unit: 'hộp', quantity: 16, unitPrice: 95000, unitCost: 71050),
+          CommerceLine(
+              productId: 'p-hg005',
+              name: 'Hộp giấy',
+              unit: 'hộp',
+              quantity: 16,
+              unitPrice: 95000,
+              unitCost: 71050),
         ],
         subtotal: 1520000,
         discount: 0,
@@ -433,7 +702,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 12),
         dueDate: DateTime(now.year, 6, 22),
         lines: const [
-          CommerceLine(productId: 'p-tc099', name: 'Trân châu', unit: 'kg', quantity: 33, unitPrice: 75000, unitCost: 40000),
+          CommerceLine(
+              productId: 'p-tc099',
+              name: 'Trân châu',
+              unit: 'kg',
+              quantity: 33,
+              unitPrice: 75000,
+              unitCost: 40000),
         ],
         subtotal: 2475000,
         discount: 0,
@@ -452,7 +727,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 11),
         dueDate: DateTime(now.year, 6, 11),
         lines: const [
-          CommerceLine(productId: 'p-mp015', name: 'Máy pha mini', unit: 'máy', quantity: 1, unitPrice: 2300000, unitCost: 1500000),
+          CommerceLine(
+              productId: 'p-mp015',
+              name: 'Máy pha mini',
+              unit: 'máy',
+              quantity: 1,
+              unitPrice: 2300000,
+              unitCost: 1500000),
         ],
         subtotal: 2300000,
         discount: 20000,
@@ -473,9 +754,30 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 7, 1),
         dueDate: DateTime(now.year, 7, 31),
         lines: const [
-          CommerceLine(productId: 'p-cp001', name: 'Cà phê rang xay', unit: 'kg', quantity: 20, unitPrice: 120000, unitCost: 120000, lotNo: 'LOT-CP-01'),
-          CommerceLine(productId: 'p-cc002', name: 'Bột cacao', unit: 'hộp', quantity: 10, unitPrice: 90000, unitCost: 90000, lotNo: 'LOT-CC-01'),
-          CommerceLine(productId: 'p-st010', name: 'Sữa tươi', unit: 'hộp', quantity: 10, unitPrice: 18000, unitCost: 18000, lotNo: 'LOT-ST-01'),
+          CommerceLine(
+              productId: 'p-cp001',
+              name: 'Cà phê rang xay',
+              unit: 'kg',
+              quantity: 20,
+              unitPrice: 120000,
+              unitCost: 120000,
+              lotNo: 'LOT-CP-01'),
+          CommerceLine(
+              productId: 'p-cc002',
+              name: 'Bột cacao',
+              unit: 'hộp',
+              quantity: 10,
+              unitPrice: 90000,
+              unitCost: 90000,
+              lotNo: 'LOT-CC-01'),
+          CommerceLine(
+              productId: 'p-st010',
+              name: 'Sữa tươi',
+              unit: 'hộp',
+              quantity: 10,
+              unitPrice: 18000,
+              unitCost: 18000,
+              lotNo: 'LOT-ST-01'),
         ],
         subtotal: 3480000,
         discount: 0,
@@ -494,8 +796,22 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 16),
         dueDate: DateTime(now.year, 6, 30),
         lines: const [
-          CommerceLine(productId: 'p-bm02', name: 'Bánh Tiramisu', unit: 'cái', quantity: 1500, unitPrice: 25000, unitCost: 25000, lotNo: 'LOT-BM-02'),
-          CommerceLine(productId: 'p-bt018', name: 'Bánh cheesecake', unit: 'cái', quantity: 1000, unitPrice: 28000, unitCost: 28000, lotNo: 'LOT-BT-02'),
+          CommerceLine(
+              productId: 'p-bm02',
+              name: 'Bánh Tiramisu',
+              unit: 'cái',
+              quantity: 1500,
+              unitPrice: 25000,
+              unitCost: 25000,
+              lotNo: 'LOT-BM-02'),
+          CommerceLine(
+              productId: 'p-bt018',
+              name: 'Bánh cheesecake',
+              unit: 'cái',
+              quantity: 1000,
+              unitPrice: 28000,
+              unitCost: 28000,
+              lotNo: 'LOT-BT-02'),
         ],
         subtotal: 65500000,
         discount: 0,
@@ -514,7 +830,14 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 8),
         dueDate: DateTime(now.year, 7, 8),
         lines: const [
-          CommerceLine(productId: 'p-tm027', name: 'Máy xay lớn', unit: 'máy', quantity: 25, unitPrice: 511000, unitCost: 511000, lotNo: 'LOT-TM-01'),
+          CommerceLine(
+              productId: 'p-tm027',
+              name: 'Máy xay lớn',
+              unit: 'máy',
+              quantity: 25,
+              unitPrice: 511000,
+              unitCost: 511000,
+              lotNo: 'LOT-TM-01'),
         ],
         subtotal: 12775000,
         discount: 0,
@@ -533,7 +856,14 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 5, 29),
         dueDate: DateTime(now.year, 6, 29),
         lines: const [
-          CommerceLine(productId: 'p-td011', name: 'Trà đào túi lọc', unit: 'gói', quantity: 150, unitPrice: 35000, unitCost: 35000, lotNo: 'LOT-TD-01'),
+          CommerceLine(
+              productId: 'p-td011',
+              name: 'Trà đào túi lọc',
+              unit: 'gói',
+              quantity: 150,
+              unitPrice: 35000,
+              unitCost: 35000,
+              lotNo: 'LOT-TD-01'),
         ],
         subtotal: 5250000,
         discount: 0,
@@ -552,7 +882,14 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 5, 27),
         dueDate: DateTime(now.year, 6, 27),
         lines: const [
-          CommerceLine(productId: 'p-hg005', name: 'Hộp giấy', unit: 'hộp', quantity: 340, unitPrice: 71050, unitCost: 71050, lotNo: 'LOT-HG-01'),
+          CommerceLine(
+              productId: 'p-hg005',
+              name: 'Hộp giấy',
+              unit: 'hộp',
+              quantity: 340,
+              unitPrice: 71050,
+              unitCost: 71050,
+              lotNo: 'LOT-HG-01'),
         ],
         subtotal: 24157000,
         discount: 7000,
@@ -571,7 +908,14 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 4, 19),
         dueDate: DateTime(now.year, 5, 19),
         lines: const [
-          CommerceLine(productId: 'p-ln001', name: 'Ly nhựa', unit: 'ly', quantity: 74470, unitPrice: 1000, unitCost: 1000, lotNo: 'LOT-LN-01'),
+          CommerceLine(
+              productId: 'p-ln001',
+              name: 'Ly nhựa',
+              unit: 'ly',
+              quantity: 74470,
+              unitPrice: 1000,
+              unitCost: 1000,
+              lotNo: 'LOT-LN-01'),
         ],
         subtotal: 74470000,
         discount: 0,
@@ -592,8 +936,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 28),
         dueDate: DateTime(now.year, 7, 15),
         lines: const [
-          CommerceLine(productId: 'p-cp001', name: 'Cà phê rang xay', unit: 'kg', quantity: 5, unitPrice: 180000, unitCost: 125000),
-          CommerceLine(productId: 'p-tc099', name: 'Trân châu', unit: 'kg', quantity: 3, unitPrice: 75000, unitCost: 40000),
+          CommerceLine(
+              productId: 'p-cp001',
+              name: 'Cà phê rang xay',
+              unit: 'kg',
+              quantity: 5,
+              unitPrice: 180000,
+              unitCost: 125000),
+          CommerceLine(
+              productId: 'p-tc099',
+              name: 'Trân châu',
+              unit: 'kg',
+              quantity: 3,
+              unitPrice: 75000,
+              unitCost: 40000),
         ],
         subtotal: 1125000,
         discount: 0,
@@ -612,8 +968,20 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 26),
         dueDate: DateTime(now.year, 7, 10),
         lines: const [
-          CommerceLine(productId: 'p-tc099', name: 'Trân châu', unit: 'kg', quantity: 10, unitPrice: 75000, unitCost: 40000),
-          CommerceLine(productId: 'p-kb003', name: 'Kem béo', unit: 'hộp', quantity: 10, unitPrice: 95000, unitCost: 65000),
+          CommerceLine(
+              productId: 'p-tc099',
+              name: 'Trân châu',
+              unit: 'kg',
+              quantity: 10,
+              unitPrice: 75000,
+              unitCost: 40000),
+          CommerceLine(
+              productId: 'p-kb003',
+              name: 'Kem béo',
+              unit: 'hộp',
+              quantity: 10,
+              unitPrice: 95000,
+              unitCost: 65000),
         ],
         subtotal: 1700000,
         discount: 0,
@@ -632,7 +1000,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 23),
         dueDate: DateTime(now.year, 7, 5),
         lines: const [
-          CommerceLine(productId: 'p-cp001', name: 'Cà phê rang xay', unit: 'kg', quantity: 19, unitPrice: 180000, unitCost: 125000),
+          CommerceLine(
+              productId: 'p-cp001',
+              name: 'Cà phê rang xay',
+              unit: 'kg',
+              quantity: 19,
+              unitPrice: 180000,
+              unitCost: 125000),
         ],
         subtotal: 3420000,
         discount: 0,
@@ -651,7 +1025,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 20),
         dueDate: DateTime(now.year, 6, 30),
         lines: const [
-          CommerceLine(productId: 'p-cc002', name: 'Bột cacao', unit: 'hộp', quantity: 6, unitPrice: 135000, unitCost: 90000),
+          CommerceLine(
+              productId: 'p-cc002',
+              name: 'Bột cacao',
+              unit: 'hộp',
+              quantity: 6,
+              unitPrice: 135000,
+              unitCost: 90000),
         ],
         subtotal: 810000,
         discount: 0,
@@ -670,7 +1050,13 @@ class CommerceMemoryStore extends ChangeNotifier {
         createdAt: DateTime(now.year, 6, 17),
         dueDate: DateTime(now.year, 6, 27),
         lines: const [
-          CommerceLine(productId: 'p-st010', name: 'Sữa tươi', unit: 'hộp', quantity: 70, unitPrice: 28000, unitCost: 18000),
+          CommerceLine(
+              productId: 'p-st010',
+              name: 'Sữa tươi',
+              unit: 'hộp',
+              quantity: 70,
+              unitPrice: 28000,
+              unitCost: 18000),
         ],
         subtotal: 1960000,
         discount: 0,
@@ -684,12 +1070,48 @@ class CommerceMemoryStore extends ChangeNotifier {
     ];
 
     final payments = <CommercePayment>[
-      CommercePayment(orderCode: 'HD025', partyName: 'Quán Trà Nhà Gió', kind: 'Thu tiền', amount: 831600, date: DateTime(now.year, 7, 3), method: 'Chuyển khoản VietQR'),
-      CommercePayment(orderCode: 'HD027', partyName: 'Thanh Tuyền', kind: 'Thu tiền', amount: 150000, date: DateTime(now.year, 7, 4), method: 'Tiền mặt'),
-      CommercePayment(orderCode: 'HD022', partyName: 'Shop Mộc Nhiên', kind: 'Thu tiền', amount: 1573360, date: DateTime(now.year, 6, 17), method: 'Chuyển khoản'),
-      CommercePayment(orderCode: 'HD020', partyName: 'Khách vãng lai', kind: 'Thu tiền', amount: 2280000, date: DateTime(now.year, 6, 11), method: 'Tiền mặt'),
-      CommercePayment(orderCode: 'PM018', partyName: 'Thực phẩm GreenFarm', kind: 'Trả tiền', amount: 67147000, date: DateTime(now.year, 6, 16), method: 'Ủy nhiệm chi'),
-      CommercePayment(orderCode: 'PM017', partyName: 'NCC An Phát', kind: 'Trả tiền', amount: 5198830, date: DateTime(now.year, 6, 8), method: 'Chuyển khoản'),
+      CommercePayment(
+          orderCode: 'HD025',
+          partyName: 'Quán Trà Nhà Gió',
+          kind: 'Thu tiền',
+          amount: 831600,
+          date: DateTime(now.year, 7, 3),
+          method: 'Chuyển khoản VietQR'),
+      CommercePayment(
+          orderCode: 'HD027',
+          partyName: 'Thanh Tuyền',
+          kind: 'Thu tiền',
+          amount: 150000,
+          date: DateTime(now.year, 7, 4),
+          method: 'Tiền mặt'),
+      CommercePayment(
+          orderCode: 'HD022',
+          partyName: 'Shop Mộc Nhiên',
+          kind: 'Thu tiền',
+          amount: 1573360,
+          date: DateTime(now.year, 6, 17),
+          method: 'Chuyển khoản'),
+      CommercePayment(
+          orderCode: 'HD020',
+          partyName: 'Khách vãng lai',
+          kind: 'Thu tiền',
+          amount: 2280000,
+          date: DateTime(now.year, 6, 11),
+          method: 'Tiền mặt'),
+      CommercePayment(
+          orderCode: 'PM018',
+          partyName: 'Thực phẩm GreenFarm',
+          kind: 'Trả tiền',
+          amount: 67147000,
+          date: DateTime(now.year, 6, 16),
+          method: 'Ủy nhiệm chi'),
+      CommercePayment(
+          orderCode: 'PM017',
+          partyName: 'NCC An Phát',
+          kind: 'Trả tiền',
+          amount: 5198830,
+          date: DateTime(now.year, 6, 8),
+          method: 'Chuyển khoản'),
     ];
 
     final store = CommerceMemoryStore._(
@@ -704,8 +1126,22 @@ class CommerceMemoryStore extends ChangeNotifier {
     store._stocktakeHistory.addAll([
       CommerceStocktake(
         id: 'KK07',
-        counts: {'p-cp001': 290, 'p-td011': 80, 'p-st010': 179, 'p-cc002': 84, 'p-sy001': 0, 'p-ln001': 600},
-        bookCounts: {'p-cp001': 304, 'p-td011': 80, 'p-st010': 179, 'p-cc002': 84, 'p-sy001': 0, 'p-ln001': 600},
+        counts: {
+          'p-cp001': 290,
+          'p-td011': 80,
+          'p-st010': 179,
+          'p-cc002': 84,
+          'p-sy001': 0,
+          'p-ln001': 600
+        },
+        bookCounts: {
+          'p-cp001': 304,
+          'p-td011': 80,
+          'p-st010': 179,
+          'p-cc002': 84,
+          'p-sy001': 0,
+          'p-ln001': 600
+        },
         createdAt: DateTime(now.year, 7, 4),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -809,6 +1245,19 @@ class CommerceMemoryStore extends ChangeNotifier {
     _stocktakes.clear();
     _stocktakeHistory.clear();
     notifyListeners();
+  }
+
+  /// Khôi phục toàn bộ dữ liệu mẫu ban đầu (demo)
+  void resetToDefaultSample() {
+    final demoStore = CommerceMemoryStore.demo();
+    replaceSnapshot(
+      products: demoStore.products,
+      customers: demoStore.customers,
+      suppliers: demoStore.suppliers,
+      orders: demoStore.orders,
+      payments: demoStore.payments,
+    );
+    demoStore.dispose();
   }
 
   List<CommerceProduct> get products => List.unmodifiable(_products);

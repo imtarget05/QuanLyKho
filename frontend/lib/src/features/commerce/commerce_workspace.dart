@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import 'commerce_memory_store.dart';
 import 'commerce_api.dart';
 import 'commerce_reports_page.dart';
+import 'commerce_settings_view.dart';
 
 class CommerceWorkspace extends StatefulWidget {
   const CommerceWorkspace({
@@ -39,7 +40,7 @@ class CommerceWorkspace extends StatefulWidget {
 
 class _CommerceWorkspaceState extends State<CommerceWorkspace> {
   int _index = 1;
-  static const _navigationPages = [0, 1, 2, 3, 4, 5, 6];
+  static const _navigationPages = [0, 1, 2, 3, 4, 5, 6, 7];
   static const _mobilePages = [0, 1, 2, 3];
   static const _pageTitles = [
     'Tổng quan',
@@ -49,6 +50,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     'Công nợ',
     'Báo cáo',
     'Duyệt phiếu',
+    'Cài đặt',
   ];
   static const _navigationNames = [
     'Tổng quan',
@@ -58,6 +60,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     'Công nợ',
     'Báo cáo',
     'Duyệt phiếu',
+    'Cài đặt',
   ];
   static const _navigationIcons = [
     Icons.grid_view_rounded,
@@ -67,6 +70,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     Icons.account_balance_wallet_outlined,
     Icons.bar_chart_rounded,
     Icons.fact_check_outlined,
+    Icons.settings_outlined,
   ];
 
   bool _hasAnyCapability(List<String> values) {
@@ -186,6 +190,12 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
           api: widget.api,
           onRefresh: widget.onRefresh,
           canViewOwnerData: canViewOwnerData),
+      CommerceSettingsView(
+          store: store,
+          userName: widget.userName,
+          onSignOut: widget.onSignOut,
+          canManageUsers: canViewOwnerData,
+          canResetDemoData: widget.api == null),
     ];
 
     return Scaffold(
@@ -273,6 +283,14 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                         Navigator.pop(sheetContext);
                                         setState(() => _index = 6);
                                       }),
+                                ListTile(
+                                    leading:
+                                        const Icon(Icons.settings_outlined),
+                                    title: const Text('Cài đặt'),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      setState(() => _index = 7);
+                                    }),
                                 const Divider(),
                                 ListTile(
                                   leading:
@@ -497,8 +515,8 @@ class _SideNavItem extends StatelessWidget {
                           fontWeight:
                               selected ? FontWeight.w700 : FontWeight.w500,
                           color: selected
-                              ? const Color(0xFF5235A9)
-                              : const Color(0xFF424740))),
+                              ? const Color(0xFF4338CA)
+                              : const Color(0xFF334155))),
                   const Spacer(),
                   if (selected)
                     Container(
@@ -563,6 +581,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 17,
+                      color: Color(0xFF0F172A),
                       letterSpacing: -.4)),
             )
           else
@@ -570,6 +589,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                 style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
+                    color: Color(0xFF0F172A),
                     letterSpacing: -.4)),
           if (compact && !isLive) ...[
             const SizedBox(width: 8),
@@ -767,11 +787,12 @@ class _PageHeading extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 23,
                           fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
                           letterSpacing: -.7)),
                   const SizedBox(height: 4),
                   Text(subtitle,
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF7F857D)))
+                          fontSize: 12, color: Color(0xFF64748B)))
                 ])),
           ],
         ),
@@ -1313,11 +1334,15 @@ class _MetricCard extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
                           letterSpacing: -.6))),
               Text(foot,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF858B84))),
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500)),
             ]),
       );
 }
@@ -1772,7 +1797,9 @@ class _OrderListPageState extends State<_OrderListPage> {
             if (pageWidth < 700) ...[
               Text(documentLabel,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w800)),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A))),
               const SizedBox(height: 10),
               Row(children: [
                 Expanded(child: searchField(null)),
@@ -1786,7 +1813,9 @@ class _OrderListPageState extends State<_OrderListPage> {
                 Expanded(
                     child: Text(documentLabel,
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w800))),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A)))),
                 searchField(250),
                 if (widget.canWrite) ...[
                   const SizedBox(width: 10),
@@ -2056,6 +2085,7 @@ class _MiniSummaryRow extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
                               letterSpacing: -.3))
                     ]))
               ]));
