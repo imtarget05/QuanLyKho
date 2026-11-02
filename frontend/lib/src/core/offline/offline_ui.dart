@@ -35,15 +35,23 @@ class OfflineHub {
   VoidCallback? onSynced;
   Timer? _retryTimer;
   int _legacyCount = 0;
+  bool _dismissed = false;
   Timer Function(Duration, void Function()) retryTimerFactory = Timer.new;
 
   bool get offline => _state.offline;
+  bool get dismissed => _dismissed;
   int get pending => _state.pending;
   int get failed => _state.failed;
   int get legacyCount => _legacyCount;
   List<OutBoxEntry> get queue => StocktakeOutbox.shared.queue;
   bool get hasPending =>
       _state.pending > 0 || StocktakeOutbox.shared.hasPending;
+
+  /// Cho phép người dùng tắt / ẩn thanh thông báo tạm thời.
+  void dismiss() {
+    _dismissed = true;
+    _notify();
+  }
 
   /// Địa chỉ health-check của backend, dùng khi flush outbound (offline). Có thể
   /// cập nhật từ [AppShell] khi biết API_BASE_URL (mặc định localhost:8000).
@@ -67,6 +75,7 @@ class OfflineHub {
   void markOffline() {
     _retryTimer?.cancel();
     _retryTimer = null;
+    _dismissed = false;
     if (!_state.offline) {
       _state.offline = true;
       _state.pending = StocktakeOutbox.shared.hasPending ? 1 : 0;
@@ -76,6 +85,7 @@ class OfflineHub {
 
   /// Gọi khi thiết bị quay lại kết nối.
   void markOnline() {
+    _dismissed = false;
     if (_state.offline) {
       _state.offline = false;
       _state.pending = 0;
@@ -176,8 +186,17 @@ class OfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (OfflineHub.instance.dismissed) return const SizedBox.shrink();
+
+    final isOffline = OfflineHub.instance.offline;
+    final hasConflict = OfflineHub.instance.failed > 0;
     final legacyCount = OfflineHub.instance.legacyCount;
-    if (pending <= 0 && legacyCount <= 0) return const SizedBox.shrink();
+
+    // Logic: Khi ĐÃ KẾT NỐI INTERNET (!isOffline) và không có xung đột cần giải quyết:
+    // Tự động tắt / ẩn ngay lập tức thanh thông báo.
+    if (!isOffline && !hasConflict && legacyCount <= 0) {
+      return const SizedBox.shrink();
+    }
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -188,7 +207,7 @@ class OfflineBanner extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(12),
@@ -196,7 +215,7 @@ class OfflineBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_outlined, color: Colors.orangeAccent),
+            const Icon(Icons.cloud_off_outlined, color: Colors.orangeAccent, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -221,7 +240,8 @@ class OfflineBanner extends StatelessWidget {
                         : 'Offline - will synchronize when connection restores'),
                 style: TextStyle(
                     color: isDark ? Colors.white70 : Colors.black87,
-                    fontSize: 13),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
               ),
             ),
             if (legacyCount > 0)
@@ -230,7 +250,7 @@ class OfflineBanner extends StatelessWidget {
                 icon: const Icon(Icons.inventory_2_outlined, size: 16),
                 label: Text(context.isVietnamese ? 'Khôi phục' : 'Recover'),
               )
-            else if (pending > 0)
+            else if (pending > 0 || hasConflict)
               FilledButton.icon(
                 onPressed: () => OfflineHub.instance.failed > 0
                     ? _resolveConflict(context)
@@ -241,9 +261,17 @@ class OfflineBanner extends StatelessWidget {
                     : (context.isVietnamese
                         ? 'Thử lại ($pending)'
                         : 'Retry ($pending)')),
-              )
-            else
-              const SizedBox(width: 24),
+              ),
+            const SizedBox(width: 8),
+            IconButton(
+              key: const Key('btn-dismiss-offline-banner'),
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: context.isVietnamese ? 'Đóng thông báo' : 'Dismiss',
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => OfflineHub.instance.dismiss(),
+            ),
           ],
         ),
       ),

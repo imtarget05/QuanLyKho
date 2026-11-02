@@ -69,13 +69,11 @@ class RoleVisibility {
   /// Kiểm tra xem user có phải là Quản lý / Admin hay không.
   static bool isAdminUser(AppUser? user) {
     if (user == null) return true; // dev default
+    final roles = rolesOf(user);
+    if (isAdmin(roles) || canManageEmployees(user)) return true;
     final email = user.email?.trim().toLowerCase() ?? '';
     final username = user.username.trim().toLowerCase();
-    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) {
-      return true;
-    }
-    final roles = rolesOf(user);
-    return isAdmin(roles) || canManageEmployees(user);
+    return email.contains('tanmainguyen') || username.contains('tanmainguyen');
   }
 
   /// Auditor thuần: có nhãn auditor nhưng không có bất kỳ quyền tạo/duyệt nào.
@@ -88,11 +86,6 @@ class RoleVisibility {
   /// Quản trị nhân sự / cấp phát IAM (Phase 1).
   static bool canManageEmployees(AppUser? user) {
     if (user == null) return false;
-    final email = user.email?.trim().toLowerCase() ?? '';
-    final username = user.username.trim().toLowerCase();
-    if (email.contains('tanmainguyen') || username.contains('tanmainguyen')) {
-      return true;
-    }
     final roles = rolesOf(user);
     if (roles.contains('admin') ||
         roles.contains('root_admin') ||
@@ -102,7 +95,12 @@ class RoleVisibility {
       return true;
     }
     final caps = user.capabilities.map((e) => e.toLowerCase()).toSet();
-    return caps.contains('iam:admin') || caps.contains('admin:user_management');
+    if (caps.contains('iam:admin') || caps.contains('admin:user_management')) {
+      return true;
+    }
+    final email = user.email?.trim().toLowerCase() ?? '';
+    final username = user.username.trim().toLowerCase();
+    return email.contains('tanmainguyen') || username.contains('tanmainguyen');
   }
 
   /// ETL Studio (Phase 2): Cấu hình pipeline, mapping.

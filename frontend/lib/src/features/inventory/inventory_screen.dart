@@ -69,6 +69,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _sheetViewMode = 'sheet';
   bool _revealPrices = true;
   bool _alertsExpanded = true;
+  bool _expiryAlertsExpanded = true;
+  bool _dismissedLowStockBanner = false;
+  bool _dismissedExpiryBanner = false;
   String? _alertLocationFilter;
   SharedPreferences? _prefs;
 
@@ -4482,20 +4485,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Container(
       width: width,
       height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: align == TextAlign.center
           ? Alignment.center
           : (align == TextAlign.right
               ? Alignment.centerRight
               : Alignment.centerLeft),
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            width: 1,
-          ),
-        ),
-      ),
       child: Text(
         title,
         maxLines: 1,
@@ -4562,15 +4557,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               width: 44,
               height: 52,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: _isSelectionMode
                   ? Checkbox(
                       key: Key('checkbox-item-${item.sku}'),
@@ -4595,15 +4581,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 6),
               alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
@@ -4638,15 +4615,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4680,15 +4648,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Text(
                 item.category ?? 'Chưa phân nhóm',
                 maxLines: 1,
@@ -4707,15 +4666,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               width: 60,
               height: 52,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Text(
                 item.unit,
                 style: const TextStyle(
@@ -4731,15 +4681,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerRight,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Text(
                 '${AppFormat.number(stock.toString())} ${item.unit}',
                 style: TextStyle(
@@ -4760,15 +4701,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerRight,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Text(
                 minStock != null ? AppFormat.number(minStock.toString()) : '—',
                 style: TextStyle(
@@ -4786,15 +4718,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerRight,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: (isAdmin && _revealPrices)
                   ? (item.sellingPrice != null
                       ? Text(
@@ -4845,15 +4768,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               alignment: Alignment.centerRight,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: (isAdmin && _revealPrices)
                   ? (item.costPrice != null
                       ? Text(
@@ -4905,15 +4819,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               width: 95,
               height: 52,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-              ),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -5047,6 +4952,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildLowStockAlertBanner(
       BuildContext context, List<LowStockAlertItem> alerts) {
+    if (_dismissedLowStockBanner) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -5174,6 +5080,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: 'Đóng cảnh báo',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() => _dismissedLowStockBanner = true),
                 ),
               ],
             ),
@@ -5779,6 +5692,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildExpiryAlertBanner(
       BuildContext context, List<ExpiryAlertItem> alerts) {
+    if (_dismissedExpiryBanner) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isVi = context.isVietnamese;
@@ -5786,10 +5700,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final criticalCount = alerts.where((a) => a.daysLeft <= 0).length;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF3B2010) : const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: criticalCount > 0
               ? const Color(0xFFEF4444).withValues(alpha: 0.4)
@@ -5829,7 +5743,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           : 'Ingredient Expiry Alerts (${alerts.length} near/expired batches)',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        fontSize: 14.5,
                         color: criticalCount > 0
                             ? const Color(0xFFDC2626)
                             : const Color(0xFFB45309),
@@ -5846,6 +5760,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Đóng cảnh báo',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _dismissedExpiryBanner = true),
               ),
             ],
           ),
