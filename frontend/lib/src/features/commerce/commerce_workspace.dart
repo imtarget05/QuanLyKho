@@ -2475,15 +2475,30 @@ class _OrderPdfMenu extends StatelessWidget {
   Widget build(BuildContext context) => PopupMenuButton<String>(
         tooltip: 'In, tải hoặc chia sẻ phiếu',
         icon: const Icon(Icons.print_outlined, size: 19),
-        onSelected: (action) => action == 'share'
-            ? _shareOrder(context, order)
-            : _printOrder(context, order),
+        onSelected: (action) {
+          if (action == 'share') {
+            _shareOrder(context, order);
+          } else if (action == 'print_k80') {
+            _printOrder(context, order, isK80: true);
+          } else {
+            _printOrder(context, order, isK80: false);
+          }
+        },
         itemBuilder: (context) => const [
           PopupMenuItem(
             value: 'print',
             child: ListTile(
-              leading: Icon(Icons.download_outlined),
-              title: Text('In / tải PDF'),
+              leading: Icon(Icons.picture_as_pdf_outlined),
+              title: Text('In phiếu A4 (Kho/Đối tác)'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'print_k80',
+            child: ListTile(
+              leading: Icon(Icons.receipt_long_outlined),
+              title: Text('In Bill K80 (Nhiệt 80mm)'),
               contentPadding: EdgeInsets.zero,
               dense: true,
             ),
@@ -2682,7 +2697,17 @@ class _InventoryPageState extends State<_InventoryPage> {
           icon: const Icon(Icons.add_business_outlined, size: 16),
           label: const Text('Thêm kho'),
         ),
-      if (widget.canWrite)
+      if (widget.canWrite) ...[
+        OutlinedButton.icon(
+          onPressed: () => _showStockTransferDialog(context, widget.store),
+          icon: const Icon(Icons.swap_horiz, size: 16),
+          label: const Text('Chuyển kho'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF6848BC),
+            textStyle:
+                const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
         OutlinedButton.icon(
           onPressed: () => _showStocktake(context, widget.store,
               api: widget.api, onRefresh: widget.onRefresh),
@@ -2694,6 +2719,7 @@ class _InventoryPageState extends State<_InventoryPage> {
                 const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
           ),
         ),
+      ],
     ]);
     const title = Text('Danh sách tồn kho',
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800));
@@ -3935,6 +3961,185 @@ class _DraftLine {
   DateTime? get expiryDateTime => expiryDate.isEmpty ? null : DateTime.tryParse(expiryDate);
 }
 
+Future<void> _showStockTransferDialog(
+    BuildContext context, CommerceMemoryStore store) async {
+  if (store.products.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Kho chưa có sản phẩm để chuyển.')),
+    );
+    return;
+  }
+  var selectedProduct = store.products.first;
+  var fromLoc = store.locations.first.id;
+  var toLoc = store.locations.length > 1
+      ? store.locations[1].id
+      : store.locations.first.id;
+  final qtyCtrl = TextEditingController(text: '1');
+  final noteCtrl = TextEditingController();
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
+        title: const Text('Chuyển kho nội bộ (Transfer)'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Sản phẩm chuyển',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedProduct.id,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                      border: OutlineInputBorder(), isDense: true),
+                  items: store.products
+                      .map((p) => DropdownMenuItem(
+                            value: p.id,
+                            child: Text(
+                                '${p.sku} · ${p.name} (Tồn: ${p.stock} ${p.unit})',
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() {
+                        selectedProduct = store.product(v);
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Từ kho nguồn',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 12)),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            initialValue: fromLoc,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(), isDense: true),
+                            items: store.locations
+                                .map((loc) => DropdownMenuItem(
+                                    value: loc.id,
+                                    child: Text(loc.name,
+                                        overflow: TextOverflow.ellipsis)))
+                                .toList(),
+                            onChanged: (v) =>
+                                setDialogState(() => fromLoc = v ?? fromLoc),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Đến kho đích',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 12)),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            initialValue: toLoc,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                                border: OutlineInputBorder(), isDense: true),
+                            items: store.locations
+                                .map((loc) => DropdownMenuItem(
+                                    value: loc.id,
+                                    child: Text(loc.name,
+                                        overflow: TextOverflow.ellipsis)))
+                                .toList(),
+                            onChanged: (v) =>
+                                setDialogState(() => toLoc = v ?? toLoc),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: qtyCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText:
+                        'Số lượng chuyển (${selectedProduct.unit})',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteCtrl,
+                  decoration: const InputDecoration(
+                    labelText:
+                        'Ghi chú chuyển kho (vd: Xuất NVL cấp quầy pha chế)',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Hủy')),
+          FilledButton(
+            onPressed: () {
+              final q = double.tryParse(qtyCtrl.text.trim()) ?? 0;
+              if (q <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Số lượng chuyển phải lớn hơn 0.')),
+                );
+                return;
+              }
+              if (fromLoc == toLoc) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text(
+                          'Kho nguồn và kho đích không được trùng nhau.')),
+                );
+                return;
+              }
+              store.transferStock(
+                productId: selectedProduct.id,
+                fromLocationId: fromLoc,
+                toLocationId: toLoc,
+                quantity: q,
+                note: noteCtrl.text.trim(),
+              );
+              Navigator.pop(dialogCtx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(
+                        'Đã chuyển $q ${selectedProduct.unit} ${selectedProduct.name} thành công.')),
+              );
+            },
+            child: const Text('Xác nhận chuyển'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
     {CommerceApi? api,
     Future<void> Function()? onRefresh,
@@ -3944,6 +4149,8 @@ Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
   final name = TextEditingController();
   final category = TextEditingController();
   final unit = TextEditingController(text: 'cái');
+  final purchaseUnit = TextEditingController();
+  final conversionRate = TextEditingController(text: '1');
   final cost = TextEditingController(text: '0');
   final price = TextEditingController(text: '0');
   final minimum = TextEditingController(text: '0');
@@ -3958,7 +4165,12 @@ Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
             _FormInput('Mã sản phẩm', sku),
             _FormInput('Tên sản phẩm', name),
             _FormInput('Nhóm hàng', category),
-            _FormInput('Đơn vị', unit),
+            Row(children: [
+              Expanded(child: _FormInput('Đơn vị cơ bản (xuất/bán)', unit)),
+              const SizedBox(width: 8),
+              Expanded(child: _FormInput('Đơn vị nhập (vd: Thùng)', purchaseUnit)),
+            ]),
+            _FormInput('Tỷ lệ quy đổi (1 ĐV nhập = x ĐV cơ bản)', conversionRate, numeric: true),
             if (canViewOwnerData)
               Row(children: [
                 Expanded(child: _FormInput('Giá vốn', cost, numeric: true)),
@@ -3982,6 +4194,7 @@ Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
               final costValue = double.parse(cost.text);
               final priceValue = double.parse(price.text);
               final minimumValue = double.parse(minimum.text);
+              final convValue = double.tryParse(conversionRate.text.trim()) ?? 1.0;
               if (api == null) {
                 store.addProduct(
                   sku: sku.text,
@@ -3991,6 +4204,8 @@ Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
                   cost: costValue.round(),
                   price: priceValue.round(),
                   minimum: minimumValue,
+                  purchaseUnit: purchaseUnit.text.trim(),
+                  conversionRate: convValue,
                 );
               } else {
                 await api.createProduct(
@@ -5038,11 +5253,11 @@ BoxDecoration _cardDecoration() => BoxDecoration(
 String _money(int amount) =>
     '${NumberFormat.decimalPattern('vi_VN').format(amount)} ₫';
 
-Future<void> _printOrder(BuildContext context, CommerceOrder order) async {
+Future<void> _printOrder(BuildContext context, CommerceOrder order, {bool isK80 = false}) async {
   try {
     await Printing.layoutPdf(
-      onLayout: (format) => _buildOrderPdf(order),
-      name: '${order.code}.pdf',
+      onLayout: (format) => _buildOrderPdf(order, isK80: isK80),
+      name: '${order.code}${isK80 ? "_k80" : ""}.pdf',
     );
   } catch (error) {
     if (!context.mounted) return;
@@ -5066,7 +5281,7 @@ Future<void> _shareOrder(BuildContext context, CommerceOrder order) async {
   }
 }
 
-Future<Uint8List> _buildOrderPdf(CommerceOrder order) async {
+Future<Uint8List> _buildOrderPdf(CommerceOrder order, {bool isK80 = false}) async {
   final fontBytes = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
   final font = pw.Font.ttf(fontBytes);
   final document = pw.Document(theme: pw.ThemeData.withFont(base: font));
@@ -5075,6 +5290,89 @@ Future<Uint8List> _buildOrderPdf(CommerceOrder order) async {
     'quote' => 'BÁO GIÁ',
     _ => 'HÓA ĐƠN BÁN HÀNG',
   };
+
+  if (isK80) {
+    const k80Format = PdfPageFormat(80 * PdfPageFormat.mm, double.infinity, marginAll: 4 * PdfPageFormat.mm);
+    document.addPage(
+      pw.Page(
+        pageFormat: k80Format,
+        build: (pageContext) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            pw.Center(
+              child: pw.Text('KHO TRÀ SỮA & F&B OPS',
+                  style: pw.TextStyle(font: font, fontSize: 13, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.Center(
+              child: pw.Text('Hotline: 1900 6868 · www.khotrasua.vn',
+                  style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey700)),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
+            pw.Center(
+              child: pw.Text(title,
+                  style: pw.TextStyle(font: font, fontSize: 11, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.SizedBox(height: 2),
+            pw.Text('Mã: ${order.code} · ${DateFormat('dd/MM/yy HH:mm').format(order.createdAt)}',
+                style: pw.TextStyle(font: font, fontSize: 7.5)),
+            pw.Text('Đối tác: ${order.partyName}',
+                style: pw.TextStyle(font: font, fontSize: 7.5)),
+            pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
+            pw.SizedBox(height: 2),
+            for (final line in order.lines)
+              pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(line.name, style: pw.TextStyle(font: font, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('${line.quantity} ${line.unit} × ${_money(line.unitPrice)}',
+                            style: pw.TextStyle(font: font, fontSize: 7)),
+                        pw.Text(_money(line.amount),
+                            style: pw.TextStyle(font: font, fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Tạm tính:', style: pw.TextStyle(font: font, fontSize: 7.5)),
+                pw.Text(_money(order.subtotal), style: pw.TextStyle(font: font, fontSize: 7.5)),
+              ],
+            ),
+            if (order.discount > 0)
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Chiết khấu:', style: pw.TextStyle(font: font, fontSize: 7.5)),
+                  pw.Text('−${_money(order.discount)}', style: pw.TextStyle(font: font, fontSize: 7.5)),
+                ],
+              ),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('TỔNG CỘNG:', style: pw.TextStyle(font: font, fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                pw.Text(_money(order.total), style: pw.TextStyle(font: font, fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+            pw.Divider(thickness: 0.5, borderStyle: pw.BorderStyle.dashed),
+            pw.Center(
+              child: pw.Text('Cảm ơn Quý khách & Hẹn gặp lại!',
+                  style: pw.TextStyle(font: font, fontSize: 7, fontStyle: pw.FontStyle.italic)),
+            ),
+          ],
+        ),
+      ),
+    );
+    return document.save();
+  }
   document.addPage(pw.MultiPage(
     pageFormat: PdfPageFormat.a4,
     margin: const pw.EdgeInsets.all(36),
