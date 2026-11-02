@@ -87,12 +87,14 @@ class CommerceApi {
     }
     final balances = <Map<String, dynamic>>[];
     String? cursor;
+    int balancePages = 0;
     do {
       final page = await _get(
           '/inventory/balances?limit=100${cursor == null ? '' : '&cursor=${Uri.encodeQueryComponent(cursor)}'}');
       balances.addAll(_list(page, 'balances'));
       cursor = page is Map ? page['next_cursor']?.toString() : null;
-    } while (cursor != null && cursor.isNotEmpty);
+      balancePages++;
+    } while (cursor != null && cursor.isNotEmpty && balancePages < 25);
     final parties = initial[2] as Map? ?? const {};
     final customerRows = _list(parties, 'customers');
     final supplierRows = _list(parties, 'suppliers');
@@ -137,11 +139,13 @@ class CommerceApi {
     };
     final documents = <Map<String, dynamic>>[];
     int? offset = 0;
-    while (offset != null) {
+    int docPages = 0;
+    while (offset != null && docPages < 25) {
       final page = await _get(
           '/commerce/documents?limit=200&offset=$offset${locationId == null ? '' : '&location_id=${Uri.encodeQueryComponent(locationId!)}'}');
       documents.addAll(_list(page, 'documents'));
       offset = page is Map ? page['next_offset'] as int? : null;
+      docPages++;
     }
     final orders = <CommerceOrder>[];
     final payments = <CommercePayment>[];

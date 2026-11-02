@@ -93,21 +93,18 @@ class AuthService extends ChangeNotifier {
   }
 
   static const String canonicalProductionBaseUrl =
-      'https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho';
+      'https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1';
 
   /// Per-platform default: Android emulator cannot reach host `localhost`,
   /// so use `10.0.2.2`; iOS simulator/desktop/web keep `localhost`.
-  /// In release mode (web/APK), defaults to Cloudflare Workers production proxy.
+  /// In release mode (web/APK), defaults to Modal production API.
   /// Overridable via `--dart-define=API_BASE_URL=...`.
   static String get defaultBaseUrl {
     if (_offlineDemoBuild) return '';
     const env = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (env.isNotEmpty) return env;
-    if (kReleaseMode) {
+    if (kReleaseMode || kIsWeb) {
       return canonicalProductionBaseUrl;
-    }
-    if (kIsWeb) {
-      return 'http://localhost:8000/api/v1';
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:

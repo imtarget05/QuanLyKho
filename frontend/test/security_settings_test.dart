@@ -46,11 +46,26 @@ void main() {
       expect(usernameField.controller?.text, isEmpty);
       expect(passwordField.controller?.text, isEmpty);
 
-      // Verify quick demo chips are removed
+      // Verify quick demo chips and reviewer sandbox are removed
       expect(find.byKey(const Key('login-demo-maker-chip')), findsNothing);
       expect(find.byKey(const Key('login-demo-checker-chip')), findsNothing);
       expect(find.byKey(const Key('login-demo-auditor-chip')), findsNothing);
       expect(find.text('CHỌN NHANH VAI TRÒ DEMO'), findsNothing);
+      expect(find.byKey(const Key('login-reviewer-sandbox-btn')), findsNothing);
+      expect(find.byKey(const Key('login-shift-morning-chip')), findsNothing);
+      expect(find.byKey(const Key('login-shift-afternoon-chip')), findsNothing);
+      expect(find.byKey(const Key('login-shift-split-chip')), findsNothing);
+      expect(find.byKey(const Key('login-shift-manager-chip')), findsNothing);
+      expect(find.text('TÀI KHOẢN CA TRỰC (DEMO)'), findsNothing);
+
+      // Verify submit button has updated title
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('login-submit-btn')),
+          matching: find.text('Đăng nhập hệ thống'),
+        ),
+        findsOneWidget,
+      );
 
       // Verify Google button exists with GoogleLogo and official text
       final googleBtn = find.byKey(const Key('login-google-btn'));

@@ -91,7 +91,7 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   void initState() {
     super.initState();
-    _showDemo = const bool.fromEnvironment('OFFLINE_DEMO', defaultValue: false);
+    _showDemo = false;
     _checkUrlForInviteToken();
   }
 
@@ -142,10 +142,10 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    if (_showDemo || auth.isOfflineSession) {
+    if (_showDemo) {
       return CommerceWorkspace(
         store: _demoStore,
-        userName: auth.user?.displayName ?? 'An Nguyễn (Demo)',
+        userName: auth.user?.displayName ?? 'An Nguyễn',
         capabilities: _showDemo && auth.user == null
             ? null
             : auth.user?.capabilities.toSet(),
@@ -171,7 +171,7 @@ class _AuthGateState extends State<_AuthGate> {
       }
       return LandingScreen(
         onEnter: () => setState(() => _showLogin = true),
-        onDemo: () => setState(() => _showDemo = true),
+        onDemo: () => setState(() => _showLogin = true),
       );
     }
     return _LiveCommerceGate(

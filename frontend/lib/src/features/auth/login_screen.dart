@@ -13,7 +13,7 @@ import 'accept_invite_screen.dart';
 import 'widgets/forgot_password_dialog.dart';
 import 'widgets/register_dialog.dart';
 
-/// Màn hình đăng nhập Hệ Thống Quản Lý Nhập Xuất Tồn Quán Trà Sữa (MilkTea Ops).
+/// Màn hình đăng nhập Hệ Thống Quản Trị Doanh Nghiệp NexUpOne (Optimate x NexUp ERP).
 /// Thiết kế Split-screen trên desktop/tablet, phong cách F&B hiện đại.
 /// Hỗ trợ đăng nhập nhanh theo ca trực và Google Sign-In SSO.
 class LoginScreen extends StatefulWidget {
@@ -370,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const StoreLogo(size: 56),
         const SizedBox(height: 14),
         Text(
-          'Quản Lý Bán Hàng & Kho',
+          'Optimate x NexUp',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w900,
             letterSpacing: -0.5,
@@ -378,7 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Hệ thống quản lý bán hàng, kho hàng và công nợ thực chiến',
+          'Hệ thống quản lý bán hàng, tồn kho và công nợ doanh nghiệp',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
@@ -395,9 +395,9 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFF062319),
-            Color(0xFF0D3B2E),
-            Color(0xFF0F4C3A),
+            Color(0xFF1E1736),
+            Color(0xFF2E2055),
+            Color(0xFF4A3282),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -417,8 +417,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: const Icon(
-                  Icons.emoji_food_beverage_rounded,
-                  color: Color(0xFFFDE047),
+                  Icons.auto_graph_rounded,
+                  color: Color(0xFFDDD6FE),
                   size: 26,
                 ),
               ),
@@ -427,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'MilkTea Ops',
+                    'NexUpOne',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -436,9 +436,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   Text(
-                    'HỆ THỐNG QUẢN LÝ NHẬP XUẤT TỒN',
+                    'ERP QUẢN TRỊ DOANH NGHIỆP',
                     style: TextStyle(
-                      color: Color(0xFF86EFAC),
+                      color: Color(0xFFDDD6FE),
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.1,
@@ -454,20 +454,20 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF059669).withValues(alpha: 0.25),
+                  color: const Color(0xFF6B4BC3).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.4)),
+                  border: Border.all(color: const Color(0xFFA78BFA).withValues(alpha: 0.4)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.eco_rounded, color: Color(0xFF34D399), size: 14),
+                    Icon(Icons.verified_rounded, color: Color(0xFFA78BFA), size: 14),
                     SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        'Vận Hành Theo Ca • Chuẩn F&B',
+                        'Optimate x NexUp • Vận Hành Thực Chiến',
                         style: TextStyle(
-                          color: Color(0xFF86EFAC),
+                          color: Color(0xFFEDE9FE),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -479,7 +479,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Kiểm soát nguyên liệu\n& thất thoát theo ca',
+                'Quản lý Bán hàng, Kho\n& Công nợ tự động',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,
@@ -489,33 +489,33 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               _buildFeatureItem(
-                icon: Icons.schedule_rounded,
-                title: 'Kiểm Kê 3 Ca Thời Gian Thực',
-                desc: 'Chốt tồn Ca Sáng (07:30 - 15:00), Chiều (15:00 - 23:00) & Ca Lỡ. Công thức chốt tồn tự động.',
+                icon: Icons.trending_up_rounded,
+                title: 'Bán Hàng & Báo Giá Nhanh',
+                desc: 'Tự tính doanh thu, giá vốn, lãi gộp từng đơn. In hóa đơn A4 đính kèm mã VietQR thanh toán.',
               ),
               const SizedBox(height: 14),
               _buildFeatureItem(
-                icon: Icons.warning_amber_rounded,
-                title: 'Cảnh Báo Tồn An Toàn & Hạn Dùng FEFO',
-                desc: 'Tự động đổi màu đỏ khi chạm ngưỡng tối thiểu (Min Stock) & cảnh báo hạn sử dụng lô hàng.',
+                icon: Icons.inventory_2_rounded,
+                title: 'Quản Lý Mua Hàng & Tồn Kho',
+                desc: 'Lập phiếu mua hàng, theo dõi chiết khấu/VAT/vận chuyển, cảnh báo tồn kho và hạn mức an toàn.',
               ),
               const SizedBox(height: 14),
               _buildFeatureItem(
-                icon: Icons.lock_clock_rounded,
-                title: 'Chốt Ca Bất Biến & Vết Kiểm Toán',
-                desc: 'Khóa ca sau 30 phút, chống sửa đổi số liệu quá khứ, phát hiện hao hụt chênh lệch tức thời.',
+                icon: Icons.account_balance_wallet_rounded,
+                title: 'Công Nợ & Dòng Tiền Tự Động',
+                desc: 'Theo dõi chi tiết công nợ khách hàng, nhà cung cấp, kiểm kê kho và bù trừ tồn tự động.',
               ),
             ],
           ),
           Row(
             children: [
-              const Icon(Icons.verified_outlined, color: Color(0xFF86EFAC), size: 16),
+              const Icon(Icons.verified_outlined, color: Color(0xFFDDD6FE), size: 16),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'Hệ thống kiểm soát kho F&B • Phiên bản 2.0',
+                  'Hệ thống quản trị doanh nghiệp Optimate x NexUp',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.75),
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -544,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: const Color(0xFFFDE047), size: 16),
+          child: Icon(icon, color: const Color(0xFFDDD6FE), size: 16),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -593,7 +593,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Truy cập sổ kiểm kê, nhập xuất kho & chốt ca quầy pha chế',
+          'Truy cập hệ thống quản lý bán hàng, nhập xuất kho & công nợ',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -642,7 +642,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               horizontal: 10, vertical: 4),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          backgroundColor: const Color(0xFF0F4C3A),
+                          backgroundColor: const Color(0xFF6B4BC3),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -669,7 +669,7 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(
             labelText: 'Tài khoản nhân viên / Quản lý',
             hintText: auth.apiBaseUrl.isEmpty
-                ? 'staff_morning / manager_demo'
+                ? 'admin / manager'
                 : 'Tài khoản nhân viên',
             prefixIcon: const Icon(Icons.person_outline, size: 20),
             filled: true,
@@ -687,7 +687,7 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(
             labelText: 'Mật khẩu',
             hintText: auth.apiBaseUrl.isEmpty
-                ? 'DemoPass123! hoặc 123456'
+                ? 'Mật khẩu đăng nhập'
                 : 'Mật khẩu',
             prefixIcon: const Icon(Icons.lock_outline, size: 20),
             suffixIcon: IconButton(
@@ -718,7 +718,7 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF0F4C3A),
+                color: Color(0xFF6B4BC3),
               ),
             ),
           ),
@@ -730,7 +730,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: const Color(0xFF0F4C3A),
+            backgroundColor: const Color(0xFF6B4BC3),
           ),
           icon: _busy
               ? const SizedBox.square(
@@ -742,104 +742,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 )
               : const Icon(Icons.login_rounded, size: 20),
           label: Text(
-            _busy ? 'Đang xác thực thông tin…' : 'Đăng nhập vào ca',
+            _busy ? 'Đang xác thực thông tin…' : 'Đăng nhập hệ thống',
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Lối vào Reviewer Sandbox 3 phút (Dành cho nhà tuyển dụng & đánh giá portfolio)
-        OutlinedButton.icon(
-          key: const Key('login-reviewer-sandbox-btn'),
-          onPressed: _busy
-              ? null
-              : () async {
-                  setState(() => _busy = true);
-                  try {
-                    await auth.enterReviewerSandbox();
-                  } finally {
-                    if (mounted) setState(() => _busy = false);
-                  }
-                },
-          icon: const Icon(Icons.science_outlined, color: Color(0xFFD97706)),
-          label: const Text(
-            'Trải Nghiệm Reviewer Sandbox (3 Phút — Dữ Liệu Mẫu)',
-            style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFB45309)),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
-            backgroundColor: const Color(0xFFFFFBEB),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
         const SizedBox(height: 16),
-
-        // Quick shift accounts — hiển thị ở debug HOẶC web demo để đánh giá nhanh.
-        if (kIsWeb || kDebugMode || auth.apiBaseUrl.isEmpty)
-          Row(
-            children: [
-              Expanded(
-                  child: Divider(
-                      color: theme.colorScheme.outlineVariant
-                          .withValues(alpha: 0.6))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'TÀI KHOẢN CA TRỰC (DEMO)',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              Expanded(
-                  child: Divider(
-                      color: theme.colorScheme.outlineVariant
-                          .withValues(alpha: 0.6))),
-            ],
-          ),
-        if (kIsWeb || kDebugMode || auth.apiBaseUrl.isEmpty) const SizedBox(height: 10),
-        if (kIsWeb || kDebugMode || auth.apiBaseUrl.isEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildShiftChip(
-                key: const Key('login-shift-morning-chip'),
-                icon: Icons.wb_sunny_outlined,
-                label: 'Ca Sáng (07:30 - 15:00)',
-                color: const Color(0xFF059669),
-                onTap: () => _loginWithPassword('staff_morning', 'DemoPass123!'),
-              ),
-              _buildShiftChip(
-                key: const Key('login-shift-afternoon-chip'),
-                icon: Icons.nights_stay_outlined,
-                label: 'Ca Chiều (15:00 - 23:00)',
-                color: const Color(0xFFD97706),
-                onTap: () =>
-                    _loginWithPassword('staff_afternoon', 'DemoPass123!'),
-              ),
-              _buildShiftChip(
-                key: const Key('login-shift-split-chip'),
-                icon: Icons.access_time_outlined,
-                label: 'Ca Lỡ (07:30 - 18:00)',
-                color: const Color(0xFF0284C7),
-                onTap: () => _loginWithPassword('staff_split', 'DemoPass123!'),
-              ),
-              _buildShiftChip(
-                key: const Key('login-shift-manager-chip'),
-                icon: Icons.admin_panel_settings_outlined,
-                label: 'Chủ Quán / Quản Lý',
-                color: const Color(0xFF7C3AED),
-                onTap: () => _loginWithPassword('manager_demo', 'DemoPass123!'),
-              ),
-            ],
-          ),
-        if (kDebugMode || auth.apiBaseUrl.isEmpty) const SizedBox(height: 16),
 
         Row(
           children: [
@@ -889,7 +796,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         Text(
           auth.isGoogleSignInConfigured
-              ? 'Tài khoản Google nhân viên sẽ được tự động phân quyền theo ca trực.'
+              ? 'Tài khoản Google nhân viên sẽ được tự động phân quyền theo hệ thống ERP.'
               : 'Hỗ trợ đăng nhập Single Sign-On (SSO) tài khoản Google của nhân viên.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
@@ -923,7 +830,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
-                  color: Color(0xFF0F4C3A),
+                  color: Color(0xFF6B4BC3),
                 ),
               ),
             ),
@@ -949,49 +856,12 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF0284C7),
+                color: Color(0xFF6B4BC3),
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildShiftChip({
-    required Key key,
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      key: key,
-      onTap: _busy ? null : onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

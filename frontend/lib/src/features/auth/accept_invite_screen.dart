@@ -187,18 +187,18 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'KHO TRÀ SỮA',
+                                    'NEXUP ONE',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 0.8,
                                       color: isDark
                                           ? Colors.white
-                                          : const Color(0xFF0A2540),
+                                          : const Color(0xFF1E1736),
                                     ),
                                   ),
                                   Text(
-                                    'Quản Lý Nhập · Xuất · Tồn',
+                                    'ERP Quản Trị Doanh Nghiệp',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isDark
@@ -441,7 +441,7 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
                         FilledButton(
                           onPressed: _busy ? null : _submit,
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A2540),
+                            backgroundColor: const Color(0xFF6B4BC3),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(

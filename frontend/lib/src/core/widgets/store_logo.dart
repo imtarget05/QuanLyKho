@@ -16,12 +16,12 @@ class StoreLogo extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0284C7), Color(0xFF0D9488)],
+          colors: [Color(0xFF6B4BC3), Color(0xFF0284C7)],
         ),
         borderRadius: BorderRadius.circular(rounded ? size * 0.24 : 0),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+            color: const Color(0xFF6B4BC3).withValues(alpha: 0.3),
             blurRadius: size * 0.2,
             offset: Offset(0, size * 0.08),
           ),
@@ -77,14 +77,14 @@ class _StoreLogoPainter extends CustomPainter {
     canvas.drawPath(
         rightPath, Paint()..color = const Color(0xFFCBD5E1));
 
-    // Emerald accent stripe
+    // Accent stripe (purple-indigo highlight)
     final stripeTop = Path()
       ..moveTo(cx - w * 0.1, cy - h * 0.24)
       ..lineTo(cx, cy - h * 0.18)
       ..lineTo(cx + w * 0.1, cy - h * 0.24)
       ..lineTo(cx, cy - h * 0.3)
       ..close();
-    canvas.drawPath(stripeTop, Paint()..color = const Color(0xFF10B981));
+    canvas.drawPath(stripeTop, Paint()..color = const Color(0xFF8B5CF6));
 
     final stripeFront = Path()
       ..moveTo(cx - w * 0.09, cy + h * 0.01)
@@ -92,7 +92,7 @@ class _StoreLogoPainter extends CustomPainter {
       ..lineTo(cx, cy + h * 0.48)
       ..lineTo(cx - w * 0.09, cy + h * 0.43)
       ..close();
-    canvas.drawPath(stripeFront, Paint()..color = const Color(0xFF10B981));
+    canvas.drawPath(stripeFront, Paint()..color = const Color(0xFF8B5CF6));
 
     final stripeRight = Path()
       ..moveTo(cx, cy + h * 0.06)
@@ -100,11 +100,11 @@ class _StoreLogoPainter extends CustomPainter {
       ..lineTo(cx + w * 0.09, cy + h * 0.43)
       ..lineTo(cx, cy + h * 0.48)
       ..close();
-    canvas.drawPath(stripeRight, Paint()..color = const Color(0xFF059669));
+    canvas.drawPath(stripeRight, Paint()..color = const Color(0xFF6B4BC3));
 
     // Crisp checkmark in center top
     final checkPaint = Paint()
-      ..color = const Color(0xFF0369A1)
+      ..color = const Color(0xFF4C1D95)
       ..strokeWidth = w * 0.09
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round

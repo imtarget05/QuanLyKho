@@ -13,6 +13,7 @@ import 'commerce_memory_store.dart';
 import 'commerce_api.dart';
 import 'commerce_reports_page.dart';
 import 'commerce_settings_view.dart';
+import '../../core/widgets/store_logo.dart';
 
 class CommerceWorkspace extends StatefulWidget {
   const CommerceWorkspace({
@@ -63,12 +64,12 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     'Cài đặt',
   ];
   static const _navigationIcons = [
-    Icons.grid_view_rounded,
-    Icons.point_of_sale_rounded,
-    Icons.shopping_bag_outlined,
+    Icons.dashboard_outlined,
+    Icons.point_of_sale_outlined,
+    Icons.shopping_cart_outlined,
     Icons.inventory_2_outlined,
     Icons.account_balance_wallet_outlined,
-    Icons.bar_chart_rounded,
+    Icons.bar_chart_outlined,
     Icons.fact_check_outlined,
     Icons.settings_outlined,
   ];
@@ -268,7 +269,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                 if (canViewOwnerData)
                                   ListTile(
                                       leading:
-                                          const Icon(Icons.bar_chart_rounded),
+                                          const Icon(Icons.bar_chart_outlined),
                                       title: const Text('Báo cáo'),
                                       onTap: () {
                                         Navigator.pop(sheetContext);
@@ -293,8 +294,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                     }),
                                 const Divider(),
                                 ListTile(
-                                  leading:
-                                      const Icon(Icons.person_outline_rounded),
+                                  leading: const StoreLogo(size: 28),
                                   title: Text(widget.userName),
                                   subtitle: const Text('Optimate x NexUp ERP',
                                       style: TextStyle(fontSize: 11)),
@@ -318,14 +318,32 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
               height: 68,
               backgroundColor: Colors.white,
               indicatorColor: const Color(0xFFEDE8FC),
-              destinations: [
-                for (var i = 0; i < _mobilePages.length; i++)
-                  NavigationDestination(
-                      icon: Icon(_navigationIcons[i]),
-                      label: _navigationNames[
-                          _navigationPages.indexOf(_mobilePages[i])]),
-                const NavigationDestination(
-                    icon: Icon(Icons.more_horiz_rounded), label: 'Thêm'),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  selectedIcon: Icon(Icons.dashboard),
+                  label: 'Tổng quan',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.point_of_sale_outlined),
+                  selectedIcon: Icon(Icons.point_of_sale),
+                  label: 'Bán hàng',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.shopping_cart_outlined),
+                  selectedIcon: Icon(Icons.shopping_cart),
+                  label: 'Mua hàng',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2),
+                  label: 'Kho hàng',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.more_horiz_outlined),
+                  selectedIcon: Icon(Icons.more_horiz),
+                  label: 'Thêm',
+                ),
               ],
             ),
     );
@@ -366,15 +384,7 @@ class _WorkspaceSidebar extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(22, 22, 16, 22),
               child: Row(
                 children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFF7555D1),
-                        borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.auto_graph_rounded,
-                        color: Colors.white, size: 20),
-                  ),
+                  const StoreLogo(size: 34),
                   const SizedBox(width: 11),
                   const Expanded(
                     child: Column(
@@ -569,10 +579,8 @@ class _WorkspaceTopbar extends StatelessWidget {
           border: Border(bottom: BorderSide(color: Color(0xFFE8EAE7)))),
       child: Row(
         children: [
-          if (compact)
-            const Icon(Icons.auto_graph_rounded,
-                color: Color(0xFF7555D1), size: 20),
-          if (compact) const SizedBox(width: 9),
+          const StoreLogo(size: 28),
+          const SizedBox(width: 10),
           if (compact)
             Expanded(
               child: Text(title,
@@ -591,37 +599,17 @@ class _WorkspaceTopbar extends StatelessWidget {
                     fontSize: 17,
                     color: Color(0xFF0F172A),
                     letterSpacing: -.4)),
-          if (compact && !isLive) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1EDFC),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Text('DEMO · RAM',
-                  style: TextStyle(
-                      fontSize: 8,
-                      color: Color(0xFF6244BA),
-                      fontWeight: FontWeight.w800)),
-            ),
-          ],
-          if (!compact) ...[
+          if (!compact && isLive) ...[
             const SizedBox(width: 10),
             Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                    color: isLive
-                        ? const Color(0xFFE7F6EF)
-                        : const Color(0xFFF1EDFC),
+                    color: const Color(0xFFE7F6EF),
                     borderRadius: BorderRadius.circular(18)),
-                child: Text(
-                    isLive ? 'KẾT NỐI MÁY CHỦ' : 'DEMO · chỉ lưu trong phiên',
+                child: const Text('KẾT NỐI MÁY CHỦ',
                     style: TextStyle(
                         fontSize: 9,
-                        color: isLive
-                            ? const Color(0xFF168256)
-                            : const Color(0xFF6244BA),
+                        color: Color(0xFF168256),
                         fontWeight: FontWeight.w800))),
           ],
           const Spacer(),
@@ -656,7 +644,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                 ? IconButton.filled(
                     onPressed: onCreate,
                     tooltip: createLabel,
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(Icons.add, size: 20),
                     style: IconButton.styleFrom(
                         backgroundColor: const Color(0xFF6B4BC3),
                         foregroundColor: Colors.white,
@@ -664,7 +652,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                   )
                 : FilledButton.icon(
                     onPressed: onCreate,
-                    icon: const Icon(Icons.add_rounded, size: 18),
+                    icon: const Icon(Icons.add, size: 18),
                     label: Text(createLabel),
                     style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF6B4BC3),
