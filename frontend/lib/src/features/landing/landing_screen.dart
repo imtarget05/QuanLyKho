@@ -90,7 +90,7 @@ class _HeroSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Quản lý kho & ca làm việc\\ncho quán trà sữa',
+                      'Quản lý kho & ca làm việc\ncho quán trà sữa',
                       textAlign: isWide ? TextAlign.left : TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
@@ -236,15 +236,22 @@ class _FeaturesSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: _features
-                    .map((f) => SizedBox(
-                          width: (1100 - 16 * (cols - 1)) / cols,
-                          child: _FeatureCard(feature: f),
-                        ))
-                    .toList(),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardWidth = isWide
+                      ? (constraints.maxWidth - 32) / 3
+                      : (isCompact ? constraints.maxWidth : (constraints.maxWidth - 16) / 2);
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: _features
+                        .map((f) => SizedBox(
+                              width: cardWidth,
+                              child: _FeatureCard(feature: f),
+                            ))
+                        .toList(),
+                  );
+                },
               ),
             ],
           ),

@@ -918,38 +918,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     context,
                     icon: Icons.savings_outlined,
                     label: context.isVietnamese
-                        ? 'Lập phiếu nhập nguyên liệu'
-                        : 'New Stock Inward',
+                        ? 'Tạo phiếu nhập'
+                        : 'New stock receipt',
                     color: const Color(0xFF059669),
                     tabIndex: 3,
+                    autoOpenStock: true,
                   ),
-                if (RoleVisibility.canCreate(roles))
-                  _actionButton(
-                    context,
-                    icon: Icons.inventory_2_outlined,
-                    label: context.isVietnamese
-                        ? 'Lập phiếu Xuất/Nhập kho'
-                        : 'Stock In/Out Voucher',
-                    color: const Color(0xFF2563EB),
-                    tabIndex: 3,
-                  ),
+                _actionButton(
+                  context,
+                  icon: Icons.inventory_2_outlined,
+                  label: context.isVietnamese ? 'Xem tồn kho' : 'View inventory',
+                  color: const Color(0xFF2563EB),
+                  tabIndex: 1,
+                ),
                 if (RoleVisibility.canApprove(roles))
                   _actionButton(
                     context,
                     icon: Icons.verified_outlined,
                     label: context.isVietnamese
                         ? 'Phê duyệt Kiểm Soát Kép'
-                        : 'Dual Control Approval',
+                        : 'Dual-control approvals',
                     color: const Color(0xFF7C3AED),
                     tabIndex: 4,
                   )
                 else
                   _actionButton(
                     context,
-                    icon: Icons.fact_check_outlined,
+                    icon: Icons.receipt_long_outlined,
                     label: context.isVietnamese
                         ? 'Theo dõi Yêu cầu của tôi'
-                        : 'Track My Requests',
+                        : 'My submitted requests',
                     color: const Color(0xFFD97706),
                     tabIndex: 3,
                   ),
@@ -958,7 +956,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.sync_alt_outlined,
                   label: context.isVietnamese
                       ? 'Đối soát Sổ cái tức thì'
-                      : 'Instant Reconciliation',
+                      : 'Instant GL reconciliation',
                   color: const Color(0xFF0891B2),
                   tabIndex: 7,
                 ),
@@ -981,6 +979,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String label,
     required Color color,
     required int tabIndex,
+    bool autoOpenStock = false,
   }) {
     final go = widget.onNavigate;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -988,7 +987,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       key: Key('quick-action-$tabIndex-${icon.codePoint}'),
       onPressed: () {
         if (go != null) {
-          go(tabIndex);
+          go(tabIndex, autoOpenStock: autoOpenStock);
           return;
         }
         ScaffoldMessenger.of(context).showSnackBar(
