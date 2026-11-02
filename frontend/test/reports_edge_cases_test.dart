@@ -74,7 +74,7 @@ class _NegativeValuesRepository extends FakeBankOpsRepository {
     String? dateFrom,
     String? dateTo,
   }) async => [
-    InventoryBucket(
+    const InventoryBucket(
       bucket: '2026-10-01',
       inboundQty: '-100',
       outboundQty: '50',
@@ -82,7 +82,7 @@ class _NegativeValuesRepository extends FakeBankOpsRepository {
       receiptCount: 2,
       issueCount: 1,
     ),
-    InventoryBucket(
+    const InventoryBucket(
       bucket: '2026-10-02',
       inboundQty: '0',
       outboundQty: '0',
@@ -97,7 +97,7 @@ class _NegativeValuesRepository extends FakeBankOpsRepository {
     String? dateFrom,
     String? dateTo,
   }) async => [
-    InventoryBucket(
+    const InventoryBucket(
       bucket: '2026-10',
       inboundQty: '-500',
       outboundQty: '300',
@@ -112,7 +112,7 @@ class _NegativeValuesRepository extends FakeBankOpsRepository {
     String? dateFrom,
     String? dateTo,
   }) async => [
-    CashflowBucket(
+    const CashflowBucket(
       bucket: '2026-10-01',
       totalIn: '-2000000',
       totalOut: '1000000',
@@ -126,7 +126,7 @@ class _NegativeValuesRepository extends FakeBankOpsRepository {
     String? dateFrom,
     String? dateTo,
   }) async => [
-    CashflowBucket(
+    const CashflowBucket(
       bucket: '2026-10',
       totalIn: '-10000000',
       totalOut: '5000000',
@@ -238,7 +238,7 @@ class _PartialDataRepository extends FakeBankOpsRepository {
     String? dateFrom,
     String? dateTo,
   }) async => [
-    InventoryBucket(
+    const InventoryBucket(
       bucket: '2026-10-01',
       inboundQty: '100',
       outboundQty: '50',
@@ -274,7 +274,7 @@ class _PartialDataRepository extends FakeBankOpsRepository {
     int stagnantDays = 60,
     int criticalDays = 90,
   }) async => [
-    StagnationItem(
+    const StagnationItem(
       itemId: 'item-1',
       sku: 'TEST-001',
       name: 'Test Item',

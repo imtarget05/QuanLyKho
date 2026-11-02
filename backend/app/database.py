@@ -8,7 +8,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.db.base import Base
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +68,8 @@ async def init_db() -> None:
     Fail-fast (R8): bất kỳ lỗi DB nào cũng **raise** ở mọi môi trường —
     orchestrator sẽ restart app thay vì phục vụ traffic với DB chết.
 
-    Schema bootstrap (`create_all` + seed demo) chỉ chạy ở **demo mode tường
-    minh** (`APP_ENV=demo` + `DEMO_MODE=true`). Ở staging/production, Alembic là
-    nguồn sự thật (`alembic upgrade head` chạy ở entrypoint) — `create_all` từng
-    âm thầm bỏ qua Alembic và có thể tạo schema lệch với migration.
+    Schema và dữ liệu demo không được khởi tạo ở startup. Alembic là nguồn sự
+    thật; demo UI giữ dữ liệu riêng trong RAM.
     """
     try:
         import app.models.activity  # noqa: F401
@@ -83,71 +80,11 @@ async def init_db() -> None:
         import app.models.inventory  # noqa: F401
         import app.models.reconciliation  # noqa: F401
 
-        # Seed dữ liệu demo CHỈ chạy khi demo mode được bật tường minh
-        # (`APP_ENV=demo` + `DEMO_MODE=true`). Trước đây điều kiện là
-        # `app_env != "production"`, nên mọi môi trường (staging/dev) đều tự
-        # nạp dữ liệu demo — bao gồm cả user demo kèm mật khẩu mặc định.
-        if settings.is_demo_mode:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-                for col_stmt in [
-                    "ALTER TABLE inv_items ADD COLUMN IF NOT EXISTS category VARCHAR(128)",
-                    "ALTER TABLE inv_items ADD COLUMN IF NOT EXISTS packaging VARCHAR(256)",
-                    "ALTER TABLE inv_items ADD COLUMN IF NOT EXISTS cost_price NUMERIC(15,2)",
-                    "ALTER TABLE inv_items ADD COLUMN IF NOT EXISTS selling_price NUMERIC(15,2)",
-                    "ALTER TABLE inv_items ADD COLUMN IF NOT EXISTS min_stock NUMERIC(12,2)",
-                    "ALTER TABLE inv_requests ADD COLUMN IF NOT EXISTS invoice_no VARCHAR(128)",
-                    "ALTER TABLE inv_requests ADD COLUMN IF NOT EXISTS sub_kind VARCHAR(32)",
-                    "ALTER TABLE inv_request_lines ADD COLUMN IF NOT EXISTS unit VARCHAR(32)",
-                    "ALTER TABLE inv_request_lines ADD COLUMN IF NOT EXISTS conversion_rate NUMERIC(10,4)",
-                    "ALTER TABLE inv_movements ADD COLUMN IF NOT EXISTS sub_kind VARCHAR(32)",
-                    "ALTER TABLE inv_movements ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(14,2)",
-                    "ALTER TABLE inv_movements ADD COLUMN IF NOT EXISTS cost_amount NUMERIC(20,2)",
-                ]:
-                    try:
-                        await conn.execute(text(col_stmt))
-                    except Exception as ex:
-                        logger.warning(f"Migration note: {ex}")
-
-                try:
-                    res = await conn.execute(text(
-                        "SELECT b.location_id, b.item_id, b.quantity, COALESCE(i.cost_price, 0) "
-                        "FROM inv_balances b "
-                        "LEFT JOIN inv_items i ON i.id = b.item_id "
-                        "WHERE b.quantity > 0 "
-                        "AND NOT EXISTS (SELECT 1 FROM inv_lot_balances lb WHERE lb.location_id = b.location_id AND lb.item_id = b.item_id)"
-                    ))
-                    rows = res.fetchall()
-                    for r in rows:
-                        import uuid as _uuid_m
-                        from datetime import date as _date_m
-                        await conn.execute(text(
-                            "INSERT INTO inv_lot_balances (id, location_id, item_id, lot_no, expiry_date, quantity, unit_cost, created_at, updated_at) "
-                            "VALUES (:id, :loc, :it, 'TON-DAU-KY', :exp, :qty, :cost, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-                        ), {
-                            "id": _uuid_m.uuid4(),
-                            "loc": r[0],
-                            "it": r[1],
-                            "exp": _date_m(2099, 12, 31),
-                            "qty": r[2],
-                            "cost": r[3],
-                        })
-                except Exception as ex:
-                    logger.warning(f"Initial lot seeding note: {ex}")
-
-            from app.seed import seed_demo
-
-            await seed_demo()
-            async with AsyncSessionLocal() as session:
-                await session.execute(
-                    text("UPDATE cash_balances SET amount = 0.00 WHERE cashbox_id = '11111111-1111-4111-8111-111111111111'")
-                )
-                await session.commit()
-        else:
-            # Ngoài demo mode: KHÔNG create_all/seed — chỉ xác minh kết nối.
-            # Lỗi kết nối phải raise để app không serve traffic với DB chết.
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
+        # Never seed or mutate schema during app startup, including demo mode.
+        # Migrations are an explicit deployment step; the standalone UI demo
+        # uses an in-memory store and does not need a database connection.
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")

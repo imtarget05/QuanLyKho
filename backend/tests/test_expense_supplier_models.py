@@ -60,7 +60,10 @@ def _create_isolated_database(server_url: str) -> str:
     try:
         connection.autocommit = True
         with connection.cursor() as cursor:
-            cursor.execute(f'CREATE DATABASE "{database_name}"')
+            # Migrations seed non-ASCII text; do not inherit SQL_ASCII template1.
+            cursor.execute(
+                f'CREATE DATABASE "{database_name}" WITH ENCODING \'UTF8\' TEMPLATE template0'
+            )
     except psycopg2.errors.InsufficientPrivilege:
         pytest.skip(
             "The configured PostgreSQL role may not create databases, so the "

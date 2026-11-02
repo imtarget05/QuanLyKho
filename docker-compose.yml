@@ -1,5 +1,6 @@
 services:
   postgres:
+    profiles: ["backend"]
     image: postgres:16-alpine
     container_name: kho-tra-sua-db
     environment:
@@ -18,6 +19,7 @@ services:
       retries: 5
 
   api:
+    profiles: ["backend"]
     build:
       context: backend
     container_name: kho-tra-sua-api
@@ -32,6 +34,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://kho-tra-sua:kho-tra-sua@postgres:5432/kho-tra-sua
       - APP_ENV=demo
+      - DEMO_MODE=false
       - ALLOWED_ORIGINS=["http://localhost:3000","http://localhost:8080","http://127.0.0.1:8080"]
       - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
@@ -43,8 +46,6 @@ services:
       # configure it in the ignored backend/.env file for local testing.
     ports:
       - "8000:8000"
-    volumes:
-      - ./sample-data:/sample-data:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')\""]
@@ -55,11 +56,11 @@ services:
     command: >
       sh -c "
         alembic upgrade head &&
-        python -c 'from app.seed import seed_demo; import asyncio; asyncio.run(seed_demo())' &&
         uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
 
   worker:
+    profiles: ["backend"]
     build:
       context: backend
     container_name: kho-tra-sua-worker
@@ -78,8 +79,6 @@ services:
   frontend-web:
     image: nginx:alpine
     container_name: kho-tra-sua-frontend
-    depends_on:
-      - api
     ports:
       - "8080:80"
     volumes:

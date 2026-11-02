@@ -11,7 +11,9 @@ import 'src/features/auth/accept_invite_screen.dart';
 import 'src/features/auth/auth_service.dart';
 import 'src/features/auth/login_screen.dart';
 import 'src/features/landing/landing_screen.dart';
-import 'src/data/repositories/fake_repository.dart';
+import 'src/features/commerce/commerce_memory_store.dart';
+import 'src/features/commerce/commerce_workspace.dart';
+import 'src/features/commerce/commerce_api.dart';
 
 import 'src/core/i18n/app_i18n.dart';
 import 'src/core/i18n/locale_controller.dart';
@@ -80,7 +82,7 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  final FakeBankOpsRepository _demoRepository = FakeBankOpsRepository();
+  late final CommerceMemoryStore _demoStore = CommerceMemoryStore.demo();
   bool _showAcceptInvite = false;
   String? _inviteToken;
   bool _showLogin = false;
@@ -89,7 +91,25 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   void initState() {
     super.initState();
+    _showDemo = const bool.fromEnvironment('OFFLINE_DEMO', defaultValue: false);
     _checkUrlForInviteToken();
+  }
+
+  @override
+  void dispose() {
+    _demoStore.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignOut(AuthService auth) async {
+    await auth.signOut();
+    if (mounted) {
+      setState(() {
+        _showDemo = false;
+        _showAcceptInvite = false;
+        _showLogin = true;
+      });
+    }
   }
 
   void _checkUrlForInviteToken() {
@@ -122,8 +142,16 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    if (_showDemo) {
-      return AppShell(repository: _demoRepository);
+    if (_showDemo || auth.isOfflineSession) {
+      return CommerceWorkspace(
+        store: _demoStore,
+        userName: auth.user?.displayName ?? 'An Nguyễn (Demo)',
+        capabilities: _showDemo && auth.user == null
+            ? null
+            : auth.user?.capabilities.toSet(),
+        roles: _showDemo && auth.user == null ? null : auth.user?.roles.toSet(),
+        onSignOut: () => _handleSignOut(auth),
+      );
     }
     if (auth.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -137,14 +165,109 @@ class _AuthGateState extends State<_AuthGate> {
         );
       }
       if (_showLogin) {
-        return const LoginScreen();
+        return LoginScreen(
+          onBackToLanding: () => setState(() => _showLogin = false),
+        );
       }
       return LandingScreen(
         onEnter: () => setState(() => _showLogin = true),
         onDemo: () => setState(() => _showDemo = true),
       );
     }
-    return const AppShell();
+    return _LiveCommerceGate(
+      auth: auth,
+      onSignOut: () => _handleSignOut(auth),
+    );
+  }
+}
+
+class _LiveCommerceGate extends StatefulWidget {
+  const _LiveCommerceGate({required this.auth, required this.onSignOut});
+  final AuthService auth;
+  final Future<void> Function() onSignOut;
+
+  @override
+  State<_LiveCommerceGate> createState() => _LiveCommerceGateState();
+}
+
+class _LiveCommerceGateState extends State<_LiveCommerceGate> {
+  late final CommerceMemoryStore _store = CommerceMemoryStore.empty();
+  late final CommerceApi _api = CommerceApi(
+    baseUrl: widget.auth.apiBaseUrl,
+    tokenProvider: widget.auth.getAccessToken,
+    userId: widget.auth.user?.id ?? '',
+  );
+  Object? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await _api.reload(_store);
+    } catch (error) {
+      _error = error;
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  void dispose() {
+    _api.dispose();
+    _store.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading && _store.products.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null && _store.products.isEmpty) {
+      return Scaffold(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_outlined, size: 40),
+                  const SizedBox(height: 12),
+                  const Text('Không tải được dữ liệu cửa hàng',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Text('$_error', textAlign: TextAlign.center),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                      onPressed: _reload, child: const Text('Thử lại')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return CommerceWorkspace(
+      store: _store,
+      api: _api,
+      onRefresh: _reload,
+      userName: widget.auth.user?.displayName ?? 'Tài khoản',
+      onSignOut: widget.onSignOut,
+      capabilities: widget.auth.user?.capabilities.toSet(),
+      roles: widget.auth.user?.roles.toSet(),
+    );
   }
 }
 

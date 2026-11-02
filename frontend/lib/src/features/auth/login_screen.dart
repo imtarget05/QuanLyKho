@@ -22,6 +22,7 @@ class LoginScreen extends StatefulWidget {
     this.initialUsername,
     this.initialPassword,
     this.showDemoBanner = false,
+    this.onBackToLanding,
   });
 
   /// Pre-fill the username field (e.g. for demo flow).
@@ -32,6 +33,9 @@ class LoginScreen extends StatefulWidget {
 
   /// When true, shows a top banner indicating this is a demo session.
   final bool showDemoBanner;
+
+  /// Callback to navigate back to the landing page.
+  final VoidCallback? onBackToLanding;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -352,6 +356,17 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
     return Column(
       children: [
+        if (widget.onBackToLanding != null) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: widget.onBackToLanding,
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text('Trang chủ'),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         const StoreLogo(size: 56),
         const SizedBox(height: 14),
         Text(

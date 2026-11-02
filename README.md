@@ -71,30 +71,31 @@ flowchart TD
 
 ## 3. Demo profile và phân quyền
 
-Demo profile chỉ phục vụ local/interview. Không công bố credential trong README, không seed tài khoản demo ngoài `APP_ENV=demo` và không dùng demo auth/Google mock trong pilot hoặc production.
+Chế độ demo web bắt đầu trống; thao tác tạo sản phẩm, đối tác, chứng từ và thanh toán chỉ nằm trong RAM của trình duyệt. Demo không cần đăng nhập, không gọi API và không đọc/ghi PostgreSQL. Tải lại trang sẽ xóa phiên hiện tại và bắt đầu trống.
 
-| Username | Vai trò (Role) | Quyền hạn chính |
-| :--- | :--- | :--- |
-| **`demo_maker`** | Maker (Giao dịch viên) | Tạo & gửi duyệt phiếu thu/chi quỹ, xuất/nhập kho, import dữ liệu Staging. Tab "Duyệt" bị ẩn hoàn toàn để bảo đảm nguyên tắc kiểm soát kép. |
-| **`demo_checker`** | Checker (Kiểm soát viên) | Hộp thư phê duyệt 4-mắt, xem phân tích AI Copilot, duyệt/từ chối phiếu (kèm xác thực PIN với lệnh rủi ro cao), chạy đối soát số liệu. |
-| **`demo_auditor`** | Auditor (Kiểm toán nội bộ) | Xem báo cáo tài chính, biến động dòng tiền, lịch sử nhật ký kiểm toán và chuỗi hàm băm toàn vẹn dữ liệu. |
-
-> Google/demo auth chỉ được bật trong demo profile. Pilot/production cần IdP được phê duyệt và quyền được cấp qua quy trình provisioning.
+Chế độ live dùng đăng nhập thật, phân quyền theo tài khoản và quy trình maker–checker của backend. Không dùng demo auth hoặc tài khoản mẫu trong môi trường live.
 
 ---
 
 ## 4. Khởi Chạy Nhanh Hệ Thống (Docker Compose)
 
-Khởi động toàn bộ cụm dịch vụ (Web UI + FastAPI + Worker + PostgreSQL 16) chỉ với 1 câu lệnh:
+Mặc định, `make up` mở giao diện demo tại [http://localhost:8080](http://localhost:8080). Demo khởi động trống; mọi thao tác chỉ ở RAM. Tải lại trang để xóa phiên hiện tại. Demo không gọi API và không ghi/xóa PostgreSQL.
 
 ```bash
-docker compose up -d --build
+make up
 ```
 
-- **Giao diện Web App (Nginx Flutter Web):** [http://localhost:8080](http://localhost:8080)
+Muốn dùng cùng giao diện mới với API và PostgreSQL, dùng lệnh riêng. Lệnh này build UI ở chế độ live, chạy migration và không nạp dữ liệu mẫu:
+
+```bash
+make up-backend
+```
+
+- **Giao diện Web App:** [http://localhost:8080](http://localhost:8080)
 - **Tài liệu Backend Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **API Health Check:** [http://localhost:8000/health/live](http://localhost:8000/health/live)
-- **Cơ sở dữ liệu PostgreSQL:** local development only; cấu hình kết nối nằm trong file env bị ignore, không dùng credential README cho môi trường pilot/production.
+- Tạo dữ liệu thật yêu cầu tài khoản có quyền và dữ liệu kho/đối tác; bán, mua, thanh toán và kiểm kê được lưu qua API, chịu phân quyền và bước duyệt phù hợp.
+- Backend startup chỉ kiểm tra kết nối; schema được nâng bằng Alembic khi chạy backend. Không dùng lệnh reset demo để thao tác database.
 
 ---
 

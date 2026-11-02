@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app_shell.dart';
@@ -9,7 +8,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/util/formatting.dart';
 import '../../core/util/report_share.dart';
 import '../../core/util/role_visibility.dart';
-import '../../core/widgets/app_toast.dart';
 import '../../core/util/approval_pdf.dart';
 import '../../core/util/error_text.dart';
 import '../../core/widgets/state_views.dart';
@@ -24,6 +22,7 @@ import 'widgets/meeting_notes_tab.dart';
 import 'widgets/meeting_presentation_modal.dart';
 import 'widgets/meeting_report_pdf.dart';
 import 'widgets/stagnation_list.dart';
+import '../sync/export_dialog.dart';
 
 /// Màn báo cáo điều hành & giao ban cuộc họp — biểu đồ nhập/xuất kho, dòng tiền mô phỏng, cảnh báo tồn đọng, đối soát và công cụ thuyết trình.
 class ReportsScreen extends StatefulWidget {
@@ -346,16 +345,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _exportCsv(BuildContext context, _ReportsData data) {
-    final sb = StringBuffer();
-    sb.writeln(
-        'Ky,NhapKho_SoLuong,XuatKho_SoLuong,TonRong_SoLuong,SoPhieuNhap,SoPhieuXuat');
-    for (final b in data.inventoryBuckets) {
-      sb.writeln(
-          '${b.bucket},${b.inboundQty},${b.outboundQty},${b.netQty},${b.receiptCount},${b.issueCount}');
-    }
-    Clipboard.setData(ClipboardData(text: sb.toString()));
-    AppToast.success(context,
-        'Đã sao chép dữ liệu CSV vào Clipboard (có thể dán trực tiếp vào Google Sheets / Excel).');
+    ExportDialog.show(
+      context,
+      initialDataset: 'inventory_summary',
+    );
   }
 
   void _showVoucherPrintModal(BuildContext context, _ReportsData data) {

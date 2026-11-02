@@ -1,19 +1,22 @@
 # BankOps — lệnh vận hành 1-click (thay cho chuỗi docker/flutter dài trong README).
 # Chạy ở thư mục này: `make <target>`. Xem danh sách: `make help`.
 
-.PHONY: help up down reset-demo logs ps test-backend analyze-backend test-frontend analyze-frontend build-frontend typecheck-worker check-secrets verify-e2e test-all check-all
+.PHONY: help up up-backend down reset-demo logs ps test-backend analyze-backend test-frontend analyze-frontend build-frontend build-frontend-live typecheck-worker check-secrets verify-e2e test-all check-all
 
 help: ## Hiện danh sách lệnh
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-up: ## Build + chạy toàn bộ stack (API :8000, Web :8080, PG :5432)
-	docker compose up -d --build
+up: build-frontend ## Chạy web demo offline tại :8080 (dữ liệu chỉ trong RAM)
+	docker compose up -d frontend-web
+
+up-backend: build-frontend-live ## Chạy API + PostgreSQL và UI dùng DB thật (không seed demo)
+	docker compose --profile backend up -d --build
 
 down: ## Dừng stack (giữ dữ liệu demo)
 	docker compose down
 
-reset-demo: ## Reset demo về seed gốc (XOÁ HẾT dữ liệu demo hiện tại)
-	docker compose down -v && docker compose up -d --build
+reset-demo: ## Làm mới dữ liệu demo RAM (không đụng tới database)
+	@echo "Tải lại trang web để tạo phiên demo RAM mới. Database không bị thay đổi."
 
 logs: ## Xem log API + worker trực tiếp
 	docker compose logs -f api worker
@@ -37,8 +40,11 @@ test-frontend: ## Chạy toàn bộ Flutter test (80 tests)
 analyze-frontend: ## Phân tích tĩnh code Flutter (flutter analyze)
 	cd frontend && flutter analyze
 
-build-frontend: ## Build Flutter Web release vào frontend/dist
-	cd frontend && flutter build web --release && cp -rf build/web/* dist/
+build-frontend: ## Build Flutter Web demo offline vào frontend/dist
+	cd frontend && flutter build web --release --dart-define=OFFLINE_DEMO=true && mkdir -p dist && cp -R build/web/. dist/
+
+build-frontend-live: ## Build Flutter Web kết nối API local tại :8000
+	cd frontend && flutter build web --release --dart-define=API_BASE_URL=http://localhost:8000/api/v1 && mkdir -p dist && cp -R build/web/. dist/
 
 typecheck-worker: ## Kiểm tra TypeScript Cloudflare Worker
 	cd infra/cloudflare-worker && npm run typecheck

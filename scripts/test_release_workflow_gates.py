@@ -144,6 +144,27 @@ class ReleaseWorkflowGateTests(unittest.TestCase):
         assert "test" in ci["jobs"]
         assert "frontend-web" in ci["jobs"]
 
+    def test_quality_ci_tests_the_same_pull_request_merge_ref_it_builds(self) -> None:
+        ci = yaml.load((WORKFLOWS / "ci.yml").read_text(), Loader=yaml.BaseLoader)
+        test_steps = ci["jobs"]["test"]["steps"]
+        checkout = next(step for step in test_steps if step.get("uses") == "actions/checkout@v4")
+        self.assertNotIn("ref", checkout.get("with", {}))
+        record = next(step for step in test_steps if step.get("name") == "Record the exact commit under test")
+        self.assertIn("git rev-parse HEAD", record["run"])
+        self.assertNotIn("pull_request.head.sha", record["run"])
+
+    def test_legacy_worker_workflow_is_read_only_validation_not_deployment(self) -> None:
+        source = (WORKFLOWS / "deploy-worker.yml").read_text()
+        workflow = yaml.load(source, Loader=yaml.BaseLoader)
+        self.assertEqual(set(workflow["on"]), {"workflow_dispatch"})
+        self.assertEqual(workflow["permissions"], {"contents": "read"})
+        validate = workflow["jobs"]["validate"]
+        self.assertEqual(validate["timeout-minutes"], "10")
+        commands = "\n".join(step.get("run", "") for step in validate["steps"])
+        self.assertIn("npm run typecheck", commands)
+        self.assertNotIn("wrangler deploy", source)
+        self.assertNotIn("kubectl apply", source)
+
     def test_cloudflare_assets_use_the_azure_edge(self) -> None:
         workflow = yaml.load(
             (WORKFLOWS / "deploy-pages.yml").read_text(), Loader=yaml.BaseLoader

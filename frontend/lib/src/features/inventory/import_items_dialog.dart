@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:excel/excel.dart' as xl;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -334,15 +335,35 @@ class _ImportItemsDialogState extends State<ImportItemsDialog>
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv', 'txt', 'tsv'],
+        allowedExtensions: ['csv', 'xlsx', 'xls', 'txt', 'tsv'],
         withData: true,
       );
       if (result != null && result.files.isNotEmpty) {
-        final bytes = result.files.single.bytes;
+        final file = result.files.single;
+        final bytes = file.bytes;
         if (bytes != null) {
-          final content = utf8.decode(bytes, allowMalformed: true);
-          _textController.text = content;
-          _parsePastedText(content);
+          final ext = (file.extension ?? '').toLowerCase();
+          if (ext == 'xlsx' || ext == 'xls') {
+            final excel = xl.Excel.decodeBytes(bytes);
+            final sheetName = excel.tables.keys.firstOrNull;
+            if (sheetName != null) {
+              final table = excel.tables[sheetName];
+              if (table != null) {
+                final buffer = StringBuffer();
+                for (final row in table.rows) {
+                  final line = row.map((cell) => cell?.value?.toString() ?? '').join(',');
+                  buffer.writeln(line);
+                }
+                final content = buffer.toString();
+                _textController.text = content;
+                _parsePastedText(content);
+              }
+            }
+          } else {
+            final content = utf8.decode(bytes, allowMalformed: true);
+            _textController.text = content;
+            _parsePastedText(content);
+          }
         }
       }
     } catch (e) {
@@ -351,6 +372,109 @@ class _ImportItemsDialogState extends State<ImportItemsDialog>
           SnackBar(content: Text('Lỗi đọc file: $e'), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _importFromGoogleSheets() async {
+    final sheetUrlCtrl = TextEditingController(
+      text: 'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit',
+    );
+    final tabCtrl = TextEditingController(text: 'Sheet1');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.cloud_download_outlined, color: Color(0xFF0F4C81)),
+            SizedBox(width: 8),
+            Text('Đồng bộ từ Google Sheets'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nhập đường dẫn Google Sheet hoặc Sheet ID:'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: sheetUrlCtrl,
+              decoration: const InputDecoration(
+                hintText: 'https://docs.google.com/spreadsheets/d/...',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: tabCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Tên trang tính (Tab)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Huỷ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Kéo dữ liệu'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final repo = RepositoryScope.maybeOf(context);
+    if (repo == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final preview = await repo.fetchGoogleSheetByUrl(
+        sheetUrlOrId: sheetUrlCtrl.text.trim(),
+        tab: tabCtrl.text.trim().isEmpty ? 'Sheet1' : tabCtrl.text.trim(),
+      );
+
+      final buffer = StringBuffer();
+      buffer.writeln('sku,name,unit,category,packaging');
+      for (final r in preview.rows) {
+        final d = r.data;
+        final sku = d['sku'] ?? d['Mã'] ?? d['SKU'] ?? '';
+        final name = d['name'] ?? d['Tên'] ?? d['Tên hàng hoá'] ?? '';
+        final unit = d['unit'] ?? d['ĐVT'] ?? 'đơn vị';
+        final cat = d['category'] ?? d['Nhóm'] ?? 'Nguyên liệu';
+        final pack = d['packaging'] ?? d['Quy cách'] ?? '';
+        buffer.writeln('$sku,$name,$unit,$cat,$pack');
+      }
+
+      final content = buffer.toString();
+      _textController.text = content;
+      _parsePastedText(content);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã nạp ${preview.rows.length} dòng từ Google Sheet!'),
+            backgroundColor: const Color(0xFF059669),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi nạp Google Sheet: ${friendlyError(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -678,24 +802,32 @@ class _ImportItemsDialogState extends State<ImportItemsDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _pickFile,
-                  icon: const Icon(Icons.folder_open_rounded, size: 18),
-                  label: const Text('Chọn file CSV từ máy'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+              OutlinedButton.icon(
+                onPressed: _isLoading ? null : _pickFile,
+                icon: const Icon(Icons.folder_open_rounded, size: 18),
+                label: const Text('Chọn file Excel (.xlsx) / CSV'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
-              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _isLoading ? null : _importFromGoogleSheets,
+                icon: const Icon(Icons.cloud_download_outlined, size: 18, color: Color(0xFF0F4C81)),
+                label: const Text('Đồng bộ từ Google Sheets'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
               OutlinedButton.icon(
                 onPressed: _copyTemplate,
                 icon: const Icon(Icons.copy_rounded, size: 16),
-                label: const Text('Sao chép cấu trúc mẫu CSV'),
+                label: const Text('Sao chép mẫu'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

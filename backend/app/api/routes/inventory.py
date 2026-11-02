@@ -41,6 +41,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.activity import AuditEvent, OutboxEvent
 from app.models.approval import ApprovalDecision
+from app.models.commerce import CommerceDocument
 from app.models.iam import User
 from app.models.inventory import (
     Asset,
@@ -2246,6 +2247,15 @@ async def approve_request(
     req.status = "posted"
     req.version += 1
     req.approver_id = user.id
+    linked_document = (
+        await db.execute(
+            select(CommerceDocument).where(
+                CommerceDocument.inventory_request_id == req.id
+            ).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if linked_document is not None:
+        linked_document.status = "confirmed"
     db.add(
         ApprovalDecision(
             id=uuid.uuid4(), subject_type="inventory_request", subject_id=req.id,
@@ -2316,6 +2326,16 @@ async def reject_request(
     req.status = "rejected"
     req.version += 1
     req.approver_id = user.id
+
+    linked_document = (
+        await db.execute(
+            select(CommerceDocument).where(
+                CommerceDocument.inventory_request_id == req.id
+            ).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if linked_document is not None:
+        linked_document.status = "cancelled"
 
     if req.kind in ("issue", "transfer") and req.source_id is not None:
         for ln in lines:

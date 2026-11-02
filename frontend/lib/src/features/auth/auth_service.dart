@@ -29,7 +29,9 @@ class AuthService extends ChangeNotifier {
     Future<String?> Function()? googleIdTokenProvider,
     FlutterSecureStorage? storage,
     http.Client? httpClient,
-  })  : _baseUrl = normalizeApiBaseUrl(baseUrl ?? _defaultBaseUrl),
+  })  : _baseUrl = (baseUrl ?? _defaultBaseUrl).trim().isEmpty
+            ? ''
+            : normalizeApiBaseUrl(baseUrl ?? _defaultBaseUrl),
         _googleClientId = (googleClientId ?? _defaultGoogleClientId).trim(),
         _hasCustomGoogleProvider =
             googleSignIn != null || googleIdTokenProvider != null,
@@ -43,6 +45,8 @@ class AuthService extends ChangeNotifier {
     defaultValue:
         '1070073470852-hc12cgovbt9h7micnu072vpkvigee28u.apps.googleusercontent.com',
   );
+  static const bool _offlineDemoBuild =
+      bool.fromEnvironment('OFFLINE_DEMO', defaultValue: false);
   static const String _offlineSessionKey = 'offline_session_user';
   static const String _offlineCreatedAtKey = 'offline_created_at';
 
@@ -96,14 +100,14 @@ class AuthService extends ChangeNotifier {
   /// In release mode (web/APK), defaults to Cloudflare Workers production proxy.
   /// Overridable via `--dart-define=API_BASE_URL=...`.
   static String get defaultBaseUrl {
+    if (_offlineDemoBuild) return '';
     const env = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (env.isNotEmpty) return env;
     if (kReleaseMode) {
       return canonicalProductionBaseUrl;
     }
     if (kIsWeb) {
-      // In local web debug, allow empty to run in local offline/mock mode if no server.
-      return '';
+      return 'http://localhost:8000/api/v1';
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -288,6 +292,14 @@ class AuthService extends ChangeNotifier {
   Future<void> tryAutoLogin() async {
     _isLoading = true;
     notifyListeners();
+    if (_offlineDemoBuild) {
+      _user = null;
+      _memoryToken = null;
+      _isOfflineSession = false;
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
     try {
       final savedOffline = await _readStorage(_offlineSessionKey);
       if (savedOffline != null && savedOffline.isNotEmpty) {
@@ -565,7 +577,8 @@ class AuthService extends ChangeNotifier {
         if (!r.contains('admin')) r.add('admin');
         final c = List<String>.from((u['capabilities'] as List?) ?? []);
         if (!c.contains('iam:admin')) c.add('iam:admin');
-        if (!c.contains('admin:user_management')) c.add('admin:user_management');
+        if (!c.contains('admin:user_management'))
+          c.add('admin:user_management');
         u['roles'] = r;
         u['capabilities'] = c;
       }
@@ -675,10 +688,10 @@ class AuthService extends ChangeNotifier {
 
     if (_baseUrl.isEmpty) {
       final offlineUser = _offlineGoogleUser(
-        idToken,
-        email: googleEmail,
-        displayName: googleDisplayName,
-      ) ??
+            idToken,
+            email: googleEmail,
+            displayName: googleDisplayName,
+          ) ??
           const AppUser(
             id: 'offline-google-user',
             username: 'staff_google',
@@ -912,6 +925,7 @@ class AuthService extends ChangeNotifier {
           username: 'staff_morning',
           displayName: 'Nguyễn Thị Mai',
           roles: ['staff'],
+          capabilities: ['inventory:create_request'],
         );
       case 'staff_afternoon':
       case 'cachieu':
@@ -920,6 +934,7 @@ class AuthService extends ChangeNotifier {
           username: 'staff_afternoon',
           displayName: 'Lê Hoàng Nam',
           roles: ['staff'],
+          capabilities: ['inventory:create_request'],
         );
       case 'staff_split':
       case 'calo':
@@ -928,6 +943,7 @@ class AuthService extends ChangeNotifier {
           username: 'staff_split',
           displayName: 'Phạm Minh Tuấn',
           roles: ['staff'],
+          capabilities: ['inventory:create_request'],
         );
       case 'demo_checker':
         return const AppUser(
@@ -1118,9 +1134,9 @@ class AuthService extends ChangeNotifier {
         List<String>.from(json['capabilities'] as List? ?? const []);
     final email = json['email'] as String?;
     final username = json['username'] as String;
-    final isSuperAdmin = email?.trim().toLowerCase() ==
-            defaultAdminEmail.toLowerCase() ||
-        username.trim().toLowerCase() == defaultAdminEmail.toLowerCase();
+    final isSuperAdmin =
+        email?.trim().toLowerCase() == defaultAdminEmail.toLowerCase() ||
+            username.trim().toLowerCase() == defaultAdminEmail.toLowerCase();
 
     final effectiveRoles = isSuperAdmin
         ? ({

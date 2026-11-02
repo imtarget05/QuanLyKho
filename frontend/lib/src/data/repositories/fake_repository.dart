@@ -2604,4 +2604,60 @@ class FakeBankOpsRepository implements BankOpsRepository {
       reconciliations: results[9] as List<ReconciliationRun>,
     );
   }
+
+  @override
+  Future<List<int>> downloadExportFile({
+    required String dataset,
+    required String format,
+    Map<String, dynamic>? params,
+  }) async {
+    final buffer = StringBuffer();
+    buffer.write('\uFEFF');
+    buffer.writeln('Mã,Tên,Đơn vị,Số lượng,Ghi chú');
+    buffer.writeln('TRA-01,Trà Đen Số 9,gói,50,Xuất dữ liệu demo');
+    buffer.writeln('SUA-02,Sữa tươi Thanh trùng,hộp,120,Xuất dữ liệu demo');
+    buffer.writeln('TRAN-CHAU,Trân châu đen,kg,35,Xuất dữ liệu demo');
+    return utf8.encode(buffer.toString());
+  }
+
+  @override
+  Future<Map<String, dynamic>> syncToGoogleSheets({
+    required String dataset,
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+    Map<String, dynamic>? params,
+  }) async {
+    final cleanId = sheetUrlOrId.contains('/')
+        ? sheetUrlOrId.split('/').where((s) => s.length >= 15).firstOrNull ?? 'demo_sheet_id'
+        : sheetUrlOrId;
+    return _delay({
+      'status': 'success',
+      'sheet_id': cleanId,
+      'tab': tab,
+      'sheet_url': 'https://docs.google.com/spreadsheets/d/$cleanId/edit',
+      'rows_count': 12,
+      'columns_count': 5,
+    });
+  }
+
+  @override
+  Future<StagingPreview> fetchGoogleSheetByUrl({
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+  }) async {
+    return _delay(const StagingPreview(
+      runId: 'demo-run-sheet-1',
+      validCount: 1,
+      invalidCount: 0,
+      rows: [
+        StagingRow(
+          rowIndex: 1,
+          sourceRowKey: 'TRA-DEN-SO9',
+          valid: true,
+          errors: [],
+          data: {'sku': 'TRA-DEN-SO9', 'name': 'Trà Đen Số 9', 'quantity': 10},
+        ),
+      ],
+    ));
+  }
 }

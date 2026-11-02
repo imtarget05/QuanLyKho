@@ -20,6 +20,7 @@ import '../../data/models/dtos.dart';
 import '../../data/repositories/bankops_repository.dart';
 import 'shift_stocktake_desk.dart';
 import 'import_items_dialog.dart';
+import '../sync/export_dialog.dart';
 
 /// Chế độ hiển thị của màn hình Kho và Ca làm việc.
 enum InventoryTabMode {
@@ -3363,6 +3364,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF059669),
                   side: const BorderSide(color: Color(0xFF059669)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              OutlinedButton.icon(
+                key: const Key('btn-export-inventory'),
+                onPressed: () => ExportDialog.show(
+                  context,
+                  initialDataset: 'catalog',
+                ),
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Xuất dữ liệu / Sheets'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF0F4C81),
+                  side: const BorderSide(color: Color(0xFF0F4C81)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),

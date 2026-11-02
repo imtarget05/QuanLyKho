@@ -177,18 +177,11 @@ class TestReviewerReadOnly:
             f"/demo_reset ngoài demo mode -> {r.status_code} {r.text[:300]}"
         )
 
-    def test_demo_reset_tra_200_va_goi_reseed_khi_demo_mode(
+    def test_demo_reset_khong_ghi_database_khi_demo_mode(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ):
-        """/demo/reset trả 200 và gọi reset_demo_database khi ở demo mode."""
+        """Demo reset endpoint is disabled; RAM data resets on UI reload."""
         import app.api.routes.demo as demo_mod
-
-        called = {"reset": False}
-
-        async def _fake_reset():
-            called["reset"] = True
-
-        monkeypatch.setattr(demo_mod, "reset_demo_database", _fake_reset)
         monkeypatch.setattr(
             demo_mod.settings.__class__,
             "is_demo_mode",
@@ -198,7 +191,4 @@ class TestReviewerReadOnly:
         admin_token = _login(client, "demo_admin")
         headers = _h(admin_token)
         r = client.post("/demo/reset", headers=headers)
-        assert r.status_code == 200, f"/demo_reset demo mode -> {r.status_code} {r.text[:300]}"
-        assert called["reset"] is True
-        body = r.json()
-        assert body["status"] == "reset_complete"
+        assert r.status_code == 410, f"/demo_reset demo mode -> {r.status_code} {r.text[:300]}"

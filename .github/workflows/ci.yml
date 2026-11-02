@@ -81,19 +81,12 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Pin the code under test to an exact commit. On a pull_request event
-          # github.sha is the synthetic merge commit; the head SHA is the
-          # commit that actually carries the change, so the evidence names one
-          # identifiable tree. On a push event this resolves to the pushed SHA.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Record the exact commit under test
         run: |
+          SHA="$(git rev-parse HEAD)"
           echo "### Tested commit" >> "$GITHUB_STEP_SUMMARY"
           echo "\`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "commit=${SHA}" >> "$GITHUB_STEP_SUMMARY"
-        env:
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -173,4 +166,3 @@ jobs:
         run: docker compose config
       - name: Verify build
         run: echo "Docker build successful"
-

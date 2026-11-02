@@ -61,7 +61,7 @@ class _RbacTestRepository extends FakeBankOpsRepository {
 }
 
 /// Test user with maker role in branch A
-final AppUser _makerUser = AppUser(
+const AppUser _makerUser = AppUser(
   id: 'user-maker-a',
   username: 'maker_a',
   displayName: 'Maker A',
@@ -70,7 +70,7 @@ final AppUser _makerUser = AppUser(
 );
 
 /// Test user with checker role in branch A
-final AppUser _checkerUser = AppUser(
+const AppUser _checkerUser = AppUser(
   id: 'user-checker-a',
   username: 'checker_a',
   displayName: 'Checker A',
@@ -79,7 +79,7 @@ final AppUser _checkerUser = AppUser(
 );
 
 /// Test user with staff role in branch B (different branch)
-final AppUser _staffUserBranchB = AppUser(
+const AppUser _staffUserBranchB = AppUser(
   id: 'user-staff-b',
   username: 'staff_b',
   displayName: 'Staff B',

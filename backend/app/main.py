@@ -24,10 +24,12 @@ from app.api.routes import (
     auth,
     auth_google,
     cash_sim,
+    commerce,
     dashboard,
     demo,
     etl,
     events,
+    exports,
     health,
     intake,
     integrations,
@@ -288,12 +290,14 @@ def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True
     target.include_router(intake.router, tags=["intake"], include_in_schema=include_in_schema)
     target.include_router(dashboard.router, tags=["dashboard"], include_in_schema=include_in_schema)
     target.include_router(cash_sim.router, tags=["cash-sim"], include_in_schema=include_in_schema)
+    target.include_router(commerce.router, tags=["commerce"], include_in_schema=include_in_schema)
     target.include_router(approvals.router, prefix="/approvals", tags=["approvals"], include_in_schema=include_in_schema)
     target.include_router(activity.router, tags=["activity"], include_in_schema=include_in_schema)
     target.include_router(events.router, tags=["events"], include_in_schema=include_in_schema)
     target.include_router(reports.router, prefix="/reports", tags=["reports"], include_in_schema=include_in_schema)
     target.include_router(notifications.router, prefix="/notifications", tags=["notifications"], include_in_schema=include_in_schema)
     target.include_router(etl.router, tags=["etl"], include_in_schema=include_in_schema)
+    target.include_router(exports.router, tags=["exports"], include_in_schema=include_in_schema)
     target.include_router(integrations.router, tags=["integrations"], include_in_schema=include_in_schema)
     target.include_router(reconciliations.router, tags=["reconciliations"], include_in_schema=include_in_schema)
     target.include_router(demo.router, tags=["demo"], include_in_schema=include_in_schema)

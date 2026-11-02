@@ -1,6 +1,25 @@
 # Current Tasks — QuanLyKho (Kho Trà Sữa / BankOps)
 
-> **Portfolio audit checkpoint, 2026-10-21:** work started at HEAD `c9b6935`
+> **Execution checkpoint, 2026-11-01 (local only):** Backend Ruff passes and
+> the complete backend suite passes (**735 passed, 8 skipped, 1 xfailed**) on
+> a fresh isolated PostgreSQL test database migrated to Alembic head
+> `030_admin_inventory_create`, with demo mode explicitly enabled for the
+> integration fixtures. Flutter analysis is clean, all **261** Flutter tests
+> pass, and the Flutter Web release build succeeds. The local API readiness
+> endpoint and frontend at `http://127.0.0.1:8000` and `http://127.0.0.1:8080`
+> respond successfully. The canonical Docker-backed `make test-backend` gate
+> passes with an ephemeral PostgreSQL container; full application Compose and
+> kind integration were not run. A read-only AKS check found no QuanLyKho
+> deployment; the relevant registry artifact is
+> the 2026-10-25 `bankops-api:sha-fde9570`
+> (`sha256:bd8098b0603478335352676d19872fb66dd9d3505a569be149d5c70c86495d61`,
+> source commit `fde9570a390babbffd9149f5e408771cb9300bb0`). No production
+> redeployment was performed. The phase table below is the last audited plan
+> status, not proof that all project phases are done. Production recovery and
+> deployment remain blocked on separate, explicit cloud-operation approval.
+
+> **Historical portfolio audit checkpoint, 2026-10-21 (test status superseded
+> by the checkpoint above):** work started at HEAD `c9b6935`
 > and concurrent local commits advanced HEAD through `d53c092` to
 > `5d79314364739e48cd589604d56764583d963286` during the audit.
 > At start there were pre-existing edits in `backend/app/api/routes/reconciliations.py`,
@@ -8,19 +27,16 @@
 > `backend/tests/test_b2_authorization_scope.py`. The historical clean-tree
 > baseline below is **not** the current working-tree state. See
 > `docs/PORTFOLIO_AUDIT_2026-10-21.md` for the current claim matrix, gaps and
-> reproducible AI → checker demo. The focused demo passed against a disposable
-> PostgreSQL database. A full run passed 674 tests at the earlier revision;
-> after concurrent S9 commits, HEAD `5d79314` produced 21 MLflow failures on
-> the host's read-only `/data` path. An uncommitted narrow fix and regression
-> test passed three targeted checks; a fresh full-suite rerun is pending.
-> Exact commands and results are recorded in the audit.
+> reproducible AI → checker demo. The former 21 MLflow failures on the host's
+> read-only `/data` path are superseded by the full passing backend run above.
+> Historical revision details remain in the audit.
 
 > **Updated 2026-10-20** after a full local re-verification. Earlier revisions of
 > this board recorded a dirty worktree, a "missing AGENTS.md", and an
 > unresolved Alembic gap. All three are now resolved; the claims below were
 > reproduced locally, not copied forward.
 
-## Verified baseline (2026-10-20, HEAD `197a08e`, branch `main`)
+## Historical verified baseline (2026-10-20, HEAD `197a08e`, branch `main`)
 
 | Item | Verified state |
 |---|---|
@@ -48,7 +64,7 @@
    duplicates it.
 4. **B1 work is committed** — the worktree is clean at `197a08e`.
 
-## Phase status
+## Phase status (last audited 2026-10-20; not a current completion claim)
 
 | Phase | Status | Notes |
 |---|---|---|
@@ -63,18 +79,18 @@
 
 ## Open items (do not overstate)
 
-- **Local venv ruff is stale.** `backend/.venv/bin/ruff` is **0.6.9** while CI
-  pins **0.17.0**, so a developer running the venv binary gets a false `UP038`
-  failure at `app/api/pagination.py:126`. Refresh the venv before trusting a
-  local lint result. `pyproject.toml` still declares `ruff = "^0.6.0"`; aligning
-  it with CI is a small, separately-testable change.
-- **Tests require a live database.** `backend/tests/conftest.py` only
-  `setdefault`s a placeholder `DATABASE_URL`, and `backend/.env` points at
-  `localhost:5432` (the developer's `kho-tra-sua-db`). A run without an explicit
-  `DATABASE_URL` writes to shared data. This is why the CI job provisions its own
-  Postgres service.
-- **No isolated CI database locally.** Verification above used a throwaway
-  container; nothing was written to the developer's database.
+- **Full application Compose/kind integration remains unverified.** The
+  canonical Docker-backed PostgreSQL test target passed, but that does not
+  exercise the complete app stack or a kind cluster.
+- **Backend tests require an isolated database.** `backend/tests/conftest.py`
+  refuses database names without `_test`. Supply an explicit disposable
+  PostgreSQL `DATABASE_URL`; the full suite above used one and did not target
+  the developer's application database. Demo fixtures require both
+  `APP_ENV=demo` and `DEMO_MODE=true`.
+- **Production release is not complete.** The inspected AKS cluster has no
+  QuanLyKho workloads, and the older ACR image is not evidence of a current
+  deployment. Obtain separate approval for an exact release target and
+  deployment operation before any cloud mutation.
 - **Branch has no upstream.** `main` is not tracking `origin/main`, so
   `git push` has no default and CI is not driven by a push from this checkout.
 

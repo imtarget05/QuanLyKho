@@ -45,7 +45,7 @@ from app.models.etl import (
 )
 from app.models.iam import User
 from app.models.inventory import Location
-from app.services import etl_engine
+from app.services import etl_engine, google_sheets_service
 
 router = APIRouter(prefix="/etl", tags=["etl"])
 
@@ -688,13 +688,26 @@ async def trigger_run(
             if isinstance(body_dict, dict):
                 raw_rows = body_dict.get("raw_rows") or []
                 external_event_id = body_dict.get("external_event_id")
+                sheet_target = body_dict.get("sheet_url") or body_dict.get("sheet_id")
+                tab = body_dict.get("tab") or "Sheet1"
+                if not raw_rows and sheet_target:
+                    raw_rows = await google_sheets_service.fetch_sheet_rows(sheet_target, tab=tab)
             elif isinstance(body_dict, list):
                 raw_rows = body_dict
         except Exception:
             pass
 
     if not raw_rows:
-        raise AppError(422, "MISSING_INPUT", "Cần tải file đính kèm hoặc truyền raw_rows trong JSON")
+        # Kiểm tra nếu connection là google_sheets và có cấu hình sẵn sheet
+        conn = await db.get(EtlConnection, p.connection_id)
+        if conn and conn.type == "google_sheets" and conn.config_json:
+            target_sheet = conn.config_json.get("sheet_url") or conn.config_json.get("sheet_id")
+            tab_name = conn.config_json.get("tab", "Sheet1")
+            if target_sheet:
+                raw_rows = await google_sheets_service.fetch_sheet_rows(target_sheet, tab=tab_name)
+
+    if not raw_rows:
+        raise AppError(422, "MISSING_INPUT", "Cần tải file đính kèm, đường dẫn Google Sheet hoặc truyền raw_rows trong JSON")
 
     # Idempotency / Duplicate Run check
     fingerprint = etl_engine.compute_fingerprint(raw_rows)

@@ -3,6 +3,9 @@ name: Validate legacy Cloudflare Worker
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: validate-legacy-worker-${{ github.ref }}
   cancel-in-progress: true

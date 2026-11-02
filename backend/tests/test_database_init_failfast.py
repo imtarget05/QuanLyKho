@@ -34,10 +34,10 @@ async def test_init_db_raises_on_database_error_in_production(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_init_db_does_not_create_all_outside_demo_mode(monkeypatch):
-    """Production/staging: Alembic là nguồn sự thật, không `create_all`."""
-    monkeypatch.setattr(settings, "app_env", "production")
-
+async def test_init_db_never_creates_schema_or_seeds_demo(monkeypatch):
+    """Startup only verifies DB; demo fixture belongs in RAM, migrations are explicit."""
+    monkeypatch.setattr(settings, "app_env", "demo")
+    monkeypatch.setattr(settings, "demo_mode", True)
     created: list[bool] = []
     seeded: list[bool] = []
 
@@ -54,21 +54,6 @@ async def test_init_db_does_not_create_all_outside_demo_mode(monkeypatch):
     await database_module.init_db()  # không raise, không create_all, không seed
     assert created == []
     assert seeded == []
-
-
-@pytest.mark.asyncio
-async def test_init_db_seeds_in_demo_mode(monkeypatch):
-    calls: list[str] = []
-
-    async def _fake_seed(*args, **kwargs):
-        calls.append("seed")
-
-    monkeypatch.setattr(settings, "app_env", "demo")
-    monkeypatch.setattr(settings, "demo_mode", True)
-    monkeypatch.setattr("app.seed.seed_demo", _fake_seed)
-
-    await database_module.init_db()
-    assert calls == ["seed"]
 
 
 @pytest.mark.asyncio

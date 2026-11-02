@@ -20,6 +20,7 @@ from app.models import (
     activity,  # noqa: F401
     approval,  # noqa: F401
     cash_sim,  # noqa: F401
+    commerce,  # noqa: F401
     etl,  # noqa: F401
     expense,  # noqa: F401
     iam,  # noqa: F401
@@ -62,6 +63,7 @@ __all__ = [
     "activity",
     "approval",
     "cash_sim",
+    "commerce",
     "etl",
     "expense",
     "iam",

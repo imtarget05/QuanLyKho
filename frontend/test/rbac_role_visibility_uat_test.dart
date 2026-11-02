@@ -62,21 +62,21 @@ void main() {
     });
 
     test('visibleTabs: tab visibility per role and user profile', () {
-      final staffUser = const AppUser(
+      const staffUser = AppUser(
         id: 'u_staff',
         username: 'barista_01',
         displayName: 'Barista One',
         roles: ['staff'],
       );
 
-      final auditorUser = const AppUser(
+      const auditorUser = AppUser(
         id: 'u_auditor',
         username: 'auditor_01',
         displayName: 'Internal Auditor',
         roles: ['auditor'],
       );
 
-      final adminUser = const AppUser(
+      const adminUser = AppUser(
         id: 'u_admin',
         username: 'admin_01',
         displayName: 'Store Manager',
@@ -122,7 +122,7 @@ void main() {
     });
 
     test('canManageEmployees: only for admin roles or authorized email/username', () {
-      final staffUser = const AppUser(
+      const staffUser = AppUser(
         id: 'u1',
         username: 'staff',
         displayName: 'Staff',
@@ -130,7 +130,7 @@ void main() {
       );
       expect(RoleVisibility.canManageEmployees(staffUser), isFalse);
 
-      final adminUser = const AppUser(
+      const adminUser = AppUser(
         id: 'u2',
         username: 'admin',
         displayName: 'Admin',
@@ -138,7 +138,7 @@ void main() {
       );
       expect(RoleVisibility.canManageEmployees(adminUser), isTrue);
 
-      final rootAdminUser = const AppUser(
+      const rootAdminUser = AppUser(
         id: 'u3',
         username: 'root',
         displayName: 'Root Admin',
@@ -149,7 +149,7 @@ void main() {
 
     test('canPostCashAdjustment: enforces capability or role allowlist', () {
       // User with explicit capability
-      final userWithCap = const AppUser(
+      const userWithCap = AppUser(
         id: 'u_cap',
         username: 'cap_user',
         displayName: 'Cap User',
@@ -159,7 +159,7 @@ void main() {
       expect(RoleVisibility.canPostCashAdjustment(userWithCap), isTrue);
 
       // User without capability but with admin role
-      final userWithAdminRole = const AppUser(
+      const userWithAdminRole = AppUser(
         id: 'u_admin',
         username: 'admin_user',
         displayName: 'Admin User',
@@ -169,7 +169,7 @@ void main() {
       expect(RoleVisibility.canPostCashAdjustment(userWithAdminRole), isTrue);
 
       // Pure staff with no capability cannot adjust cash balance
-      final plainStaff = const AppUser(
+      const plainStaff = AppUser(
         id: 'u_staff',
         username: 'plain_staff',
         displayName: 'Plain Staff',

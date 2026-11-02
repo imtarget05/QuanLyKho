@@ -2392,4 +2392,53 @@ class HttpBankOpsRepository implements BankOpsRepository {
       reconciliations: results[9] as List<ReconciliationRun>,
     );
   }
+
+  @override
+  Future<List<int>> downloadExportFile({
+    required String dataset,
+    required String format,
+    Map<String, dynamic>? params,
+  }) async {
+    final q = <String, String>{'format': format};
+    if (params != null) {
+      params.forEach((k, v) {
+        if (v != null) q[k] = v.toString();
+      });
+    }
+    final resp = await _client.get(_uri('/exports/$dataset', q), headers: await _headers());
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      _throwEnvelope(resp);
+    }
+    return resp.bodyBytes;
+  }
+
+  @override
+  Future<Map<String, dynamic>> syncToGoogleSheets({
+    required String dataset,
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+    Map<String, dynamic>? params,
+  }) async {
+    final body = <String, dynamic>{
+      'dataset': dataset,
+      'sheet_url_or_id': sheetUrlOrId,
+      'tab': tab,
+    };
+    if (params != null) {
+      body.addAll(params);
+    }
+    return _post('/exports/sync-google-sheets', body);
+  }
+
+  @override
+  Future<StagingPreview> fetchGoogleSheetByUrl({
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+  }) async {
+    final res = await _post('/integrations/sheet', {
+      'sheet_id': sheetUrlOrId,
+      'tab': tab,
+    });
+    return _parseStagingPreview(res);
+  }
 }

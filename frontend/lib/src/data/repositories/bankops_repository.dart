@@ -404,4 +404,21 @@ abstract class BankOpsRepository {
   Future<Map<String, dynamic>> postEtlRun(String runId);
   Future<String> getEtlErrorReport(String runId);
   Future<DashboardSummaryDto> getDashboardSummary({bool canApprove = false});
+
+  // --- Data Synchronization & Export ---
+  Future<List<int>> downloadExportFile({
+    required String dataset,
+    required String format,
+    Map<String, dynamic>? params,
+  });
+  Future<Map<String, dynamic>> syncToGoogleSheets({
+    required String dataset,
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+    Map<String, dynamic>? params,
+  });
+  Future<StagingPreview> fetchGoogleSheetByUrl({
+    required String sheetUrlOrId,
+    String tab = 'Sheet1',
+  });
 }
