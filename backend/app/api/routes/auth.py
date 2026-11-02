@@ -37,6 +37,7 @@ from app.services.approval_controls import DEMO_SUPERVISOR_PIN
 from app.services.email_service import (
     send_activation_confirmation_email,
     send_password_reset_email,
+    send_security_alert_email,
 )
 
 logger = logging.getLogger("quanlykho.auth")
@@ -61,8 +62,8 @@ def _client_ip(request: Request) -> str:
     return client_ip(request)
 
 
-async def _audit_rate_limited(db: AsyncSession, username: str, client_ip: str) -> None:
-    """Ghi audit khi mot tai khoan bi khoa do sai mat khau (S11)."""
+async def _audit_rate_limited(db: AsyncSession, username: str, client_ip: str, user_agent: str = "Unknown") -> None:
+    """Ghi audit khi mot tai khoan bi khoa do sai mat khau (S11) và gửi email cảnh báo an ninh."""
     try:
         db.add(
             AuditEvent(
@@ -71,13 +72,33 @@ async def _audit_rate_limited(db: AsyncSession, username: str, client_ip: str) -
                 action="LOGIN_RATE_LIMITED",
                 subject=f"iam_users:{username.strip().lower()}",
                 occurred_at=datetime.now(UTC),
-                metadata_json={"username": username.strip().lower(), "ip": client_ip},
+                metadata_json={"username": username.strip().lower(), "ip": client_ip, "user_agent": user_agent},
             )
         )
         await db.commit()
     except Exception as exc:  # noqa: BLE001 - audit fail khong duoc chan login
         logger.warning("Không ghi được audit LOGIN_RATE_LIMITED: %s", exc)
         await db.rollback()
+
+    try:
+        asyncio.create_task(
+            send_security_alert_email(
+                subject=f"CẢNH BÁO: Tấn công dò mật khẩu vào tài khoản '{username}'",
+                title="Phát Hiện Tấn Công Dò Mật Khẩu (Brute-Force)",
+                message=(
+                    f"Hệ thống phát hiện hơn 5 lần đăng nhập thất bại liên tiếp vào tài khoản '{username}' "
+                    f"từ cùng một địa chỉ IP. IP này đã bị tạm thời khóa đăng nhập trong vòng 15 phút."
+                ),
+                details={
+                    "Tài khoản mục tiêu": username,
+                    "Địa chỉ IP tấn công": client_ip,
+                    "Thiết bị": user_agent,
+                    "Thời gian khóa": "15 phút",
+                },
+            )
+        )
+    except Exception as exc:
+        logger.warning("Không thể gửi email cảnh báo brute-force: %s", exc)
 
 
 @router.post("/login")
@@ -115,8 +136,9 @@ async def login(
     # `username + IP` để attacker không khoá được tài khoản của người khác
     # (DoS) bằng cách đoán sai mật khẩu 5 lần.
     client_ip_value = _client_ip(request)
+    ua_string = request.headers.get("user-agent", "Unknown Device")
     if login_rate_limited(username, client_ip_value):
-        await _audit_rate_limited(db, username, client_ip_value)
+        await _audit_rate_limited(db, username, client_ip_value, ua_string)
         retry_after = login_retry_after_seconds(username, client_ip_value)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -134,6 +156,35 @@ async def login(
         )
 
     reset_login_failures(username, client_ip_value)
+
+    # Single session enforcement: khi bật ENFORCE_SINGLE_SESSION, đăng nhập mới
+    # sẽ tăng auth_version để vô hiệu hóa toàn bộ session cũ trên thiết bị khác.
+    if getattr(settings, "enforce_single_session", False):
+        user.auth_version = getattr(user, "auth_version", 1) + 1
+        await db.commit()
+
+        try:
+            asyncio.create_task(
+                send_security_alert_email(
+                    subject=f"Tài khoản '{user.username}' đăng nhập thiết bị mới (Single Session)",
+                    title="Cảnh Báo Đăng Nhập Trên Thiết Bị Mới",
+                    message=(
+                        f"Tài khoản '{user.username}' vừa đăng nhập thành công. "
+                        f"Theo chính sách 1 tài khoản / 1 thiết bị, toàn bộ phiên đăng nhập cũ "
+                        f"trên các thiết bị khác đã tự động bị thu hồi ngay lập tức."
+                    ),
+                    details={
+                        "Tài khoản": user.username,
+                        "Họ tên": user.display_name_demo,
+                        "Địa chỉ IP": client_ip_value,
+                        "Thiết bị": ua_string,
+                        "Auth Version mới": str(user.auth_version),
+                    },
+                )
+            )
+        except Exception as exc:
+            logger.warning("Không thể gửi email cảnh báo an ninh single-session: %s", exc)
+
     roles = await get_user_roles(db, user.id)
     capabilities = await get_user_capabilities(db, user.id)
 

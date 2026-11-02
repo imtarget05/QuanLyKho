@@ -681,6 +681,146 @@ async def send_activation_confirmation_email(
     return EmailSendResult(ok, msg)
 
 
+def _build_security_alert_html(
+    title: str,
+    message: str,
+    time_str: str,
+    details: dict[str, str] | None = None,
+) -> str:
+    safe_title = html.escape(title)
+    safe_message = html.escape(message)
+    rows_html = ""
+    if details:
+        for k, v in details.items():
+            rows_html += f"""
+            <tr>
+              <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; width: 35%;">{html.escape(str(k))}</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-family: monospace;">{html.escape(str(v))}</td>
+            </tr>
+            """
+
+    return f"""<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>{safe_title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table width="100%" max-width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
+          <tr>
+            <td style="background-color: #991b1b; padding: 20px 28px; text-align: left;">
+              <span style="color: #ffffff; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">🚨 CẢNH BÁO AN NINH HỆ THỐNG</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 28px;">
+              <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #991b1b;">{safe_title}</h2>
+              <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #334155;">{safe_message}</p>
+              
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 16px 0; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13.5px; border-collapse: collapse;">
+                <tbody>
+                  {rows_html}
+                  <tr>
+                    <td style="padding: 8px 12px; font-weight: 600; color: #475569;">Thời gian ghi nhận</td>
+                    <td style="padding: 8px 12px; color: #0f172a;">{time_str}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; border-radius: 4px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #991b1b;">
+                  <strong>Hành động khuyến nghị:</strong> Nếu đây không phải là thao tác hợp lệ của nhân viên, vui lòng truy cập ngay trang quản trị để tạm khóa tài khoản hoặc thu hồi phiên làm việc khẩn cấp.
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def _build_security_alert_plain(
+    title: str,
+    message: str,
+    time_str: str,
+    details: dict[str, str] | None = None,
+) -> str:
+    lines = [
+        "=== [CẢNH BÁO AN NINH HỆ THỐNG] ===",
+        title,
+        "",
+        message,
+        "",
+        "Chi tiết sự kiện:",
+    ]
+    if details:
+        for k, v in details.items():
+            lines.append(f"- {k}: {v}")
+    lines.append(f"- Thời gian ghi nhận: {time_str}")
+    lines.extend([
+        "",
+        "Khuyến nghị: Nếu đây không phải thao tác hợp lệ, vui lòng khóa tài khoản hoặc thu hồi phiên làm việc khẩn cấp.",
+    ])
+    return "\n".join(lines)
+
+
+async def send_security_alert_email(
+    subject: str,
+    title: str,
+    message: str,
+    details: dict[str, str] | None = None,
+    to_emails: list[str] | None = None,
+) -> EmailSendResult:
+    """Gửi email cảnh báo an ninh tới Quản trị viên hệ thống (Admin)."""
+    target_emails = to_emails or [settings.admin_alert_email] + getattr(settings, "admin_emails", [])
+    valid_recipients = list({e.strip().lower() for e in target_emails if is_valid_email(e)})
+    if not valid_recipients:
+        logger.warning("Không có email quản trị viên hợp lệ để gửi cảnh báo an ninh")
+        return EmailSendResult(False, "Không có email quản trị viên hợp lệ")
+
+    smtp_user = settings.smtp_user.strip()
+    smtp_pass = settings.smtp_password.strip()
+    if not smtp_user or not smtp_pass:
+        logger.info(
+            "SECURITY_ALERT (SMTP chưa cấu hình, logged): %s | title=%s | details=%s",
+            subject, title, details
+        )
+        return EmailSendResult(False, "Chưa cấu hình tài khoản SMTP")
+
+    tz_vn = timezone(timedelta(hours=7))
+    time_str = datetime.now(UTC).astimezone(tz_vn).strftime("%H:%M:%S ngày %d/%m/%Y (Giờ VN)")
+    html_body = _build_security_alert_html(title, message, time_str, details)
+    plain_body = _build_security_alert_plain(title, message, time_str, details)
+    from_name = f"{settings.smtp_from_name or 'Hệ Thống'} - An Ninh"
+
+    all_ok = True
+    last_msg = ""
+    for email_addr in valid_recipients:
+        ok, msg = await asyncio.to_thread(
+            _send_smtp_sync,
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            user=smtp_user,
+            password=smtp_pass,
+            to_email=email_addr,
+            subject=f"[CẢNH BÁO AN NINH] {subject}",
+            html_content=html_body,
+            plain_text_content=plain_body,
+            from_name=from_name,
+        )
+        if not ok:
+            all_ok = False
+            last_msg = msg
+
+    return EmailSendResult(all_ok, last_msg or "Đã gửi email cảnh báo an ninh")
+
+
 async def check_smtp_health() -> dict:
     """Kiểm tra sức khỏe kết nối tới máy chủ SMTP."""
     smtp_user = settings.smtp_user.strip()

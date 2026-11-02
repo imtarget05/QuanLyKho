@@ -119,6 +119,8 @@ image = (
             "SMTP_PORT": "587",
             "SMTP_USER": "binhtan5734@gmail.com",
             "SMTP_FROM_NAME": "quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev",
+            "ENFORCE_SINGLE_SESSION": "true",
+            "ADMIN_ALERT_EMAIL": "tanmainguyenbinh@gmail.com",
         }
     )
 )

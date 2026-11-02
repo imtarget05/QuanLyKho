@@ -129,6 +129,19 @@ class Settings(BaseSettings):
     rate_limit_login_attempts: int = Field(default=5)
     rate_limit_login_window_minutes: int = Field(default=15)
 
+    # Chế độ Single Session: Mỗi tài khoản chỉ được đăng nhập trên 1 thiết bị duy nhất.
+    # Khi đăng nhập ở máy mới, phiên cũ sẽ lập tức bị thu hồi (auth_version increment).
+    enforce_single_session: bool = Field(
+        default_factory=lambda: _env_flag("ENFORCE_SINGLE_SESSION", default=False),
+        description="Bật chính sách 1 tài khoản / 1 thiết bị. Khi đăng nhập ở máy mới, máy cũ bị đá văng.",
+    )
+    admin_alert_email: str = Field(
+        default_factory=lambda: os.environ.get("ADMIN_ALERT_EMAIL")
+        or _env_vals.get("ADMIN_ALERT_EMAIL")
+        or "tanmainguyenbinh@gmail.com",
+        description="Email nhận cảnh báo an ninh khẩn cấp từ hệ thống.",
+    )
+
     # SMTP Email Configuration (Gmail / Transactional Email)
     smtp_host: str = Field(
         default_factory=lambda: os.environ.get("SMTP_HOST")
