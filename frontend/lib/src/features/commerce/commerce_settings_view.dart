@@ -235,10 +235,15 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () => showDialog(
-                          context: context,
-                          builder: (ctx) => const EditProfileDialog(),
-                        ),
+                        onPressed: () async {
+                          final res = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => EditProfileDialog(currentUser: user),
+                          );
+                          if (res == true && mounted) {
+                            setState(() {});
+                          }
+                        },
                         icon: const Icon(Icons.edit_outlined, size: 16),
                         label: Text(context.tr('settings_edit_btn')),
                         style: OutlinedButton.styleFrom(
@@ -307,10 +312,15 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
                       ),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => showDialog(
-                        context: context,
-                        builder: (ctx) => const EditProfileDialog(),
-                      ),
+                      onPressed: () async {
+                        final res = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => EditProfileDialog(currentUser: user),
+                        );
+                        if (res == true && mounted) {
+                          setState(() {});
+                        }
+                      },
                       icon: const Icon(Icons.edit_outlined, size: 16),
                       label: Text(context.tr('settings_edit_btn')),
                       style: OutlinedButton.styleFrom(
@@ -676,7 +686,7 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
       title: context.tr('settings_system_data'),
       subtitle: widget.canResetDemoData
           ? context.tr('settings_system_data_subtitle')
-          : context.tr('settings_signout_desc'),
+          : null,
       child: Column(
         children: [
           if (widget.canResetDemoData) ...[
@@ -767,87 +777,20 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
                   ),
             const Divider(height: 22, color: _border),
           ],
-          compact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.logout_rounded,
-                            size: 20, color: _slate500),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                context.tr('settings_signout_title'),
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: _slate900),
-                              ),
-                              Text(
-                                context.tr('settings_signout_desc'),
-                                style: const TextStyle(
-                                    fontSize: 11, color: _slate500),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: widget.onSignOut,
-                        icon: const Icon(Icons.logout_rounded, size: 16),
-                        label: Text(context.tr('settings_signout_btn')),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFDC2626),
-                          textStyle: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    const Icon(Icons.logout_rounded, size: 20, color: _slate500),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr('settings_signout_title'),
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _slate900),
-                          ),
-                          Text(
-                            context.tr('settings_signout_desc'),
-                            style: const TextStyle(
-                                fontSize: 11, color: _slate500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    FilledButton.icon(
-                      onPressed: widget.onSignOut,
-                      icon: const Icon(Icons.logout_rounded, size: 16),
-                      label: Text(context.tr('settings_signout_btn')),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFDC2626),
-                        textStyle: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: widget.onSignOut,
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text(context.tr('settings_signout_btn')),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -912,7 +855,7 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
 
   Widget _sectionCard(
       {required String title,
-      required String subtitle,
+      String? subtitle,
       required Widget child}) {
     return Container(
       width: double.infinity,
@@ -932,9 +875,11 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
           Text(title,
               style: const TextStyle(
                   fontSize: 15, fontWeight: FontWeight.w800, color: _slate900)),
-          const SizedBox(height: 3),
-          Text(subtitle,
-              style: const TextStyle(fontSize: 11.5, color: _slate500)),
+          if (subtitle != null && subtitle.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(subtitle,
+                style: const TextStyle(fontSize: 11.5, color: _slate500)),
+          ],
           const SizedBox(height: 16),
           child,
         ],

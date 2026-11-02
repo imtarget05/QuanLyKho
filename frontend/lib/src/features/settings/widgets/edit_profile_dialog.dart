@@ -34,16 +34,42 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _branchCtrl;
 
   bool _busy = false;
+  bool _initialized = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    final u = widget.currentUser;
-    _nameCtrl = TextEditingController(text: u?.displayName ?? '');
-    _emailCtrl = TextEditingController(text: u?.effectiveEmail ?? '');
-    _phoneCtrl = TextEditingController(text: u?.effectivePhone ?? '');
-    _branchCtrl = TextEditingController(text: u?.effectiveBranch ?? '');
+    _nameCtrl = TextEditingController();
+    _emailCtrl = TextEditingController();
+    _phoneCtrl = TextEditingController();
+    _branchCtrl = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final u = _resolveUser();
+      _nameCtrl.text = u?.displayName ?? '';
+      _emailCtrl.text = u?.effectiveEmail ?? '';
+      _phoneCtrl.text = u?.effectivePhone ?? '';
+      _branchCtrl.text = u?.effectiveBranch ?? '';
+    }
+  }
+
+  AppUser? _resolveUser() {
+    if (widget.currentUser != null) return widget.currentUser;
+    try {
+      final auth = Provider.of<AuthService?>(context, listen: false);
+      if (auth?.user != null) return auth!.user;
+    } catch (_) {}
+    try {
+      final session = SessionScope.maybeOf(context);
+      if (session?.user != null) return session!.user;
+    } catch (_) {}
+    return null;
   }
 
   @override
@@ -221,15 +247,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     UserAvatar(
-                      name: widget.currentUser?.displayName ?? 'Khách',
-                      email: widget.currentUser?.effectiveEmail,
-                      avatarUrl: widget.currentUser?.avatarUrl,
+                      name: _resolveUser()?.displayName.isNotEmpty == true
+                          ? _resolveUser()!.displayName
+                          : 'Người dùng',
+                      email: _resolveUser()?.effectiveEmail,
+                      avatarUrl: _resolveUser()?.avatarUrl,
                       size: 56,
                       showEditBadge: true,
                       onTap: () async {
                         final updated = await AvatarEditorSheet.show(
                           context,
-                          user: widget.currentUser,
+                          user: _resolveUser(),
                         );
                         if (updated == true && context.mounted) {
                           setState(() {});
@@ -248,7 +276,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                       onPressed: () async {
                         final updated = await AvatarEditorSheet.show(
                           context,
-                          user: widget.currentUser,
+                          user: _resolveUser(),
                         );
                         if (updated == true && context.mounted) {
                           setState(() {});
@@ -307,7 +335,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                  hintText: 'user@khotrasua.local',
+                  hintText: 'email@domain.com',
                   filled: true,
                   fillColor: isDark
                       ? const Color(0xFF1E293B)
@@ -339,7 +367,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                  hintText: '0901 234 567',
+                  hintText: 'Nhập số điện thoại liên hệ',
                   filled: true,
                   fillColor: isDark
                       ? const Color(0xFF1E293B)
@@ -370,7 +398,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 controller: _branchCtrl,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.business_outlined, size: 20),
-                  hintText: 'Chi nhánh Bến Thành (Hội sở)',
+                  hintText: 'Nhập chi nhánh hoặc bộ phận công tác',
                   filled: true,
                   fillColor: isDark
                       ? const Color(0xFF1E293B)

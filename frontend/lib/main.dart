@@ -160,6 +160,7 @@ class _AuthGateState extends State<_AuthGate> {
       return CommerceWorkspace(
         store: _demoStore,
         userName: auth.user?.displayName ?? 'An Nguyễn',
+        user: auth.user,
         capabilities: _showDemo && auth.user == null
             ? null
             : auth.user?.capabilities.toSet(),
@@ -278,6 +279,7 @@ class _LiveCommerceGateState extends State<_LiveCommerceGate> {
       api: _api,
       onRefresh: _reload,
       userName: widget.auth.user?.displayName ?? 'Tài khoản',
+      user: widget.auth.user,
       onSignOut: widget.onSignOut,
       capabilities: widget.auth.user?.capabilities.toSet(),
       roles: widget.auth.user?.roles.toSet(),

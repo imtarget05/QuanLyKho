@@ -13,11 +13,15 @@ import 'commerce_memory_store.dart';
 import 'commerce_api.dart';
 import 'commerce_reports_page.dart';
 import 'commerce_settings_view.dart';
+import '../../app/app_shell.dart';
 import '../../core/i18n/app_i18n.dart';
 import '../../core/util/role_visibility.dart';
 import '../../core/widgets/store_logo.dart';
 import '../../core/widgets/animated_count_up.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../../data/models/dtos.dart';
+import '../auth/auth_service.dart';
+import 'package:provider/provider.dart';
 
 class CommerceWorkspace extends StatefulWidget {
   const CommerceWorkspace({
@@ -62,8 +66,8 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
   ];
   static const _navigationIcons = [
     Icons.dashboard_outlined,
-    Icons.point_of_sale_outlined,
-    Icons.shopping_cart_outlined,
+    Icons.storefront_outlined,
+    Icons.shopping_bag_outlined,
     Icons.inventory_2_outlined,
     Icons.account_balance_wallet_outlined,
     Icons.bar_chart_outlined,
@@ -141,6 +145,9 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
         const ['inventory:manage_catalog', 'admin:user_management']);
     final canApprove = _hasAnyCapability(const ['inventory:approve_request']);
     final canViewOwnerData = _canViewOwnerData;
+    final sessionUser = SessionScope.maybeOf(context)?.user;
+    final authUser = Provider.of<AuthService?>(context, listen: false)?.user;
+    final currentUser = widget.user ?? sessionUser ?? authUser;
     final pageIndex =
         !canViewOwnerData && (_index == 4 || _index == 5) ? 0 : _index;
     final titles = pageTitles(context);
@@ -192,7 +199,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
       CommerceSettingsView(
           store: store,
           userName: widget.userName,
-          user: widget.user,
+          user: currentUser,
           onSignOut: widget.onSignOut,
           canManageUsers: canViewOwnerData,
           canResetDemoData: widget.api == null),
@@ -221,7 +228,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                   index: pageIndex,
                   onSelect: (i) => setState(() => _index = i),
                   userName: widget.userName,
-                  user: widget.user,
+                  user: currentUser,
                   onSignOut: widget.onSignOut,
                   canApprove: canApprove,
                   canViewOwnerData: canViewOwnerData),
@@ -242,7 +249,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                     createLabel:
                         pageIndex == 1 ? context.tr('workspace_create_sale') : context.tr('workspace_create_purchase'),
                     userName: widget.userName,
-                    user: widget.user,
+                    user: currentUser,
                     onSignOut: widget.onSignOut,
                   ),
                   Expanded(
@@ -339,13 +346,13 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                   label: context.tr('workspace_overview'),
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.point_of_sale_outlined),
-                  selectedIcon: const Icon(Icons.point_of_sale),
+                  icon: const Icon(Icons.storefront_outlined),
+                  selectedIcon: const Icon(Icons.storefront),
                   label: context.tr('workspace_sales'),
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  selectedIcon: const Icon(Icons.shopping_cart),
+                  icon: const Icon(Icons.shopping_bag_outlined),
+                  selectedIcon: const Icon(Icons.shopping_bag),
                   label: context.tr('workspace_purchases'),
                 ),
                 NavigationDestination(
@@ -470,22 +477,12 @@ class _WorkspaceSidebar extends StatelessWidget {
             const Divider(height: 1, color: Color(0xFFE8EAE7)),
             ListTile(
               onTap: onSignOut,
-              leading: CircleAvatar(
-                  radius: 17,
-                  backgroundColor: const Color(0xFFE9E4F8),
-                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: (avatarUrl == null || avatarUrl.isEmpty)
-                      ? Text(
-                          displayName.trim().isEmpty
-                              ? 'U'
-                              : displayName.trim()[0].toUpperCase(),
-                          style: const TextStyle(
-                              color: Color(0xFF6244BA),
-                              fontWeight: FontWeight.w800),
-                        )
-                      : null),
+              leading: UserAvatar(
+                name: displayName,
+                email: user?.email,
+                avatarUrl: avatarUrl,
+                size: 34,
+              ),
               title: Text(displayName,
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w700)),
@@ -613,8 +610,38 @@ class _WorkspaceTopbar extends StatelessWidget {
   final AppUser? user;
   final Future<void> Function()? onSignOut;
 
+  static IconData _locationIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('quầy') ||
+        lower.contains('bar') ||
+        lower.contains('pha chế') ||
+        lower.contains('pos')) {
+      return Icons.local_cafe_rounded;
+    }
+    if (lower.contains('lạnh') ||
+        lower.contains('cold') ||
+        lower.contains('đông')) {
+      return Icons.ac_unit_rounded;
+    }
+    if (lower.contains('kho') ||
+        lower.contains('tổng') ||
+        lower.contains('wh') ||
+        lower.contains('storage')) {
+      return Icons.warehouse_rounded;
+    }
+    return Icons.storefront_rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final effectiveUser = user ??
+        SessionScope.maybeOf(context)?.user ??
+        Provider.of<AuthService?>(context, listen: false)?.user;
+    final effectiveDisplayName = (effectiveUser?.displayName.isNotEmpty == true)
+        ? effectiveUser!.displayName
+        : (userName.isNotEmpty ? userName : 'Người dùng');
+    final effectiveEmail = effectiveUser?.email;
+
     final screenWidth = MediaQuery.sizeOf(context).width;
     final contentWidth = screenWidth - (screenWidth >= 700 ? 232 : 0);
     final compact = contentWidth < 600;
@@ -660,31 +687,125 @@ class _WorkspaceTopbar extends StatelessWidget {
                         fontWeight: FontWeight.w800))),
           ],
           const Spacer(),
-          if (isLive && locations.length > 1)
-            SizedBox(
-              width: compact ? 120 : 190,
-              child: DropdownButtonFormField<String>(
-                value: locationId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.store_outlined, size: 17),
-                  isDense: true,
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          if (isLive && locations.isNotEmpty) ...[
+            Builder(builder: (context) {
+              final activeLoc = locations.firstWhere(
+                (l) => l['id']?.toString() == locationId,
+                orElse: () => locations.first,
+              );
+              final activeName =
+                  (activeLoc['name'] ?? activeLoc['code'] ?? 'Kho / Quầy')
+                      .toString();
+              final activeIcon = _locationIcon(activeName);
+
+              final chipWidget = Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 8 : 12,
+                  vertical: 6,
                 ),
-                items: locations
-                    .map((location) => DropdownMenuItem(
-                          value: location['id']?.toString(),
-                          child: Text('${location['name'] ?? location['code']}',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11)),
-                        ))
-                    .toList(),
-                onChanged: onLocationChanged,
-              ),
-            ),
-          if (isLive && locations.length > 1) const SizedBox(width: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      activeIcon,
+                      size: 15,
+                      color: const Color(0xFF6B4BC3),
+                    ),
+                    const SizedBox(width: 5),
+                    ConstrainedBox(
+                      constraints:
+                          BoxConstraints(maxWidth: compact ? 78 : 140),
+                      child: Text(
+                        activeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ),
+                    if (locations.length > 1) ...[
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+
+              if (locations.length <= 1) {
+                return chipWidget;
+              }
+
+              return PopupMenuButton<String>(
+                tooltip: 'Chọn kho / quầy làm việc',
+                initialValue: locationId,
+                offset: const Offset(0, 38),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                onSelected: onLocationChanged,
+                itemBuilder: (context) => locations.map((loc) {
+                  final locId = loc['id']?.toString();
+                  final locName =
+                      (loc['name'] ?? loc['code'] ?? '').toString();
+                  final isSelected = locId == locationId;
+                  final icon = _locationIcon(locName);
+
+                  return PopupMenuItem<String>(
+                    value: locId,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          icon,
+                          size: 18,
+                          color: isSelected
+                              ? const Color(0xFF6B4BC3)
+                              : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 160),
+                          child: Text(
+                            locName,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? const Color(0xFF6B4BC3)
+                                  : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check,
+                              size: 16, color: Color(0xFF6B4BC3)),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+                child: chipWidget,
+              );
+            }),
+            const SizedBox(width: 8),
+          ],
           if (onCreate != null) ...[
             if (!compact) const SizedBox(width: 6),
             compact
@@ -713,61 +834,27 @@ class _WorkspaceTopbar extends StatelessWidget {
                   ),
           ],
           if (screenWidth < 700) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             PopupMenuButton<String>(
               tooltip: context.tr('topbar_account'),
               offset: const Offset(0, 42),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECE8F9),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF7555D1)),
-                  ),
-                  alignment: Alignment.center,
-                  child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                      ? Image.network(
-                          user!.avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Text(
-                            (user?.displayName.isNotEmpty == true ? user!.displayName : userName).isNotEmpty
-                                ? (user?.displayName.isNotEmpty == true ? user!.displayName : userName)[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                                color: Color(0xFF6746C3),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13),
-                          ),
-                        )
-                      : Text(
-                          (user?.displayName.isNotEmpty == true ? user!.displayName : userName).isNotEmpty
-                              ? (user?.displayName.isNotEmpty == true ? user!.displayName : userName)[0].toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                              color: Color(0xFF6746C3),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13),
-                        ),
-                ),
+              child: UserAvatar(
+                name: effectiveDisplayName,
+                email: effectiveEmail,
+                avatarUrl: effectiveUser?.avatarUrl,
+                size: 32,
               ),
               itemBuilder: (context) {
-                final userDisplayName = user?.displayName;
-                final displayName = (userDisplayName != null && userDisplayName.isNotEmpty)
-                    ? userDisplayName
-                    : (userName.isEmpty ? 'Người dùng' : userName);
-                final userEmail = user?.email;
-                final email = (userEmail != null && userEmail.isNotEmpty)
-                    ? userEmail
+                final displayName = effectiveDisplayName;
+                final email = (effectiveEmail != null && effectiveEmail.isNotEmpty)
+                    ? effectiveEmail
                     : 'Optimate x NexUp ERP';
-                final roles = RoleVisibility.rolesOf(user);
+                final roles = RoleVisibility.rolesOf(effectiveUser);
                 final roleLabel = roles.isNotEmpty
                     ? RoleVisibility.roleLabel(roles.first)
-                    : (RoleVisibility.canManageEmployees(user)
+                    : (RoleVisibility.canManageEmployees(effectiveUser)
                         ? 'Chủ Quán (Admin)'
                         : 'Nhân viên');
                 return [

@@ -41,10 +41,10 @@ analyze-frontend: ## Phân tích tĩnh code Flutter (flutter analyze)
 	cd frontend && flutter analyze
 
 build-frontend: ## Build Flutter Web demo offline vào frontend/dist
-	cd frontend && flutter build web --release --dart-define=OFFLINE_DEMO=true && mkdir -p dist && cp -R build/web/. dist/
+	cd frontend && flutter build web --release --no-tree-shake-icons --dart-define=OFFLINE_DEMO=true && mkdir -p dist && cp -R build/web/. dist/
 
 build-frontend-live: ## Build Flutter Web kết nối API local tại :8000
-	cd frontend && flutter build web --release --dart-define=API_BASE_URL=http://localhost:8000/api/v1 && mkdir -p dist && cp -R build/web/. dist/
+	cd frontend && flutter build web --release --no-tree-shake-icons --dart-define=API_BASE_URL=http://localhost:8000/api/v1 && mkdir -p dist && cp -R build/web/. dist/
 
 typecheck-worker: ## Kiểm tra TypeScript Cloudflare Worker
 	cd infra/cloudflare-worker && npm run typecheck

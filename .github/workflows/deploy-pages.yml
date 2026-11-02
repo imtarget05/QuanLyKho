@@ -75,7 +75,7 @@ jobs:
           echo "Building Web with commit SHA: ${SHORT_SHA} at ${BUILD_TIME}"
           flutter build web \
             --release \
-            --tree-shake-icons \
+            --no-tree-shake-icons \
             --build-number="${SHORT_SHA}" \
             --build-name="0.1.0" \
             --dart-define=APP_BUILD_COMMIT="${SHORT_SHA}" \
