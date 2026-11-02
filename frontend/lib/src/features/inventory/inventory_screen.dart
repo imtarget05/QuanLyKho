@@ -70,7 +70,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _sheetViewMode = 'sheet';
   bool _revealPrices = true;
   bool _alertsExpanded = true;
-  bool _expiryAlertsExpanded = true;
   bool _dismissedLowStockBanner = false;
   bool _dismissedExpiryBanner = false;
   String? _alertLocationFilter;
@@ -3598,10 +3597,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                     if (headerActions.isNotEmpty) ...[
                       const SizedBox(width: 16),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 8,
-                        children: headerActions,
+                      Flexible(
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.end,
+                          children: headerActions,
+                        ),
                       ),
                     ],
                   ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/animated_count_up.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key, required this.onEnter, this.onDemo});
@@ -23,10 +24,12 @@ class LandingScreen extends StatelessWidget {
         child: Column(
           children: [
             _HeroSection(
-                isWide: isWide,
-                isCompact: isCompact,
-                onEnter: onEnter,
-                onDemo: onDemo),
+              isWide: isWide,
+              isCompact: isCompact,
+              onEnter: onEnter,
+              onDemo: onDemo,
+            ),
+            _TrustMetricsStrip(isCompact: isCompact),
             _FeaturesSection(isWide: isWide, isCompact: isCompact),
             _FooterSection(onEnter: onEnter),
           ],
@@ -55,7 +58,7 @@ class _HeroSection extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? 20 : 48,
-        vertical: isCompact ? 48 : 72,
+        vertical: isCompact ? 40 : 64,
       ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -66,145 +69,195 @@ class _HeroSection extends StatelessWidget {
       ),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          child: Flex(
-            direction: isWide ? Axis.horizontal : Axis.vertical,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: isWide ? 6 : 0,
-                child: Column(
-                  crossAxisAlignment: isWide
-                      ? CrossAxisAlignment.start
-                      : CrossAxisAlignment.center,
+          constraints: const BoxConstraints(maxWidth: 1150),
+          child: isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_graph_rounded,
-                              color: Color(0xFFDDD6FE), size: 14),
-                          SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Optimate x NexUp • ERP Quản trị Doanh nghiệp',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Color(0xFFEDE9FE),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -.2,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Expanded(
+                      flex: 6,
+                      child: _HeroCopy(
+                        isWide: true,
+                        onEnter: onEnter,
+                        onDemo: onDemo,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Quản lý Bán hàng, Xuất nhập Tồn kho\n& Công nợ tự động',
-                      textAlign: isWide ? TextAlign.left : TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                        letterSpacing: -.6,
-                      ),
+                    const SizedBox(width: 44),
+                    const Expanded(
+                      flex: 5,
+                      child: _HeroIllustration(),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Tự tính doanh thu, giá vốn, lợi nhuận từng đơn. In hóa đơn A4 đính kèm mã VietQR, lập phiếu mua hàng, kiểm kê đối chiếu tồn thực tế và tự động quản lý công nợ quá hạn.',
-                      textAlign: isWide ? TextAlign.left : TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontSize: 15,
-                        height: 1.55,
-                      ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _HeroCopy(
+                      isWide: false,
+                      onEnter: onEnter,
+                      onDemo: onDemo,
                     ),
-                    const SizedBox(height: 28),
-                    Wrap(
-                      alignment: isWide
-                          ? WrapAlignment.start
-                          : WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        FilledButton.icon(
-                          key: const Key('landing-enter-btn'),
-                          onPressed: onEnter,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF4A3282),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.login_rounded, size: 18),
-                          label: const Text(
-                            'Đăng nhập',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 14),
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          key: const Key('landing-demo-btn'),
-                          onPressed: onDemo ?? onEnter,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.6)),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 22, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: const Icon(Icons.play_circle_outline_rounded,
-                              size: 18),
-                          label: const Text(
-                            'Trải nghiệm demo',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 14),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 32),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: const _HeroIllustration(),
                     ),
                   ],
                 ),
-              ),
-              if (isWide) const SizedBox(width: 48),
-              if (isWide) Expanded(flex: 4, child: _HeroIllustration()),
-            ],
-          ),
         ),
       ),
     );
   }
 }
 
-class _HeroIllustration extends StatelessWidget {
+class _HeroCopy extends StatelessWidget {
+  const _HeroCopy({
+    required this.isWide,
+    required this.onEnter,
+    this.onDemo,
+  });
+
+  final bool isWide;
+  final VoidCallback onEnter;
+  final VoidCallback? onDemo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          isWide ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_graph_rounded,
+                  color: Color(0xFFDDD6FE), size: 14),
+              SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Optimate x NexUp • ERP Quản trị Doanh nghiệp',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFFEDE9FE),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Quản lý Bán hàng, Xuất nhập Tồn kho\n& Công nợ tự động',
+          textAlign: isWide ? TextAlign.left : TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
+            letterSpacing: -.6,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Tự tính doanh thu, giá vốn, lợi nhuận từng đơn. In hóa đơn A4 đính kèm mã VietQR, lập phiếu mua hàng, kiểm kê đối chiếu tồn thực tế và tự động quản lý công nợ quá hạn.',
+          textAlign: isWide ? TextAlign.left : TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.88),
+            fontSize: 15,
+            height: 1.55,
+          ),
+        ),
+        const SizedBox(height: 28),
+        Wrap(
+          alignment: isWide ? WrapAlignment.start : WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            FilledButton.icon(
+              key: const Key('landing-enter-btn'),
+              onPressed: onEnter,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF4A3282),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: const Text(
+                'Đăng nhập',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+            ),
+            OutlinedButton.icon(
+              key: const Key('landing-demo-btn'),
+              onPressed: onDemo ?? onEnter,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+              label: const Text(
+                'Trải nghiệm demo',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroIllustration extends StatefulWidget {
+  const _HeroIllustration();
+
+  @override
+  State<_HeroIllustration> createState() => _HeroIllustrationState();
+}
+
+class _HeroIllustrationState extends State<_HeroIllustration> {
+  int _selectedTab = 0;
+
+  static const _tabs = ['Tổng quan', 'Bán hàng', 'Mua hàng', 'Công nợ'];
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Top window bar with status
           Row(
             children: [
               Container(
@@ -229,73 +282,418 @@ class _HeroIllustration extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                 ),
-                child: const Text('ERP Dashboard',
-                    style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: Color(0xFF34D399), size: 7),
+                    SizedBox(width: 5),
+                    Text(
+                      'Live ERP System',
+                      style: TextStyle(
+                        color: Color(0xFF86EFAC),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          _metricPill('Doanh thu thuần', '160.796.872 đ',
-              const Color(0xFF10B981), Icons.trending_up_rounded),
-          const SizedBox(height: 10),
-          _metricPill('Lợi nhuận gộp', '63.067.520 đ',
-              const Color(0xFF8B5CF6), Icons.account_balance_wallet_rounded),
-          const SizedBox(height: 10),
-          _metricPill('Giá trị tồn kho', '252.002.000 đ',
-              const Color(0xFF3B82F6), Icons.inventory_2_rounded),
-          const SizedBox(height: 10),
-          _metricPill('Công nợ phải thu', '152.092.072 đ',
-              const Color(0xFFF59E0B), Icons.call_received_rounded),
+          const SizedBox(height: 14),
+
+          // Interactive preview tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(_tabs.length, (i) {
+                final isSelected = _selectedTab == i;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedTab = i),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF6B4BC3)
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFA78BFA)
+                              : Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text(
+                        _tabs[i],
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.75),
+                          fontSize: 11.5,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Metric cards based on selected tab
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Column(
+              key: ValueKey<int>(_selectedTab),
+              children: _buildMetricsForTab(_selectedTab),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _metricPill(String title, String val, Color c, IconData icon) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: c.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: c, size: 16),
+  List<Widget> _buildMetricsForTab(int tabIndex) {
+    switch (tabIndex) {
+      case 1: // Bán hàng
+        return [
+          _metricPill(
+            title: 'Doanh số bán hàng',
+            value: 160796872,
+            isCurrency: true,
+            color: const Color(0xFF10B981),
+            icon: Icons.trending_up_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Đơn hàng hoàn tất',
+            value: 42,
+            suffix: 'đơn',
+            color: const Color(0xFF8B5CF6),
+            icon: Icons.receipt_long_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Tỷ lệ thanh toán QR',
+            value: 88.5,
+            suffix: '%',
+            decimalDigits: 1,
+            color: const Color(0xFF38BDF8),
+            icon: Icons.qr_code_2_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Giá trị TB / đơn',
+            value: 3828500,
+            isCurrency: true,
+            color: const Color(0xFFF59E0B),
+            icon: Icons.analytics_outlined,
+          ),
+        ];
+      case 2: // Mua hàng
+        return [
+          _metricPill(
+            title: 'Tổng tiền mua hàng',
+            value: 305125480,
+            isCurrency: true,
+            color: const Color(0xFF38BDF8),
+            icon: Icons.local_shipping_outlined,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Phiếu nhập kho',
+            value: 19,
+            suffix: 'phiếu',
+            color: const Color(0xFF10B981),
+            icon: Icons.assignment_outlined,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Công nợ phải trả NCC',
+            value: 208388460,
+            isCurrency: true,
+            color: const Color(0xFFF87171),
+            icon: Icons.call_made_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Nhà cung cấp đối tác',
+            value: 8,
+            suffix: 'NCC',
+            color: const Color(0xFFA78BFA),
+            icon: Icons.storefront_outlined,
+          ),
+        ];
+      case 3: // Công nợ
+        return [
+          _metricPill(
+            title: 'Công nợ phải thu KH',
+            value: 152092072,
+            isCurrency: true,
+            color: const Color(0xFFF59E0B),
+            icon: Icons.call_received_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Công nợ phải trả NCC',
+            value: 208388460,
+            isCurrency: true,
+            color: const Color(0xFFF87171),
+            icon: Icons.call_made_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Nợ trong hạn an toàn',
+            value: 94.2,
+            suffix: '%',
+            decimalDigits: 1,
+            color: const Color(0xFF10B981),
+            icon: Icons.verified_user_outlined,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Số đối tác đang nợ',
+            value: 12,
+            suffix: 'đối tác',
+            color: const Color(0xFF38BDF8),
+            icon: Icons.groups_rounded,
+          ),
+        ];
+      default: // 0: Tổng quan
+        return [
+          _metricPill(
+            title: 'Doanh thu thuần',
+            value: 160796872,
+            isCurrency: true,
+            color: const Color(0xFF10B981),
+            icon: Icons.trending_up_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Lợi nhuận gộp',
+            value: 63067520,
+            isCurrency: true,
+            color: const Color(0xFF8B5CF6),
+            icon: Icons.account_balance_wallet_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Giá trị tồn kho',
+            value: 252002000,
+            isCurrency: true,
+            color: const Color(0xFF38BDF8),
+            icon: Icons.inventory_2_rounded,
+          ),
+          const SizedBox(height: 10),
+          _metricPill(
+            title: 'Công nợ phải thu',
+            value: 152092072,
+            isCurrency: true,
+            color: const Color(0xFFF59E0B),
+            icon: Icons.call_received_rounded,
+          ),
+        ];
+    }
+  }
+
+  Widget _metricPill({
+    required String title,
+    required num value,
+    required Color color,
+    required IconData icon,
+    bool isCurrency = false,
+    String suffix = '',
+    int decimalDigits = 0,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(9),
             ),
-            const SizedBox(width: 12),
-            Column(
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500)),
-                Text(val,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                AnimatedCountUp(
+                  value: value,
+                  isCurrency: isCurrency,
+                  suffix: suffix,
+                  decimalDigits: decimalDigits,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrustMetricsStrip extends StatelessWidget {
+  const _TrustMetricsStrip({required this.isCompact});
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFF130E24),
+        border: Border(
+          top: BorderSide(color: Color(0x33A78BFA)),
+          bottom: BorderSide(color: Color(0x22A78BFA)),
         ),
-      );
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 16 : 48,
+        vertical: isCompact ? 22 : 28,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1150),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = constraints.maxWidth < 620;
+              return Wrap(
+                alignment: WrapAlignment.spaceAround,
+                runAlignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 18,
+                children: [
+                  _metricTile(
+                    value: 99.8,
+                    suffix: '%',
+                    decimalDigits: 1,
+                    title: 'Khớp kiểm kê kho',
+                    desc: 'Đối soát số liệu thực tế',
+                    color: const Color(0xFF34D399),
+                    isSmall: isSmall,
+                  ),
+                  _metricTile(
+                    value: 3,
+                    prefix: '< ',
+                    suffix: 'giây',
+                    title: 'Tốc độ xuất phiếu',
+                    desc: 'Hóa đơn A4 & mã VietQR',
+                    color: const Color(0xFF60A5FA),
+                    isSmall: isSmall,
+                  ),
+                  _metricTile(
+                    value: 100,
+                    suffix: '%',
+                    title: 'Bù trừ tự động',
+                    desc: 'Dòng tiền & công nợ',
+                    color: const Color(0xFFA78BFA),
+                    isSmall: isSmall,
+                  ),
+                  _metricTile(
+                    value: 0,
+                    suffix: 'đ',
+                    title: 'Chi phí phát sinh',
+                    desc: 'Sở hữu dữ liệu trọn đời',
+                    color: const Color(0xFFFBBF24),
+                    isSmall: isSmall,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _metricTile({
+    required num value,
+    required String title,
+    required String desc,
+    required Color color,
+    required bool isSmall,
+    String prefix = '',
+    String suffix = '',
+    int decimalDigits = 0,
+  }) {
+    return SizedBox(
+      width: isSmall ? 140 : 210,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          AnimatedCountUp(
+            value: value,
+            prefix: prefix,
+            suffix: suffix,
+            decimalDigits: decimalDigits,
+            style: TextStyle(
+              color: color,
+              fontSize: isSmall ? 22 : 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            desc,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _FeaturesSection extends StatelessWidget {
@@ -485,4 +883,3 @@ class _FooterSection extends StatelessWidget {
     );
   }
 }
-

@@ -18,6 +18,9 @@ import 'src/features/commerce/commerce_api.dart';
 import 'src/core/i18n/app_i18n.dart';
 import 'src/core/i18n/locale_controller.dart';
 import 'src/core/theme/app_ui_settings_controller.dart';
+import 'src/data/repositories/bankops_repository.dart';
+import 'src/data/repositories/fake_repository.dart';
+import 'src/data/repositories/http_bankops_repository.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +57,7 @@ void main() {
   );
 }
 
-/// Cầu nối session: đọc AuthService, expose user cho AppShell qua SessionScope.
+/// Cầu nối session: đọc AuthService, expose user & repository cho toàn bộ ứng dụng qua SessionScope và RepositoryScope.
 class SessionBridge extends StatelessWidget {
   const SessionBridge({super.key, required this.child});
 
@@ -63,11 +66,22 @@ class SessionBridge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
-      builder: (context, auth, _) => SessionScope(
-        user: auth.user,
-        onSignOut: auth.signOut,
-        child: child,
-      ),
+      builder: (context, auth, _) {
+        final BankOpsRepository repo = auth.isOfflineSession
+            ? FakeBankOpsRepository()
+            : HttpBankOpsRepository(
+                baseUrl: auth.apiBaseUrl,
+                tokenProvider: auth.getAccessToken,
+              );
+        return SessionScope(
+          user: auth.user,
+          onSignOut: auth.signOut,
+          child: RepositoryScope(
+            repository: repo,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
@@ -302,7 +316,8 @@ class TeaInventoryApp extends StatelessWidget {
         density: uiSettings.density,
       ),
       themeMode: uiSettings.mode,
-      home: const SessionBridge(child: _AuthGate()),
+      builder: (context, child) => SessionBridge(child: child ?? const SizedBox.shrink()),
+      home: const _AuthGate(),
     );
   }
 }

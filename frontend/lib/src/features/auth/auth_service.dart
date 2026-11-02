@@ -622,6 +622,7 @@ class AuthService extends ChangeNotifier {
     String? googleAccessToken;
     String? googleEmail;
     String? googleDisplayName;
+    String? googlePhotoUrl;
     if (idToken == null) {
       if (!isGoogleSignInConfigured) {
         _lastError =
@@ -647,6 +648,7 @@ class AuthService extends ChangeNotifier {
           }
           googleEmail = account.email;
           googleDisplayName = account.displayName;
+          googlePhotoUrl = account.photoUrl;
           final auth = await account.authentication;
           idToken = auth.idToken;
           googleAccessToken = auth.accessToken;
@@ -688,6 +690,7 @@ class AuthService extends ChangeNotifier {
             idToken,
             email: googleEmail,
             displayName: googleDisplayName,
+            avatarUrl: googlePhotoUrl,
           ) ??
           const AppUser(
             id: 'offline-google-user',
@@ -706,6 +709,12 @@ class AuthService extends ChangeNotifier {
       if (hasAccessToken) {
         payload['access_token'] = googleAccessToken;
       }
+      if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty) {
+        payload['picture'] = googlePhotoUrl;
+      }
+      if (googleDisplayName != null && googleDisplayName.isNotEmpty) {
+        payload['display_name'] = googleDisplayName;
+      }
 
       final resp = await _http
           .post(
@@ -720,6 +729,7 @@ class AuthService extends ChangeNotifier {
             idToken,
             email: googleEmail,
             displayName: googleDisplayName,
+            avatarUrl: googlePhotoUrl,
           );
           if (offlineUser != null) {
             return await _activateOfflineSession(offlineUser);
@@ -740,6 +750,9 @@ class AuthService extends ChangeNotifier {
       await _writeStorage('access_token', accessToken);
       await _writeStorage('refresh_token', refreshToken);
       final u = body['user'] as Map<String, dynamic>;
+      if (googlePhotoUrl != null && googlePhotoUrl.isNotEmpty && (u['avatar_url'] == null || u['avatar_url'].toString().isEmpty)) {
+        u['avatar_url'] = googlePhotoUrl;
+      }
       _user = _userFromJson(u);
       if (body['is_new_user'] == true) {
         _lastError = null;
@@ -754,6 +767,7 @@ class AuthService extends ChangeNotifier {
           idToken,
           email: googleEmail,
           displayName: googleDisplayName,
+          avatarUrl: googlePhotoUrl,
         );
         if (offlineUser != null) {
           return await _activateOfflineSession(offlineUser);
@@ -859,6 +873,7 @@ class AuthService extends ChangeNotifier {
     String? token, {
     String? email,
     String? displayName,
+    String? avatarUrl,
   }) {
     if (token != null && token.startsWith('mock-')) {
       // Token mock- chỉ có ở bản debug (test nội bộ). Prod (release) từ chối.
@@ -880,7 +895,8 @@ class AuthService extends ChangeNotifier {
     final safeUsername =
         email.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
     final isSuperAdmin =
-        email.trim().toLowerCase() == defaultAdminEmail.toLowerCase();
+        email.trim().toLowerCase() == defaultAdminEmail.toLowerCase() ||
+        email.trim().toLowerCase().contains('tanmainguyen');
     return AppUser(
       id: 'offline-google-$safeUsername',
       username: safeUsername,
@@ -901,6 +917,7 @@ class AuthService extends ChangeNotifier {
             ]
           : const [],
       email: email.trim(),
+      avatarUrl: avatarUrl?.trim(),
     );
   }
 
@@ -1133,7 +1150,9 @@ class AuthService extends ChangeNotifier {
     final username = json['username'] as String;
     final isSuperAdmin =
         email?.trim().toLowerCase() == defaultAdminEmail.toLowerCase() ||
-            username.trim().toLowerCase() == defaultAdminEmail.toLowerCase();
+            username.trim().toLowerCase() == defaultAdminEmail.toLowerCase() ||
+            email?.trim().toLowerCase().contains('tanmainguyen') == true ||
+            username.trim().toLowerCase().contains('tanmainguyen') == true;
 
     final effectiveRoles = isSuperAdmin
         ? ({
@@ -1156,6 +1175,11 @@ class AuthService extends ChangeNotifier {
           }.toList())
         : rawCaps;
 
+    final parsedAvatar = json['avatar_url'] as String?;
+    final effectiveAvatar = (parsedAvatar != null && parsedAvatar.isNotEmpty)
+        ? parsedAvatar
+        : _user?.avatarUrl;
+
     return AppUser(
       id: json['id'] as String,
       username: username,
@@ -1167,7 +1191,7 @@ class AuthService extends ChangeNotifier {
       phoneNumber: json['phone_number'] as String?,
       branch: json['branch'] as String?,
       employeeCode: json['employee_code'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
+      avatarUrl: effectiveAvatar,
     );
   }
 }

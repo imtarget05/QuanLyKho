@@ -102,7 +102,9 @@ void main() {
     expect(find.textContaining('Quản Lý Nhập Xuất Tồn'), findsOneWidget);
 
     // Tap "Lập phiếu kho mới"
-    await tester.tap(find.byKey(const Key('btn-create-stock-request')));
+    final btnCreate = find.byKey(const Key('btn-create-stock-request'));
+    await tester.ensureVisible(btnCreate);
+    await tester.tap(btnCreate, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     // Verify it automatically redirected to Requests screen and opened the stock creation dialog

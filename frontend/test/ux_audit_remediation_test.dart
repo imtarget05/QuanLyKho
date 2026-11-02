@@ -140,6 +140,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check distinct ingredient count label
+      await tester.scrollUntilVisible(find.byKey(const Key('btn-toggle-stock-alerts')), 300);
       expect(find.textContaining('nguyên liệu'), findsWidgets);
       expect(find.byKey(const Key('btn-toggle-stock-alerts')), findsOneWidget);
 

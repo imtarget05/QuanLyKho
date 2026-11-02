@@ -10,7 +10,7 @@ void main() {
   testWidgets(
       'Manager can delete a single item with confirmation dialog',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -45,6 +45,8 @@ void main() {
 
     // Verify delete button exists for this item
     final deleteBtn = find.byKey(Key('btn-delete-item-${targetItem.sku}'));
+    await tester.scrollUntilVisible(deleteBtn, 300,
+        scrollable: find.byType(Scrollable).first);
     expect(deleteBtn, findsOneWidget);
 
     // Tap delete button
@@ -75,7 +77,7 @@ void main() {
   testWidgets(
       'Confirmation dialog shows warning when item has stock > 0',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -113,6 +115,8 @@ void main() {
 
     // Find and tap delete button
     final deleteBtn = find.byKey(Key('btn-delete-item-${itemWithStock.sku}'));
+    await tester.scrollUntilVisible(deleteBtn, 300,
+        scrollable: find.byType(Scrollable).first);
     expect(deleteBtn, findsOneWidget);
     await tester.tap(deleteBtn);
     await tester.pumpAndSettle();
@@ -130,7 +134,7 @@ void main() {
   testWidgets(
       'Manager can toggle batch selection mode, select all, and batch delete',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -160,6 +164,8 @@ void main() {
 
     // Toggle batch selection mode
     final toggleBatchBtn = find.byKey(const Key('btn-toggle-batch-select'));
+    await tester.scrollUntilVisible(toggleBatchBtn, 300,
+        scrollable: find.byType(Scrollable).first);
     expect(toggleBatchBtn, findsOneWidget);
     await tester.tap(toggleBatchBtn);
     await tester.pumpAndSettle();
@@ -202,7 +208,7 @@ void main() {
   testWidgets(
       'Non-manager role cannot see delete buttons or batch select',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 

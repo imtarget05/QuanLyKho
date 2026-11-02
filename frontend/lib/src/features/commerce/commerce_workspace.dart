@@ -14,6 +14,7 @@ import 'commerce_api.dart';
 import 'commerce_reports_page.dart';
 import 'commerce_settings_view.dart';
 import '../../core/widgets/store_logo.dart';
+import '../../core/widgets/animated_count_up.dart';
 
 class CommerceWorkspace extends StatefulWidget {
   const CommerceWorkspace({
