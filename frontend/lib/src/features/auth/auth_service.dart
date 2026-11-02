@@ -1155,13 +1155,15 @@ class AuthService extends ChangeNotifier {
             username.trim().toLowerCase().contains('tanmainguyen') == true;
 
     final effectiveRoles = isSuperAdmin
-        ? ({
-            ...rawRoles,
+        ? [
             'admin',
+            'system_admin',
             'inventory_manager',
             'approver',
-            'system_admin'
-          }.toList())
+            ...rawRoles.where((r) =>
+                !const ['admin', 'system_admin', 'inventory_manager', 'approver']
+                    .contains(r.toLowerCase())),
+          ]
         : rawRoles;
     final effectiveCaps = isSuperAdmin
         ? ({
@@ -1180,11 +1182,15 @@ class AuthService extends ChangeNotifier {
         ? parsedAvatar
         : _user?.avatarUrl;
 
+    final rawName = json['display_name']?.toString().trim();
+    final effectiveDisplayName = (rawName != null && rawName.isNotEmpty)
+        ? rawName
+        : (isSuperAdmin ? 'Mai Nguyễn Bình Tân (Chủ Quán / Admin)' : username);
+
     return AppUser(
       id: json['id'] as String,
       username: username,
-      displayName: (json['display_name'] ??
-          (isSuperAdmin ? 'Mai Nguyễn Bình Tân (Admin)' : username)) as String,
+      displayName: effectiveDisplayName,
       roles: effectiveRoles,
       capabilities: effectiveCaps,
       email: email,

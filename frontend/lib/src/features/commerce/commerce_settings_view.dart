@@ -7,8 +7,10 @@ import '../../core/i18n/app_i18n.dart';
 import '../../core/i18n/locale_controller.dart';
 import '../../core/theme/app_ui_settings_controller.dart';
 import '../../core/util/role_visibility.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../../data/models/dtos.dart';
 import '../admin/employee_management_screen.dart';
+import '../auth/auth_service.dart';
 import '../settings/widgets/change_password_dialog.dart';
 import '../settings/widgets/edit_profile_dialog.dart';
 import 'commerce_memory_store.dart';
@@ -102,6 +104,13 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 650;
+    final auth = Provider.of<AuthService?>(context, listen: false);
+    final effectiveUser =
+        widget.user ?? SessionScope.maybeOf(context)?.user ?? auth?.user;
+    final canManageUsers = widget.canManageUsers &&
+        (effectiveUser == null
+            ? widget.canManageUsers
+            : RoleVisibility.canManageEmployees(effectiveUser));
 
     return SingleChildScrollView(
       padding:
@@ -134,7 +143,7 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
           const SizedBox(height: 18),
 
           // 3. Quản lý Nhân sự & Phân quyền (RBAC)
-          if (widget.canManageUsers) ...[
+          if (canManageUsers) ...[
             _buildEmployeeManagementCard(context, compact),
             const SizedBox(height: 18),
           ],
@@ -151,19 +160,15 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
   }
 
   Widget _buildAccountCard(BuildContext context, bool compact) {
+    final auth = Provider.of<AuthService?>(context, listen: false);
     final session = SessionScope.maybeOf(context);
-    final user = widget.user ?? session?.user;
+    final user = widget.user ?? session?.user ?? auth?.user;
     final displayName = user?.displayName.isNotEmpty == true
         ? user!.displayName
         : (widget.userName.isNotEmpty ? widget.userName : 'Người dùng');
     final email = user?.email ?? '';
     final avatarUrl = user?.avatarUrl;
-    final roles = RoleVisibility.rolesOf(user);
-    final roleLabel = roles.isNotEmpty
-        ? RoleVisibility.roleLabel(roles.first)
-        : (RoleVisibility.canManageEmployees(user)
-            ? 'Chủ Quán (Admin)'
-            : 'Nhân viên');
+    final roleLabel = RoleVisibility.userRoleLabel(user, displayName);
 
     return _sectionCard(
       title: context.tr('settings_account_security'),
@@ -176,25 +181,11 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          radius: 26,
-                          backgroundColor: const Color(0xFFEEF2FF),
-                          backgroundImage:
-                              (avatarUrl != null && avatarUrl.isNotEmpty)
-                                  ? NetworkImage(avatarUrl)
-                                  : null,
-                          child: (avatarUrl == null || avatarUrl.isEmpty)
-                              ? Text(
-                                  displayName.isNotEmpty
-                                      ? displayName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: _primary,
-                                  ),
-                                )
-                              : null,
+                        UserAvatar(
+                          name: displayName,
+                          email: email,
+                          avatarUrl: avatarUrl,
+                          size: 52,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -258,25 +249,11 @@ class _CommerceSettingsViewState extends State<CommerceSettingsView> {
                 )
               : Row(
                   children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: const Color(0xFFEEF2FF),
-                      backgroundImage:
-                          (avatarUrl != null && avatarUrl.isNotEmpty)
-                              ? NetworkImage(avatarUrl)
-                              : null,
-                      child: (avatarUrl == null || avatarUrl.isEmpty)
-                          ? Text(
-                              displayName.isNotEmpty
-                                  ? displayName[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: _primary,
-                              ),
-                            )
-                          : null,
+                    UserAvatar(
+                      name: displayName,
+                      email: email,
+                      avatarUrl: avatarUrl,
+                      size: 52,
                     ),
                     const SizedBox(width: 14),
                     Expanded(

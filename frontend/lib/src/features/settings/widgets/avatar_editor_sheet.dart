@@ -210,7 +210,7 @@ class _AvatarEditorSheetState extends State<AvatarEditorSheet> {
     } catch (_) {}
 
     final u = widget.currentUser;
-    final name = u?.displayName ?? 'Khách';
+    final name = (u?.displayName.isNotEmpty == true) ? u!.displayName : 'Người dùng';
 
     try {
       final finalUrl = (newUrl != null && newUrl.trim().isNotEmpty) ? newUrl.trim() : null;
@@ -330,8 +330,10 @@ class _AvatarEditorSheetState extends State<AvatarEditorSheet> {
                   alignment: Alignment.center,
                   children: [
                     UserAvatar(
-                      name: user?.displayName ?? 'Khách',
-                      email: user?.effectiveEmail,
+                      name: (user?.displayName.isNotEmpty == true)
+                          ? user!.displayName
+                          : 'Người dùng',
+                      email: user?.email,
                       avatarUrl: _currentAvatarUrl,
                       size: 88,
                     ),

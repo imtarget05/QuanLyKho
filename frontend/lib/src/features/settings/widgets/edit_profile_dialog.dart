@@ -52,10 +52,20 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     if (!_initialized) {
       _initialized = true;
       final u = _resolveUser();
-      _nameCtrl.text = u?.displayName ?? '';
-      _emailCtrl.text = u?.effectiveEmail ?? '';
-      _phoneCtrl.text = u?.effectivePhone ?? '';
-      _branchCtrl.text = u?.effectiveBranch ?? '';
+      _nameCtrl.text = u?.displayName.trim() ?? '';
+      final realEmail = u?.email?.trim();
+      if (realEmail != null && realEmail.isNotEmpty) {
+        _emailCtrl.text = realEmail;
+      } else {
+        final effEmail = u?.effectiveEmail.trim() ?? '';
+        _emailCtrl.text = effEmail.endsWith('@khotrasua.local') ? '' : effEmail;
+      }
+      final realPhone = u?.phoneNumber?.trim();
+      _phoneCtrl.text =
+          (realPhone != null && realPhone != '0901 234 567') ? realPhone : '';
+      final realBranch = u?.branch?.trim();
+      _branchCtrl.text =
+          (realBranch != null && !realBranch.contains('Hội sở')) ? realBranch : '';
     }
   }
 
@@ -247,11 +257,14 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     UserAvatar(
-                      name: _resolveUser()?.displayName.isNotEmpty == true
+                      name: (_resolveUser()?.displayName.isNotEmpty == true)
                           ? _resolveUser()!.displayName
-                          : 'Người dùng',
-                      email: _resolveUser()?.effectiveEmail,
-                      avatarUrl: _resolveUser()?.avatarUrl,
+                          : (widget.currentUser?.displayName.isNotEmpty == true
+                              ? widget.currentUser!.displayName
+                              : 'Người dùng'),
+                      email: _resolveUser()?.email ?? widget.currentUser?.email,
+                      avatarUrl: _resolveUser()?.avatarUrl ??
+                          widget.currentUser?.avatarUrl,
                       size: 56,
                       showEditBadge: true,
                       onTap: () async {

@@ -1,8 +1,4 @@
-/*
- * Cloudflare Pages: Security headers cho Flutter Web
- * File này áp dụng headers cho tất cả responses từ Pages
- */
-
+# Cloudflare Pages / Workers Assets: Security headers cho Flutter Web
 # Áp dụng cho tất cả routes
 /*
   X-Frame-Options: DENY
@@ -13,7 +9,6 @@
 
 # Entrypoint scripts & HTML: always revalidate deployments, but allow the
 # browser/Cloudflare to retain a local copy and answer with a small 304.
-# `no-store` forced every visit to redownload the 4.6 MB Flutter bundle.
 /index.html
   Cache-Control: no-cache, must-revalidate
 

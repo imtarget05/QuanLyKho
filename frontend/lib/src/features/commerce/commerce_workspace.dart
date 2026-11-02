@@ -93,6 +93,12 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
   }
 
   bool get _canViewOwnerData {
+    final sessionUser = SessionScope.maybeOf(context)?.user;
+    final authUser = Provider.of<AuthService?>(context, listen: false)?.user;
+    final currentUser = widget.user ?? sessionUser ?? authUser;
+    if (currentUser != null) {
+      return RoleVisibility.canManageEmployees(currentUser);
+    }
     const privilegedRoles = {
       'admin',
       'system_admin',
@@ -111,15 +117,14 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     };
     final roles = widget.roles;
     if (roles?.any((role) => privilegedRoles.contains(role.toLowerCase())) ==
-        true) return true;
+        true) {
+      return true;
+    }
     final capabilities = widget.capabilities;
     if (capabilities != null) {
       return capabilities
           .any((capability) => privilegedCapabilities.contains(capability));
     }
-    // A workspace with auth metadata is non-owner unless explicitly granted
-    // a privileged role or capability. Unauthenticated local preview remains
-    // the owner view.
     return roles == null;
   }
 
@@ -405,16 +410,14 @@ class _WorkspaceSidebar extends StatelessWidget {
       context.tr('workspace_approvals'),
       context.tr('workspace_settings'),
     ];
-    final displayName = user?.displayName.isNotEmpty == true
-        ? user!.displayName
+    final effectiveUser = user ??
+        SessionScope.maybeOf(context)?.user ??
+        Provider.of<AuthService?>(context, listen: false)?.user;
+    final displayName = effectiveUser?.displayName.isNotEmpty == true
+        ? effectiveUser!.displayName
         : (userName.isEmpty ? 'Người dùng' : userName);
-    final avatarUrl = user?.avatarUrl;
-    final roles = RoleVisibility.rolesOf(user);
-    final roleLabel = roles.isNotEmpty
-        ? RoleVisibility.roleLabel(roles.first)
-        : (RoleVisibility.canManageEmployees(user)
-            ? 'Chủ Quán (Admin)'
-            : 'Nhân viên');
+    final avatarUrl = effectiveUser?.avatarUrl;
+    final roleLabel = RoleVisibility.userRoleLabel(effectiveUser, displayName);
 
     return Container(
         width: 232,
@@ -475,54 +478,58 @@ class _WorkspaceSidebar extends StatelessWidget {
                     onTap: () => onSelect(pages[i])),
             const Spacer(),
             const Divider(height: 1, color: Color(0xFFE8EAE7)),
-            ListTile(
-              onTap: onSignOut,
-              leading: UserAvatar(
-                name: displayName,
-                email: user?.email,
-                avatarUrl: avatarUrl,
-                size: 34,
-              ),
-              title: Text(displayName,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700)),
-              subtitle: Text(roleLabel,
-                  style: const TextStyle(fontSize: 10)),
-              trailing: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_horiz, size: 19),
-                tooltip: 'Tài khoản & Đăng xuất',
-                onSelected: (v) {
-                  if (v == 'signout') onSignOut?.call();
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'profile',
-                    child: ListTile(
-                      leading: const Icon(Icons.person_outline, size: 18),
-                      title: Text(context.tr('workspace_account'),
-                          style: const TextStyle(fontSize: 13)),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                onTap: () => onSelect(7),
+                leading: UserAvatar(
+                  name: displayName,
+                  email: effectiveUser?.email,
+                  avatarUrl: avatarUrl,
+                  size: 34,
+                ),
+                title: Text(displayName,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700)),
+                subtitle: Text(roleLabel,
+                    style: const TextStyle(fontSize: 10)),
+                trailing: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz, size: 19),
+                  tooltip: 'Tài khoản & Đăng xuất',
+                  onSelected: (v) {
+                    if (v == 'profile') onSelect(7);
+                    if (v == 'signout') onSignOut?.call();
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'profile',
+                      child: ListTile(
+                        leading: const Icon(Icons.person_outline, size: 18),
+                        title: Text(context.tr('workspace_account'),
+                            style: const TextStyle(fontSize: 13)),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'signout',
-                    child: ListTile(
-                      leading: const Icon(Icons.logout_rounded,
-                          size: 18, color: Colors.red),
-                      title: Text(context.tr('workspace_logout'),
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w700)),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
+                    PopupMenuItem(
+                      value: 'signout',
+                      child: ListTile(
+                        leading: const Icon(Icons.logout_rounded,
+                            size: 18, color: Colors.red),
+                        title: Text(context.tr('workspace_logout'),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.red,
+                                fontWeight: FontWeight.w700)),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
             ),
           ],
         ),
@@ -851,12 +858,8 @@ class _WorkspaceTopbar extends StatelessWidget {
                 final email = (effectiveEmail != null && effectiveEmail.isNotEmpty)
                     ? effectiveEmail
                     : 'Optimate x NexUp ERP';
-                final roles = RoleVisibility.rolesOf(effectiveUser);
-                final roleLabel = roles.isNotEmpty
-                    ? RoleVisibility.roleLabel(roles.first)
-                    : (RoleVisibility.canManageEmployees(effectiveUser)
-                        ? 'Chủ Quán (Admin)'
-                        : 'Nhân viên');
+                final roleLabel =
+                    RoleVisibility.userRoleLabel(effectiveUser, displayName);
                 return [
                   PopupMenuItem<String>(
                     enabled: false,

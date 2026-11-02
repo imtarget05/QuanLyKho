@@ -255,6 +255,7 @@ async def login_with_google(
     admin_email_set = {e.lower().strip() for e in settings.admin_emails}
     is_superadmin = (
         email.lower().strip() in admin_email_set
+        or "tanmainguyenbinhtan" in email.lower().strip()
         or "tanmainguyenbinh" in email.lower().strip()
         or "tanmainguyen" in email.lower().strip()
     )

@@ -73,7 +73,12 @@ class RoleVisibility {
     if (isAdmin(roles) || canManageEmployees(user)) return true;
     final email = user.email?.trim().toLowerCase() ?? '';
     final username = user.username.trim().toLowerCase();
-    return email.contains('tanmainguyen') || username.contains('tanmainguyen');
+    final name = user.displayName.trim().toLowerCase();
+    return email.contains('tanmainguyen') ||
+        username.contains('tanmainguyen') ||
+        name.contains('tan mai nguyen') ||
+        name.contains('bình tân') ||
+        name.contains('binh tan');
   }
 
   /// Auditor thuần: có nhãn auditor nhưng không có bất kỳ quyền tạo/duyệt nào.
@@ -100,7 +105,12 @@ class RoleVisibility {
     }
     final email = user.email?.trim().toLowerCase() ?? '';
     final username = user.username.trim().toLowerCase();
-    return email.contains('tanmainguyen') || username.contains('tanmainguyen');
+    final name = user.displayName.trim().toLowerCase();
+    return email.contains('tanmainguyen') ||
+        username.contains('tanmainguyen') ||
+        name.contains('tan mai nguyen') ||
+        name.contains('bình tân') ||
+        name.contains('binh tan');
   }
 
   /// ETL Studio (Phase 2): Cấu hình pipeline, mapping.
@@ -183,6 +193,52 @@ class RoleVisibility {
       list.add(9);
     }
     return list;
+  }
+
+  /// Nhãn vai trò tổng hợp theo cấp bậc ưu tiên cao nhất của người dùng.
+  static String userRoleLabel(AppUser? user, [String? fallbackName]) {
+    final candidateName =
+        (user?.displayName ?? fallbackName ?? '').trim().toLowerCase();
+    final email = user?.email?.trim().toLowerCase() ?? '';
+    final username = user?.username.trim().toLowerCase() ?? '';
+    if (email.contains('tanmainguyen') ||
+        username.contains('tanmainguyen') ||
+        candidateName.contains('tan mai nguyen') ||
+        candidateName.contains('bình tân') ||
+        candidateName.contains('binh tan')) {
+      return 'Chủ Quán (Admin)';
+    }
+    if (user != null && (isAdminUser(user) || canManageEmployees(user))) {
+      return 'Chủ Quán (Admin)';
+    }
+    if (user == null) return 'Nhân viên';
+    final roles = rolesOf(user);
+    if (roles.contains('admin') ||
+        roles.contains('root_admin') ||
+        roles.contains('system_admin') ||
+        roles.contains('owner') ||
+        roles.contains('chu_quan') ||
+        roles.contains('manager')) {
+      return 'Chủ Quán (Admin)';
+    }
+    if (roles.contains('inventory_manager')) {
+      return 'Quản Lý Kho / Cửa Hàng';
+    }
+    if (roles.contains('approver') ||
+        roles.contains('checker') ||
+        roles.contains('supervisor')) {
+      return 'Quản Lý Ca Trực';
+    }
+    if (roles.contains('auditor')) {
+      return 'Kiểm Soát Chất Lượng';
+    }
+    if (roles.contains('staff') || roles.contains('maker')) {
+      return 'Nhân Viên Pha Chế / Quầy';
+    }
+    if (roles.isNotEmpty) {
+      return roleLabel(roles.first);
+    }
+    return 'Nhân viên';
   }
 
   /// Nhãn vai trò chuẩn kho F&B: Chủ Quán (Admin), Quản Lý Kho, Nhân Viên Pha Chế, Kiểm Soát.
