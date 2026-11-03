@@ -28,8 +28,13 @@ void main() {
     }
 
     expect(nginx, contains('no-cache, no-store, must-revalidate'));
-    expect(nginx, contains(r'\.[0-9a-f]{8,}\.'));
-    expect(nginx, isNot(contains('expires 1y;')));
+    final immutableRule = RegExp(
+      r'location ~\* \\\.\[0-9a-f\]\{8,\}\\\.\(\?:[^)]*\)\$ \{([^}]*)\}',
+      dotAll: true,
+    ).firstMatch(nginx);
+    expect(immutableRule, isNotNull);
+    expect(immutableRule!.group(1), contains('expires 1y;'));
+    expect(immutableRule.group(1), contains('immutable'));
   });
 
   test('Cloudflare and Docker builds embed the matching release identifier', () {

@@ -83,6 +83,8 @@ jobs:
             --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
             --dart-define=APP_ENV=production
 
+          sed -i "s/__APP_BUILD_NUMBER__/${SHORT_SHA}/g" build/web/index.html
+
           cat <<EOF > build/web/version.json
           {
             "app_name": "kho_tra_sua",

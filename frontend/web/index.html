@@ -19,6 +19,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="app-build-number" content="__APP_BUILD_NUMBER__">
   <meta name="description" content="Hệ thống quản lý bán hàng, kho hàng và công nợ thực chiến">
   <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
@@ -212,8 +213,16 @@
 
       // Tự động kiểm tra và cập nhật Service Worker & Phiên bản Web khi có bản mới
       var isReloading = false;
-      window.appCurrentBuild = null;
+      var buildMeta = document.querySelector('meta[name="app-build-number"]');
+      window.appCurrentBuild = buildMeta ? buildMeta.content : null;
+      if (window.appCurrentBuild === '__APP_BUILD_NUMBER__') {
+        window.appCurrentBuild = null;
+      }
       window.isAppUpdateAvailable = false;
+      var appHasRendered = false;
+      window.addEventListener('flutter-first-frame', function() {
+        appHasRendered = true;
+      }, { once: true });
 
       window.checkAppVersionUpdate = function() {
         fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' })
@@ -231,6 +240,9 @@
               console.log('[PWA] Phát hiện phiên bản mới: ' + data.build_number + ' (bản hiện tại: ' + window.appCurrentBuild + ')');
               window.isAppUpdateAvailable = true;
               window.dispatchEvent(new CustomEvent('app-update-available', { detail: data }));
+              if (!appHasRendered) {
+                window.forceAppUpdate();
+              }
             }
           })
           .catch(function() {
