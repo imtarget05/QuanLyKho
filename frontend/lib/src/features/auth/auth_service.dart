@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../data/models/dtos.dart';
 import '../../core/util/error_text.dart';
+import '../../core/util/role_visibility.dart';
 
 /// Trạng thái đăng nhập dùng chung cho app.
 ///
@@ -140,6 +141,9 @@ class AuthService extends ChangeNotifier {
   bool _isOfflineSession = false;
   bool _isLoading = true;
   String? _lastError;
+  bool _adminRolePromoted = false;
+  AppUser? _promotedUser;
+  Timer? _rolePromotionWatcherTimer;
 
   /// `true` khi offline session vừa bị discard vì backend đã sống lại:
   /// tài khoản offline chưa tồn tại trên server, UI cần hiện banner/cảnh
@@ -152,6 +156,8 @@ class AuthService extends ChangeNotifier {
   bool get isGoogleSignInConfigured =>
       !kIsWeb || _googleClientId.isNotEmpty || _hasCustomGoogleProvider;
   AppUser? get user => _user;
+  bool get adminRolePromoted => _adminRolePromoted;
+  AppUser? get promotedUser => _promotedUser;
 
   /// Session cục bộ chỉ dùng dữ liệu mẫu khi API production không phản hồi.
   /// Nó không có JWT và không được phép chạm dữ liệu máy chủ.
@@ -1140,6 +1146,173 @@ class AuthService extends ChangeNotifier {
   void setUserForTest(AppUser? user) {
     _user = user;
     notifyListeners();
+  }
+
+  @visibleForTesting
+  void setAdminRolePromotedForTest(bool value, {AppUser? promotedUser}) {
+    _adminRolePromoted = value;
+    if (promotedUser != null) {
+      _promotedUser = promotedUser;
+    } else if (value && _user != null) {
+      _promotedUser = _user!.copyWith(
+        roles: [
+          ..._user!.roles,
+          if (!_user!.roles.contains('admin')) 'admin',
+          if (!_user!.roles.contains('system_admin')) 'system_admin',
+        ],
+        capabilities: [
+          ..._user!.capabilities,
+          if (!_user!.capabilities.contains('iam:admin')) 'iam:admin',
+          if (!_user!.capabilities.contains('admin:user_management'))
+            'admin:user_management',
+        ],
+      );
+    } else if (!value) {
+      _promotedUser = null;
+    }
+    notifyListeners();
+  }
+
+  void startRolePromotionWatcher(
+      {Duration interval = const Duration(seconds: 12)}) {
+    stopRolePromotionWatcher();
+    if (_isOfflineSession || _user == null) return;
+    _rolePromotionWatcherTimer = Timer.periodic(interval, (_) async {
+      await checkUserRoleUpdate();
+    });
+  }
+
+  void stopRolePromotionWatcher() {
+    _rolePromotionWatcherTimer?.cancel();
+    _rolePromotionWatcherTimer = null;
+  }
+
+  Future<void> checkUserRoleUpdate() async {
+    if (_isOfflineSession || _user == null) return;
+
+    final token = await getAccessToken();
+    if (token == null || token.isEmpty) return;
+
+    try {
+      final resp = await _http.get(
+        Uri.parse('$_baseUrl/auth/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 8));
+
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body) as Map<String, dynamic>;
+        final updatedUser = _userFromJson(data);
+        final wasAdmin = RoleVisibility.isAdmin(_user!.roles.toSet());
+        final isNowAdmin = RoleVisibility.isAdmin(updatedUser.roles.toSet());
+
+        if (!wasAdmin && isNowAdmin) {
+          _adminRolePromoted = true;
+          _promotedUser = updatedUser;
+          notifyListeners();
+        } else if (_hasRolesChanged(_user!.roles, updatedUser.roles)) {
+          _user = updatedUser;
+          notifyListeners();
+        }
+      } else if (resp.statusCode == 401) {
+        if (!_adminRolePromoted &&
+            !RoleVisibility.isAdmin(_user!.roles.toSet())) {
+          _adminRolePromoted = true;
+          _promotedUser = _user!.copyWith(
+            roles: [
+              ..._user!.roles,
+              if (!_user!.roles.contains('admin')) 'admin',
+              if (!_user!.roles.contains('system_admin')) 'system_admin',
+            ],
+            capabilities: [
+              ..._user!.capabilities,
+              if (!_user!.capabilities.contains('iam:admin')) 'iam:admin',
+              if (!_user!.capabilities.contains('admin:user_management'))
+                'admin:user_management',
+            ],
+          );
+          notifyListeners();
+        }
+      }
+    } catch (_) {
+      // Ignore network errors in periodic check to avoid interrupting user workflow
+    }
+  }
+
+  bool _hasRolesChanged(List<String> oldRoles, List<String> newRoles) {
+    final s1 = oldRoles.map((e) => e.toLowerCase()).toSet();
+    final s2 = newRoles.map((e) => e.toLowerCase()).toSet();
+    return s1.length != s2.length || s1.difference(s2).isNotEmpty;
+  }
+
+  Future<void> applyAdminPromotionAndRefresh({
+    List<String>? newRoles,
+    List<String>? newCapabilities,
+  }) async {
+    if (_user == null) {
+      if (_promotedUser != null) {
+        _user = _promotedUser;
+      }
+      _adminRolePromoted = false;
+      _promotedUser = null;
+      notifyListeners();
+      return;
+    }
+
+    final promoted = _promotedUser;
+    final currentRoles = _user!.roles;
+    final currentCaps = _user!.capabilities;
+
+    final effectiveRoles = newRoles ??
+        promoted?.roles ??
+        [
+          ...currentRoles,
+          if (!currentRoles.contains('admin')) 'admin',
+          if (!currentRoles.contains('system_admin')) 'system_admin',
+          if (!currentRoles.contains('approver')) 'approver',
+          if (!currentRoles.contains('inventory_manager')) 'inventory_manager',
+        ];
+
+    final effectiveCaps = newCapabilities ??
+        promoted?.capabilities ??
+        [
+          ...currentCaps,
+          if (!currentCaps.contains('iam:admin')) 'iam:admin',
+          if (!currentCaps.contains('admin:user_management'))
+            'admin:user_management',
+          if (!currentCaps.contains('admin')) 'admin',
+          if (!currentCaps.contains('inventory:manage_catalog'))
+            'inventory:manage_catalog',
+          if (!currentCaps.contains('inventory:approve_request'))
+            'inventory:approve_request',
+          if (!currentCaps.contains('inventory:view_balances'))
+            'inventory:view_balances',
+        ];
+
+    _user = _user!.copyWith(
+      roles: effectiveRoles,
+      capabilities: effectiveCaps,
+    );
+
+    _adminRolePromoted = false;
+    _promotedUser = null;
+
+    if (_isOfflineSession) {
+      await _writeStorage(_offlineSessionKey, json.encode(_userToJson(_user!)));
+    }
+
+    notifyListeners();
+  }
+
+  void dismissAdminPromotionBanner() {
+    _adminRolePromoted = false;
+    _promotedUser = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    stopRolePromotionWatcher();
+    super.dispose();
   }
 
   AppUser _userFromJson(Map<String, dynamic> json) {

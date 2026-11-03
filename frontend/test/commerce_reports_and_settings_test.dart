@@ -19,7 +19,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Title & Subtitle
-    expect(find.text('Báo cáo Xuất Nhập Tồn NVL & TP'), findsOneWidget);
+    // Title was updated to 'Báo cáo kinh doanh' in commerce_reports_page.dart
+    expect(find.text('Báo cáo kinh doanh'), findsOneWidget);
     expect(find.textContaining('Tổng hợp doanh thu, giá vốn, lợi nhuận gộp'), findsOneWidget);
 
     // Verify 6 Top KPIs

@@ -161,7 +161,7 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    context.tr('reports_lenakolia_title'),
+                    'Báo cáo kinh doanh',
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -394,7 +394,9 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
           ? 6
           : constraints.maxWidth >= 720
               ? 3
-              : 2;
+              : constraints.maxWidth >= 500
+                  ? 2
+                  : 1;
       const gap = 12.0;
       final width = (constraints.maxWidth - gap * (cols - 1)) / cols;
 
@@ -518,12 +520,12 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
       subtitle: 'So sánh cấu phần tài chính qua các chu kỳ',
       child: Column(
         children: [
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
             children: [
               _legendDot(_primary, 'Doanh thu'),
-              const SizedBox(width: 12),
               _legendDot(_blue, 'COGS (Giá vốn)'),
-              const SizedBox(width: 12),
               _legendDot(_green, 'Lợi nhuận'),
             ],
           ),
@@ -700,10 +702,12 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            alignment: WrapAlignment.spaceBetween,
             children: [
               _legendDot(_green, 'Lợi nhuận ròng'),
-              const Spacer(),
               Text(
                 'Biên LN: ${_profitMargin.toStringAsFixed(1)}%',
                 style: const TextStyle(

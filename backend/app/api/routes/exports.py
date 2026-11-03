@@ -1,11 +1,11 @@
-"""Exports Routes — Kết xuất và Đồng bộ dữ liệu ra Excel (.xlsx), CSV, Google Sheets.
+"""Exports Routes — Kết xuất và Đồng bộ dữ liệu ra Excel (.xlsx), CSV, PDF, Google Sheets.
 
 Cung cấp:
-  - GET /exports/catalog: Xuất danh mục hàng hóa (Excel / CSV)
-  - GET /exports/balances: Xuất số dư tồn kho theo kho/vị trí (Excel / CSV)
-  - GET /exports/movements: Xuất sổ biến động kho / ledger (Excel / CSV)
-  - GET /exports/cash-journal: Xuất sổ nhật ký thu chi tiền mặt (Excel / CSV)
-  - GET /exports/inventory-summary: Xuất bảng tổng hợp nhập xuất tồn (Excel / CSV)
+  - GET /exports/catalog: Xuất danh mục hàng hóa (Excel / CSV / PDF)
+  - GET /exports/balances: Xuất số dư tồn kho theo kho/vị trí (Excel / CSV / PDF)
+  - GET /exports/movements: Xuất sổ biến động kho / ledger (Excel / CSV / PDF)
+  - GET /exports/cash-journal: Xuất sổ nhật ký thu chi tiền mặt (Excel / CSV / PDF)
+  - GET /exports/inventory-summary: Xuất bảng tổng hợp nhập xuất tồn (Excel / CSV / PDF)
   - POST /exports/sync-google-sheets: Đẩy dữ liệu bất kỳ trực tiếp lên Google Sheets
 """
 
@@ -70,18 +70,33 @@ def _format_response(
     title: str,
     filename_prefix: str,
     export_format: str,
+    metadata: dict[str, Any] | None = None,
 ) -> Response:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_name = f"{filename_prefix}_{timestamp}"
 
     if export_format == "csv":
         csv_content = export_engine.generate_csv(rows, headers)
-        encoded = csv_content.encode("utf-8-sig")
+        # Fix Double-BOM defect: generate_csv already prepends '\ufeff' (UTF-8 BOM),
+        # so encode using standard 'utf-8' (NOT 'utf-8-sig'). This guarantees exactly
+        # ONE clean BOM (b'\xef\xbb\xbf') in the response bytes, eliminating the
+        # duplicated BOM bytes (b'\xef\xbb\xbf\xef\xbb\xbf').
+        encoded = csv_content.encode("utf-8")
         return Response(
             content=encoded,
             media_type="text/csv; charset=utf-8",
             headers={
                 "Content-Disposition": f"attachment; filename=\"{base_name}.csv\"; filename*=UTF-8''{quote(base_name)}.csv"
+            },
+        )
+
+    if export_format == "pdf":
+        pdf_bytes = export_engine.generate_pdf(rows, headers, title=title, metadata=metadata)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{base_name}.pdf\"; filename*=UTF-8''{quote(base_name)}.pdf"
             },
         )
 
@@ -101,7 +116,7 @@ def _format_response(
 # --------------------------------------------------------------------------
 @router.get("/catalog")
 async def export_catalog(
-    format: str = Query("xlsx", pattern="^(xlsx|csv)$"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv|pdf)$"),
     user_caps: tuple[User, list[str]] = Depends(get_current_user_with_capabilities),
     db: AsyncSession = Depends(get_db),
 ):
@@ -120,7 +135,7 @@ async def export_catalog(
 # --------------------------------------------------------------------------
 @router.get("/balances")
 async def export_balances(
-    format: str = Query("xlsx", pattern="^(xlsx|csv)$"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv|pdf)$"),
     location_id: str | None = None,
     user_caps: tuple[User, list[str]] = Depends(get_current_user_with_capabilities),
     db: AsyncSession = Depends(get_db),
@@ -128,7 +143,7 @@ async def export_balances(
     user, caps = user_caps
     _verify_export_permission(caps)
 
-    allowed_locations = await get_accessible_location_ids(db, user.id, caps)
+    allowed_locations = await get_accessible_location_ids(db, user)
 
     stmt = (
         select(Balance, Item, Location)
@@ -155,7 +170,7 @@ async def export_balances(
 # --------------------------------------------------------------------------
 @router.get("/movements")
 async def export_movements(
-    format: str = Query("xlsx", pattern="^(xlsx|csv)$"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv|pdf)$"),
     location_id: str | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
@@ -165,7 +180,7 @@ async def export_movements(
     user, caps = user_caps
     _verify_export_permission(caps)
 
-    allowed_locations = await get_accessible_location_ids(db, user.id, caps)
+    allowed_locations = await get_accessible_location_ids(db, user)
 
     stmt = (
         select(Movement, Item, Location)
@@ -199,7 +214,7 @@ async def export_movements(
 # --------------------------------------------------------------------------
 @router.get("/cash-journal")
 async def export_cash_journal(
-    format: str = Query("xlsx", pattern="^(xlsx|csv)$"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv|pdf)$"),
     from_date: str | None = None,
     to_date: str | None = None,
     user_caps: tuple[User, list[str]] = Depends(get_current_user_with_capabilities),
@@ -231,7 +246,7 @@ async def export_cash_journal(
 # --------------------------------------------------------------------------
 @router.get("/inventory-summary")
 async def export_inventory_summary(
-    format: str = Query("xlsx", pattern="^(xlsx|csv)$"),
+    format: str = Query("xlsx", pattern="^(xlsx|csv|pdf)$"),
     location_id: str | None = None,
     from_date: str | None = None,
     to_date: str | None = None,

@@ -172,10 +172,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final width = MediaQuery.sizeOf(context).width;
+    final isCompact = width < 600;
+
     return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 12 : 40,
+        vertical: 24,
+      ),
+      titlePadding: EdgeInsets.fromLTRB(isCompact ? 16 : 24, 20, isCompact ? 16 : 24, 8),
+      contentPadding: EdgeInsets.symmetric(horizontal: isCompact ? 16 : 24, vertical: 12),
+      actionsPadding: EdgeInsets.fromLTRB(isCompact ? 16 : 24, 12, isCompact ? 16 : 24, 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
@@ -217,9 +224,11 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
           ),
         ],
       ),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SizedBox(
+          width: isCompact ? double.maxFinite : 480,
+          child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -253,8 +262,11 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 const SizedBox(height: 16),
               ],
               Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Wrap(
+                  spacing: 14,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.center,
                   children: [
                     UserAvatar(
                       name: (_resolveUser()?.displayName.isNotEmpty == true)
@@ -277,7 +289,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                         }
                       },
                     ),
-                    const SizedBox(width: 14),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.camera_alt_outlined, size: 16),
                       label: const Text('Đổi ảnh đại diện',
@@ -430,7 +441,8 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
           ),
         ),
       ),
-      actions: [
+    ),
+    actions: [
         OutlinedButton(
           key: const Key('edit-profile-cancel-btn'),
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),

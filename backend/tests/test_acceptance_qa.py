@@ -6,6 +6,7 @@ fixture sẽ báo FAILED rõ ràng thay vì bỏ qua im lặng.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 import pytest
 
@@ -372,7 +373,7 @@ class TestI3Serial:
 # C1/C2/C3 - ledger quỹ
 # --------------------------------------------------------------------------
 class TestC1C2C3Cash:
-    def _create_cash(self, api, maker, kind, amount, reason):
+    def _create_cash(self, api, maker, kind, amount, reason, supervisor_pin="123456"):
         m = api.as_user(maker)
         r = m.c.post(
             "/cash-sim/requests",
@@ -384,9 +385,13 @@ class TestC1C2C3Cash:
         rid = r.json()["id"]
         sub = m.c.post(f"/cash-sim/requests/{rid}/submit", headers=m.h(maker))
         assert sub.status_code in (200, 201), f"submit: {sub.status_code} {sub.text[:300]}"
+        payload = {}
+        if supervisor_pin is not None:
+            payload["supervisor_pin"] = supervisor_pin
         ap = api.c.post(
             f"/cash-sim/requests/{rid}/approve",
             headers={**api.h("demo_checker"), "Idempotency-Key": str(uuid.uuid4())},
+            json=payload,
         )
         return rid, ap
 
@@ -395,7 +400,19 @@ class TestC1C2C3Cash:
         journals_before = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
         n_before = len(journals_before.json().get("journals", [])) if journals_before.status_code == 200 else None
 
-        rid, ap = self._create_cash(api, "demo_maker", "payment", "999999999.00", "C1 chi qua quy")
+        bal_resp = api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
+        current_bal = Decimal("0")
+        if bal_resp.status_code == 200:
+            row = next(
+                (b for b in bal_resp.json().get("balances", [])
+                 if b.get("cashbox_id") == "11111111-1111-4111-8111-111111111111"),
+                None,
+            )
+            if row:
+                current_bal = Decimal(str(row["amount"]))
+        excess_amount = str(current_bal + Decimal("1000000000.00"))
+
+        rid, ap = self._create_cash(api, "demo_maker", "payment", excess_amount, "C1 chi qua quy", supervisor_pin="123456")
         assert ap.status_code == 409, (
             f"C1: chi quá quỹ trả {ap.status_code} (mong đợi 409 INSUFFICIENT_SIM_CASH): "
             f"{ap.text[:300]}"
@@ -409,6 +426,15 @@ class TestC1C2C3Cash:
 
     def test_receipt_posts_balanced_journal(self, api):
         """C2: thu hợp lệ -> debit=credit, balance đúng Decimal."""
+        bal_before_resp = api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
+        assert bal_before_resp.status_code == 200
+        row_before = next(
+            (b for b in bal_before_resp.json().get("balanes", bal_before_resp.json().get("balances", []))
+             if b.get("cashbox_id") == "11111111-1111-4111-8111-111111111111"),
+            None,
+        )
+        before_amt = Decimal(str(row_before["amount"])) if row_before else Decimal("0")
+
         rid, ap = self._create_cash(api, "demo_maker", "receipt", "1000000.00", "C2 thu hop le")
         assert ap.status_code in (200, 201), (
             f"C2: approve thu trả {ap.status_code}: {ap.text[:300]}"
@@ -442,8 +468,9 @@ class TestC1C2C3Cash:
             None,
         )
         assert row is not None, "C2: không tìm thấy balance của cashbox demo"
-        assert str(row["amount"]).startswith("1000000"), (
-            f"C2: balance sau receipt = {row['amount']}, mong đợi 1000000.00"
+        expected_amt = before_amt + Decimal("1000000.00")
+        assert Decimal(str(row["amount"])) == expected_amt, (
+            f"C2: balance sau receipt = {row['amount']}, mong đợi {expected_amt}"
         )
 
     def test_reversal_creates_new_balanced_journal(self, api):

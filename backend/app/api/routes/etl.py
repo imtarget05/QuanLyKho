@@ -36,6 +36,7 @@ from app.api.routes.auth_utils import (
     get_current_user_with_capabilities,
 )
 from app.database import get_db
+from app.models.cash_sim import CashJournal, CashRequest
 from app.models.etl import (
     EtlConnection,
     EtlMappingVersion,
@@ -44,8 +45,8 @@ from app.models.etl import (
     EtlRunRow,
 )
 from app.models.iam import User
-from app.models.inventory import Location
-from app.services import etl_engine, google_sheets_service
+from app.models.inventory import Balance, Item, Location, Movement
+from app.services import etl_engine, export_engine, google_sheets_service
 
 router = APIRouter(prefix="/etl", tags=["etl"])
 
@@ -143,6 +144,25 @@ class ReviewInput(BaseModel):
 class RunJsonInput(BaseModel):
     raw_rows: list[dict[str, Any]]
     external_event_id: str | None = None
+
+
+class WritebackInput(BaseModel):
+    sheet_url_or_id: str | None = None
+    tab: str | None = "Sheet1"
+    status_column_letter: str = "K"
+    credentials: dict[str, Any] | str | None = None
+    credentials_info: dict[str, Any] | str | None = None
+    service_account_json: str | None = None
+
+
+class EtlExportGoogleSheetsInput(BaseModel):
+    dataset: str = Field(..., pattern="^(catalog|balances|movements|cash_journal|inventory_summary)$")
+    sheet_url_or_id: str = Field(..., min_length=1)
+    tab: str = Field(default="Sheet1")
+    location_id: str | None = None
+    webhook_url: str | None = None
+    credentials: dict[str, Any] | str | None = None
+    include_sync_status: bool = True
 
 
 # --------------------------------------------------------------------------
@@ -690,8 +710,18 @@ async def trigger_run(
                 external_event_id = body_dict.get("external_event_id")
                 sheet_target = body_dict.get("sheet_url") or body_dict.get("sheet_id")
                 tab = body_dict.get("tab") or "Sheet1"
+                credentials_info = (
+                    body_dict.get("credentials")
+                    or body_dict.get("credentials_info")
+                    or body_dict.get("service_account_json")
+                    or body_dict.get("service_account_info")
+                    or body_dict.get("oauth_token")
+                )
+                api_key = body_dict.get("api_key")
                 if not raw_rows and sheet_target:
-                    raw_rows = await google_sheets_service.fetch_sheet_rows(sheet_target, tab=tab)
+                    raw_rows = await google_sheets_service.fetch_sheet_rows(
+                        sheet_target, tab=tab, credentials_info=credentials_info, api_key=api_key
+                    )
             elif isinstance(body_dict, list):
                 raw_rows = body_dict
         except Exception:
@@ -700,11 +730,37 @@ async def trigger_run(
     if not raw_rows:
         # Kiểm tra nếu connection là google_sheets và có cấu hình sẵn sheet
         conn = await db.get(EtlConnection, p.connection_id)
-        if conn and conn.type == "google_sheets" and conn.config_json:
-            target_sheet = conn.config_json.get("sheet_url") or conn.config_json.get("sheet_id")
-            tab_name = conn.config_json.get("tab", "Sheet1")
+        if conn and conn.type == "google_sheets":
+            cfg = conn.config_json or {}
+            target_sheet = sheet_target or cfg.get("sheet_url") or cfg.get("sheet_id")
+            tab_name = tab if sheet_target else (cfg.get("tab") or tab or "Sheet1")
+
+            if target_sheet and conn.allowlist_sheets:
+                extracted_id = google_sheets_service.extract_sheet_id(target_sheet)
+                if extracted_id not in conn.allowlist_sheets and target_sheet not in conn.allowlist_sheets:
+                    raise AppError(
+                        403,
+                        "SHEET_NOT_ALLOWED",
+                        f"Google Sheet '{extracted_id}' không nằm trong danh sách được phép (allowlist) của kết nối.",
+                    )
+
+            if not credentials_info:
+                credentials_info = (
+                    cfg.get("credentials")
+                    or cfg.get("credentials_info")
+                    or cfg.get("service_account_json")
+                    or cfg.get("service_account_info")
+                    or cfg.get("oauth_token")
+                )
+                if not credentials_info and conn.secret_ref:
+                    credentials_info = google_sheets_service.resolve_credentials(conn.secret_ref)
+            if not api_key:
+                api_key = cfg.get("api_key")
+
             if target_sheet:
-                raw_rows = await google_sheets_service.fetch_sheet_rows(target_sheet, tab=tab_name)
+                raw_rows = await google_sheets_service.fetch_sheet_rows(
+                    target_sheet, tab=tab_name, credentials_info=credentials_info, api_key=api_key
+                )
 
     if not raw_rows:
         raise AppError(422, "MISSING_INPUT", "Cần tải file đính kèm, đường dẫn Google Sheet hoặc truyền raw_rows trong JSON")
@@ -884,6 +940,39 @@ async def post_run(
         actor=user,
         single_admin_override=single_admin_override,
     )
+
+    # Tùy chọn tự động ghi nhận trạng thái lên Google Sheet nếu connection có cấu hình auto_writeback
+    try:
+        conn = await db.get(EtlConnection, pipeline.connection_id)
+        if conn and conn.type == "google_sheets":
+            cfg = conn.config_json or {}
+            if cfg.get("auto_writeback", False):
+                target_sheet = cfg.get("sheet_url") or cfg.get("sheet_id")
+                tab = cfg.get("tab", "Sheet1")
+                col_letter = cfg.get("status_column_letter", "K")
+                creds = (
+                    cfg.get("credentials")
+                    or cfg.get("service_account_json")
+                    or (conn.secret_ref if conn else None)
+                )
+                if target_sheet:
+                    row_stmt = select(EtlRunRow).where(EtlRunRow.run_id == run.id).order_by(EtlRunRow.row_number)
+                    rows = (await db.execute(row_stmt)).scalars().all()
+                    statuses = [
+                        (f"✓ ĐÃ GHI SỔ (Run: {str(run.id)[:8]})" if r.valid else f"✗ LỖI: {'; '.join(r.errors_json or [])}")
+                        for r in rows
+                    ]
+                    await google_sheets_service.writeback_sheet_status(
+                        sheet_id=target_sheet,
+                        tab=tab,
+                        status_column_letter=col_letter,
+                        statuses=statuses,
+                        credentials_info=creds,
+                    )
+    except Exception:
+        # Ghi nhận log và không chặn kết quả post của sổ cái database
+        pass
+
     return result
 
 
@@ -961,3 +1050,164 @@ async def cancel_run(
     await db.commit()
     await db.refresh(run)
     return _serialize_run(run)
+
+
+@router.post("/runs/{run_id}/writeback")
+async def writeback_run_status_to_sheet(
+    run_id: str,
+    payload: WritebackInput | None = None,
+    user_caps: tuple[User, list[str]] = Depends(get_current_user_with_capabilities),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ghi phản hồi trạng thái xử lý (_sync_status) của từng dòng trong Run trực tiếp lên Google Sheet."""
+    user, caps = user_caps
+    if not any(c in caps for c in (_CAP_ADMIN, _CAP_RUN, _CAP_REVIEW)):
+        raise AppError(403, "FORBIDDEN", "Bạn không có quyền cập nhật trạng thái lên Google Sheet.")
+
+    run = await db.get(EtlRun, uuid.UUID(run_id))
+    if not run:
+        raise AppError(404, "RUN_NOT_FOUND", "Không tìm thấy ETL run")
+
+    pipeline = await db.get(EtlPipeline, run.pipeline_id)
+    if not pipeline:
+        raise AppError(404, "PIPELINE_NOT_FOUND", "Pipeline liên kết không tồn tại")
+
+    conn = await db.get(EtlConnection, pipeline.connection_id)
+    cfg = conn.config_json or {} if conn else {}
+
+    input_data = payload or WritebackInput()
+    sheet_target = input_data.sheet_url_or_id or cfg.get("sheet_url") or cfg.get("sheet_id")
+    if not sheet_target:
+        raise AppError(422, "MISSING_SHEET_TARGET", "Cần cung cấp sheet_url_or_id hoặc cấu hình sheet trên kết nối")
+
+    tab = input_data.tab or cfg.get("tab") or "Sheet1"
+    col_letter = input_data.status_column_letter or cfg.get("status_column_letter") or "K"
+    creds = (
+        input_data.credentials
+        or input_data.credentials_info
+        or input_data.service_account_json
+        or cfg.get("credentials")
+        or cfg.get("service_account_json")
+        or (conn.secret_ref if conn else None)
+    )
+
+    stmt = select(EtlRunRow).where(EtlRunRow.run_id == run.id).order_by(EtlRunRow.row_number)
+    rows = (await db.execute(stmt)).scalars().all()
+    if not rows:
+        return {"run_id": run_id, "updated_rows": 0, "message": "Không có dòng dữ liệu nào để cập nhật"}
+
+    statuses: list[str] = []
+    for r in rows:
+        if r.valid:
+            if run.status == "posted":
+                statuses.append(f"✓ ĐÃ GHI SỔ (Run: {str(run.id)[:8]})")
+            elif run.status == "reviewing":
+                statuses.append(f"✓ ĐÃ DUYỆT (Run: {str(run.id)[:8]})")
+            else:
+                prev = r.action_preview or {}
+                act = prev.get("action", "valid")
+                statuses.append(f"✓ HỢP LỆ [{act}] (Run: {str(run.id)[:8]})")
+        else:
+            err_text = "; ".join(r.errors_json or ["Dữ liệu không hợp lệ"])
+            statuses.append(f"✗ LỖI: {err_text}")
+
+    result = await google_sheets_service.writeback_sheet_status(
+        sheet_id=sheet_target,
+        tab=tab,
+        status_column_letter=col_letter,
+        statuses=statuses,
+        start_row=2,
+        credentials_info=creds,
+    )
+    return {
+        "run_id": run_id,
+        "sheet_id": google_sheets_service.extract_sheet_id(sheet_target),
+        "tab": tab,
+        "column": col_letter,
+        "total_rows": len(statuses),
+        "api_response": result,
+    }
+
+
+@router.post("/export-google-sheets")
+async def export_dataset_to_google_sheet(
+    payload: EtlExportGoogleSheetsInput,
+    user_caps: tuple[User, list[str]] = Depends(get_current_user_with_capabilities),
+    db: AsyncSession = Depends(get_db),
+):
+    """Xuất các bộ dữ liệu nghiệp vụ (Catalog, Balances, Movements, Cash Journal) sang Google Sheet."""
+    user, caps = user_caps
+    if not any(c in caps for c in (_CAP_ADMIN, _CAP_RUN, _CAP_REVIEW, _CAP_DESIGN)):
+        raise AppError(403, "FORBIDDEN", "Bạn không có quyền xuất dữ liệu sang Google Sheet.")
+
+    headers: list[tuple[str, str]] = []
+    rows: list[dict[str, Any]] = []
+
+    if payload.dataset == "catalog":
+        items = (await db.execute(select(Item).order_by(Item.sku))).scalars().all()
+        headers, rows = export_engine.serialize_catalog_dataset(items)
+    elif payload.dataset == "balances":
+        stmt = (
+            select(Balance, Item, Location)
+            .join(Item, Balance.item_id == Item.id)
+            .join(Location, Balance.location_id == Location.id)
+        )
+        if payload.location_id:
+            stmt = stmt.where(Balance.location_id == uuid.UUID(payload.location_id))
+        records = (await db.execute(stmt)).all()
+        headers, rows = export_engine.serialize_balances_dataset(records)
+    elif payload.dataset == "movements":
+        stmt = (
+            select(Movement, Item, Location)
+            .join(Item, Movement.item_id == Item.id)
+            .join(Location, Movement.location_id == Location.id)
+            .order_by(desc(Movement.posted_at))
+        )
+        if payload.location_id:
+            stmt = stmt.where(Movement.location_id == uuid.UUID(payload.location_id))
+        records = (await db.execute(stmt)).all()
+        headers, rows = export_engine.serialize_movements_dataset(records)
+    elif payload.dataset == "cash_journal":
+        records = (
+            await db.execute(
+                select(CashJournal, CashRequest)
+                .outerjoin(CashRequest, CashJournal.request_id == CashRequest.id)
+                .order_by(desc(CashJournal.posted_at))
+            )
+        ).all()
+        headers, rows = export_engine.serialize_cash_journal_dataset(records)
+    elif payload.dataset == "inventory_summary":
+        movements = (await db.execute(select(Movement))).scalars().all()
+        buckets: dict[str, dict[str, Any]] = {}
+        for mv in movements:
+            day_str = (mv.posted_at or mv.created_at).strftime("%Y-%m-%d")
+            if day_str not in buckets:
+                buckets[day_str] = {
+                    "bucket": day_str,
+                    "inbound_qty": 0.0,
+                    "outbound_qty": 0.0,
+                    "net_qty": 0.0,
+                    "receipt_count": 0,
+                    "issue_count": 0,
+                }
+            b = buckets[day_str]
+            qty = float(mv.quantity_signed or 0)
+            if qty > 0:
+                b["inbound_qty"] += qty
+                b["receipt_count"] += 1
+            else:
+                b["outbound_qty"] += abs(qty)
+                b["issue_count"] += 1
+            b["net_qty"] += qty
+        headers, rows = export_engine.serialize_inventory_summary_dataset(list(buckets.values()))
+
+    result = await google_sheets_service.sync_out_to_google_sheet(
+        url_or_id=payload.sheet_url_or_id,
+        tab=payload.tab,
+        headers=headers,
+        rows=rows,
+        webhook_url=payload.webhook_url,
+        credentials_info=payload.credentials,
+        include_sync_status=payload.include_sync_status,
+    )
+    return result

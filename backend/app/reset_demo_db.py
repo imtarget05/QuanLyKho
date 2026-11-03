@@ -15,6 +15,11 @@ from app.models.cash_sim import (
     CashJournal,
     CashRequest,
 )
+from app.models.commerce import (
+    CommerceDocument,
+    CommerceDocumentLine,
+    CommercePayment,
+)
 from app.models.etl import (
     EtlConnection,
     EtlMappingVersion,
@@ -32,10 +37,14 @@ from app.models.inventory import (
     Asset,
     AssetLog,
     Balance,
+    InventoryEntry,
+    InventoryJournal,
     InventoryRequest,
     InventoryRequestLine,
     Item,
     Location,
+    LotBalance,
+    LotMovement,
     Movement,
     Stocktake,
     StocktakeLine,
@@ -50,7 +59,13 @@ async def reset_demo_database():
     print("--- Bắt đầu dọn sạch dữ liệu hệ thống demo ---")
     async with AsyncSessionLocal() as db:
         # 1. Xoá các bảng giao dịch & quan hệ phụ thuộc trước
+        await db.execute(delete(CommercePayment))
+        await db.execute(delete(CommerceDocumentLine))
+        await db.execute(delete(CommerceDocument))
+        await db.execute(delete(InventoryEntry))
+        await db.execute(delete(InventoryJournal))
         await db.execute(delete(ApprovalDecision))
+        await db.execute(delete(LotMovement))
         await db.execute(delete(Movement))
         await db.execute(delete(InventoryRequestLine))
         await db.execute(delete(InventoryRequest))
@@ -59,6 +74,7 @@ async def reset_demo_database():
         await db.execute(delete(StockLevel))
         await db.execute(delete(AssetLog))
         await db.execute(delete(Asset))
+        await db.execute(delete(LotBalance))
         await db.execute(delete(Balance))
 
         await db.execute(delete(CashEntry))
@@ -89,7 +105,8 @@ async def reset_demo_database():
         await db.commit()
         print("Đã xoá sạch các bảng dữ liệu cũ.")
 
-        # 3. Cập nhật tên hiển thị của Users
+        # 3. Cập nhật tên hiển thị của Users và khôi phục PIN mặc định
+        from app.api.routes.auth_utils import get_password_hash
         user_names = {
             "tanmainguyenbinh": "Bình Tân (Chủ Quán / Admin)",
             "demo_maker": "Nguyễn Thị Mai (Pha Chế)",
@@ -102,8 +119,9 @@ async def reset_demo_database():
             user = (await db.execute(select(User).where(User.username == uname))).scalars().first()
             if user:
                 user.display_name_demo = dname
+                user.pin_hash = get_password_hash("123456")
         await db.commit()
-        print("Đã chuẩn hóa tên nhân sự cửa hàng trà sữa.")
+        print("Đã chuẩn hóa tên nhân sự và mã PIN cửa hàng trà sữa.")
 
     # 4. Chạy seed_demo để nạp lại từ sample-data sạch
     await seed_demo()

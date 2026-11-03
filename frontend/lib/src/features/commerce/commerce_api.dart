@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import 'commerce_memory_store.dart';
 
+typedef SessionRevokedCallback = void Function(String message);
+
 /// Authenticated commerce client. It holds only a display snapshot; every
 /// business write is sent to the API and the snapshot is reloaded afterward.
 class CommerceApi {
@@ -12,7 +14,9 @@ class CommerceApi {
     required this.baseUrl,
     required this.tokenProvider,
     required this.userId,
-  }) : _client = http.Client();
+    this.onSessionRevoked,
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   final String baseUrl;
   final Future<String?> Function() tokenProvider;
@@ -20,6 +24,7 @@ class CommerceApi {
   final http.Client _client;
   String? locationId;
   List<Map<String, dynamic>> locations = const [];
+  SessionRevokedCallback? onSessionRevoked;
 
   static String newIdempotencyKey() =>
       'commerce_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}';
@@ -62,6 +67,21 @@ class CommerceApi {
       data = jsonDecode(response.body);
     } catch (_) {
       data = null;
+    }
+    if (response.statusCode == 401) {
+      final message = data is Map
+          ? (data['detail'] ??
+              data['error']?['message'] ??
+              'Phiên đăng nhập đã bị thu hồi hoặc quyền tài khoản đã thay đổi. Vui lòng đăng nhập lại.')
+          : 'Phiên đăng nhập đã bị thu hồi hoặc quyền tài khoản đã thay đổi. Vui lòng đăng nhập lại.';
+      final msgStr = message.toString();
+      if (msgStr.contains('Phiên đăng nhập đã bị thu hồi') ||
+          msgStr.contains('quyền tài khoản đã thay đổi') ||
+          msgStr.toLowerCase().contains('role') ||
+          msgStr.toLowerCase().contains('unauthorized')) {
+        onSessionRevoked?.call(msgStr);
+      }
+      throw StateError(msgStr);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = data is Map

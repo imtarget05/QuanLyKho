@@ -1,23 +1,34 @@
-"""Export Engine — kết xuất dữ liệu sang Excel (.xlsx) & CSV an toàn (CWE-1236).
+"""Export Engine — kết xuất dữ liệu sang Excel (.xlsx), CSV, và PDF an toàn (CWE-1236).
 
 Cung cấp:
   - Sinh file Excel (.xlsx) có styling chuẩn, tự căn lề & độ rộng cột.
   - Sinh file CSV có BOM UTF-8 (chuẩn tiếng Việt cho Excel) và chống Formula Injection.
+  - Sinh file PDF bảng biểu chuyên nghiệp, phân trang tự động, hỗ trợ font Unicode tiếng Việt (Roboto).
   - Bộ chuẩn hóa cấu trúc dữ liệu cho: Catalog, Balances, Movements, Cash Journal, Inventory Summary.
 """
 
 from __future__ import annotations
 
 import csv
+import html
 import io
+import os
 import re
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 # CWE-1236: Ký tự đầu ô kích hoạt công thức trên Excel / Sheets
 _FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
@@ -90,6 +101,8 @@ def generate_xlsx(
         for col_idx, (key, _) in enumerate(headers, start=1):
             val = r.get(key)
             safe_val = sanitize_cell_value(val)
+            if isinstance(safe_val, datetime) and safe_val.tzinfo is not None:
+                safe_val = safe_val.replace(tzinfo=None)
             cell = ws.cell(row=row_idx, column=col_idx, value=safe_val)
             cell.font = data_font
             cell.border = border_thin
@@ -127,10 +140,12 @@ def generate_xlsx(
 def generate_csv(
     rows: list[dict[str, Any]],
     headers: list[tuple[str, str]],
+    include_bom: bool = True,
 ) -> str:
     """Tạo file CSV có BOM UTF-8 (\ufeff) để Excel mở tiếng Việt không lỗi font."""
     output = io.StringIO()
-    output.write("\ufeff")  # UTF-8 BOM
+    if include_bom:
+        output.write("\ufeff")  # UTF-8 BOM
     writer = csv.writer(output)
 
     # Header
@@ -148,6 +163,254 @@ def generate_csv(
         writer.writerow(row_vals)
 
     return output.getvalue()
+
+
+_REGISTERED_PDF_FONT: str | None = None
+
+
+def _get_or_register_pdf_font() -> str:
+    """Đăng ký Unicode TrueType font (Roboto / system Unicode) hỗ trợ tiếng Việt có dấu."""
+    global _REGISTERED_PDF_FONT
+    if _REGISTERED_PDF_FONT:
+        return _REGISTERED_PDF_FONT
+
+    current_dir = Path(__file__).resolve().parent
+    project_root = current_dir.parents[2]  # QuanLyKho root
+    backend_root = current_dir.parents[1]  # backend root
+
+    candidate_paths: list[Path] = []
+    env_font = os.environ.get("PDF_FONT_PATH")
+    if env_font:
+        candidate_paths.append(Path(env_font))
+
+    candidate_paths.extend([
+        project_root / "frontend" / "assets" / "fonts" / "Roboto-Regular.ttf",
+        backend_root / "app" / "assets" / "fonts" / "Roboto-Regular.ttf",
+        backend_root / "assets" / "fonts" / "Roboto-Regular.ttf",
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+        Path("/usr/share/fonts/TTF/DejaVuSans.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+    ])
+
+    for font_path in candidate_paths:
+        if font_path.is_file():
+            try:
+                font_name = "RobotoUnicode"
+                pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                _REGISTERED_PDF_FONT = font_name
+                return _REGISTERED_PDF_FONT
+            except Exception:
+                continue
+
+    _REGISTERED_PDF_FONT = "Helvetica"
+    return _REGISTERED_PDF_FONT
+
+
+class NumberedCanvas(canvas.Canvas):
+    """Canvas 2 bước (two-pass) để tính toán chính xác tổng số trang 'Trang X / Y'."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._saved_page_states: list[dict[str, Any]] = []
+
+    def showPage(self) -> None:
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self) -> None:
+        num_pages = len(self._saved_page_states)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            self.draw_footer(num_pages)
+            super().showPage()
+        super().save()
+
+    def draw_footer(self, page_count: int) -> None:
+        self.saveState()
+        font_name = _get_or_register_pdf_font()
+        self.setFont(font_name, 8)
+        self.setFillColor(colors.HexColor("#6B7280"))
+        # Header footer branding
+        self.drawString(30, 18, "Kho Trà Sữa — Hệ thống Quản trị Kho Vận & Quỹ Core Banking")
+        # Page numbering
+        page_str = f"Trang {self._pageNumber} / {page_count}"
+        page_width, _ = landscape(A4)
+        self.drawRightString(page_width - 30, 18, page_str)
+        self.restoreState()
+
+
+def generate_pdf(
+    rows: list[dict[str, Any]],
+    headers: list[tuple[str, str]],
+    title: str = "Báo cáo Dữ liệu",
+    metadata: dict[str, Any] | None = None,
+) -> bytes:
+    """Tạo file PDF bảng biểu chuyên nghiệp, phân trang tự động, hỗ trợ tiếng Việt Unicode."""
+    buf = io.BytesIO()
+    page_width, page_height = landscape(A4)
+    left_margin = 30.0
+    right_margin = 30.0
+    top_margin = 30.0
+    bottom_margin = 35.0
+    printable_width = page_width - left_margin - right_margin
+
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=(page_width, page_height),
+        leftMargin=left_margin,
+        rightMargin=right_margin,
+        topMargin=top_margin,
+        bottomMargin=bottom_margin,
+    )
+
+    font_name = _get_or_register_pdf_font()
+
+    title_style = ParagraphStyle(
+        "DocTitle",
+        fontName=font_name,
+        fontSize=14,
+        leading=18,
+        textColor=colors.HexColor("#0F4C81"),
+        spaceAfter=4,
+    )
+    meta_style = ParagraphStyle(
+        "DocMeta",
+        fontName=font_name,
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor("#6B7280"),
+        spaceAfter=10,
+    )
+    header_cell_style = ParagraphStyle(
+        "HeaderCell",
+        fontName=font_name,
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.white,
+        alignment=1,  # Center
+    )
+    cell_left_style = ParagraphStyle(
+        "CellLeft",
+        fontName=font_name,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#1F2937"),
+        alignment=0,  # Left
+    )
+    cell_center_style = ParagraphStyle(
+        "CellCenter",
+        fontName=font_name,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#1F2937"),
+        alignment=1,  # Center
+    )
+    cell_right_style = ParagraphStyle(
+        "CellRight",
+        fontName=font_name,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#1F2937"),
+        alignment=2,  # Right
+    )
+
+    # Dynamic column widths based on max content length
+    weights: list[float] = []
+    for key, label in headers:
+        max_len = len(label)
+        for r in rows[:60]:
+            v_str = str(r.get(key) or "")
+            if len(v_str) > max_len:
+                max_len = len(v_str)
+        weights.append(float(max(6, min(max_len, 35))))
+    total_w = sum(weights) or 1.0
+    col_widths = [(w / total_w) * printable_width for w in weights]
+
+    table_data: list[list[Any]] = []
+    # Header row
+    table_data.append([Paragraph(html.escape(label), header_cell_style) for _, label in headers])
+
+    table_styles: list[Any] = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F4C81")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E5E7EB")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F9FAFB")]),
+    ]
+
+    if not rows:
+        empty_style = ParagraphStyle(
+            "EmptyRow",
+            fontName=font_name,
+            fontSize=9,
+            leading=12,
+            textColor=colors.HexColor("#6B7280"),
+            alignment=1,
+        )
+        empty_p = Paragraph("Không có dữ liệu trong kỳ báo cáo", empty_style)
+        empty_row: list[Any] = [empty_p] + [""] * (len(headers) - 1)
+        table_data.append(empty_row)
+        if len(headers) > 1:
+            table_styles.append(("SPAN", (0, 1), (-1, 1)))
+    else:
+        for r in rows:
+            row_cells: list[Any] = []
+            for key, _ in headers:
+                val = r.get(key)
+                if val is None or val == "":
+                    formatted_val = ""
+                    p_style = cell_center_style
+                elif isinstance(val, (int, float, Decimal)):
+                    if isinstance(val, int):
+                        formatted_val = f"{val:,}"
+                    else:
+                        formatted_val = f"{val:,.2f}" if float(val) % 1 != 0 else f"{val:,.0f}"
+                    p_style = cell_right_style
+                elif isinstance(val, datetime):
+                    formatted_val = val.strftime("%Y-%m-%d %H:%M")
+                    p_style = cell_center_style
+                elif isinstance(val, bool):
+                    formatted_val = "Có" if val else "Không"
+                    p_style = cell_center_style
+                else:
+                    text_val = str(val)
+                    if text_val in ("Có", "Không", "Hoạt động", "Ngừng", "posted", "pending", "approved", "rejected"):
+                        formatted_val = text_val
+                        p_style = cell_center_style
+                    elif text_val.startswith(("-", "+")) and _NUMERIC_RE.match(text_val):
+                        formatted_val = text_val
+                        p_style = cell_right_style
+                    else:
+                        formatted_val = text_val
+                        p_style = cell_left_style
+                row_cells.append(Paragraph(html.escape(formatted_val), p_style))
+            table_data.append(row_cells)
+
+    table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle(table_styles))
+
+    meta_parts = [f"Thời gian kết xuất: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"]
+    if metadata:
+        for k, v in metadata.items():
+            if v:
+                meta_parts.append(f"{k}: {v}")
+    meta_text = " | ".join(meta_parts)
+
+    elements: list[Any] = [
+        Paragraph(html.escape(title), title_style),
+        Paragraph(html.escape(meta_text), meta_style),
+        Spacer(1, 4),
+        table,
+    ]
+
+    doc.build(elements, canvasmaker=NumberedCanvas)
+    return buf.getvalue()
 
 
 # --------------------------------------------------------------------------

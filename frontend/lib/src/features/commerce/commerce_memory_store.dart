@@ -1335,6 +1335,157 @@ class CommerceMemoryStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Khởi tạo dữ liệu từ các danh sách map (hỗ trợ nạp snapshot hoặc unit test)
+  void init({
+    required List<Map<String, dynamic>> items,
+    required List<Map<String, dynamic>> balances,
+    required List<Map<String, dynamic>> customers,
+    required List<Map<String, dynamic>> suppliers,
+    required List<Map<String, dynamic>> documents,
+  }) {
+    final balanceByItem = <String, double>{};
+    for (final row in balances) {
+      final itemId = '${row['item_id'] ?? ''}';
+      final qty = (row['quantity'] as num?)?.toDouble() ?? 0.0;
+      balanceByItem[itemId] = (balanceByItem[itemId] ?? 0.0) + qty;
+    }
+
+    final parsedProducts = items.map((item) {
+      final id = '${item['id']}';
+      return CommerceProduct(
+        id: id,
+        sku: '${item['sku'] ?? ''}',
+        name: '${item['name'] ?? ''}',
+        category: '${item['category'] ?? 'Khác'}',
+        unit: '${item['unit'] ?? ''}',
+        stock: balanceByItem[id] ??
+            ((item['stock'] as num?)?.toDouble() ?? 0.0),
+        minimum: ((item['min_stock'] ?? item['minStock'] ?? item['minimum'])
+                as num?)
+            ?.toDouble() ??
+            0.0,
+        cost: ((item['cost_price'] ?? item['costPrice'] ?? item['cost'])
+                as num?)
+            ?.round() ??
+            0,
+        price: ((item['selling_price'] ??
+                item['sellingPrice'] ??
+                item['price']) as num?)
+            ?.round() ??
+            0,
+        purchaseUnit:
+            '${item['purchase_unit'] ?? item['purchaseUnit'] ?? ''}',
+        conversionRate:
+            ((item['conversion_rate'] ?? item['conversionRate']) as num?)
+                    ?.toDouble() ??
+                1.0,
+      );
+    }).toList();
+
+    final parsedCustomers = customers
+        .map((c) => CommerceParty(
+              id: '${c['id']}',
+              name: '${c['name']}',
+              kind: 'customer',
+              phone: '${c['phone'] ?? ''}',
+            ))
+        .toList();
+
+    final parsedSuppliers = suppliers
+        .map((s) => CommerceParty(
+              id: '${s['id']}',
+              name: '${s['name']}',
+              kind: 'supplier',
+              phone: '${s['phone'] ?? ''}',
+            ))
+        .toList();
+
+    final parsedOrders = <CommerceOrder>[];
+    final parsedPayments = <CommercePayment>[];
+
+    for (final doc in documents) {
+      final kind = '${doc['kind'] ?? doc['document_type'] ?? 'sale'}';
+      final lines = ((doc['lines'] as List?) ?? const []).map((line) {
+        final m = line as Map<String, dynamic>;
+        return CommerceLine(
+          productId: '${m['product_id'] ?? m['item_id'] ?? ''}',
+          name: '${m['product_name'] ?? m['name'] ?? m['sku'] ?? ''}',
+          unit: '${m['unit'] ?? ''}',
+          quantity: (m['quantity'] as num?)?.toDouble() ?? 0.0,
+          unitPrice: (m['unit_price'] as num?)?.round() ?? 0,
+          unitCost: (m['cost_price'] ?? m['unit_cost'] as num?)?.round() ?? 0,
+          lotNo: '${m['lot_no'] ?? ''}',
+          expiryDate: m['expiry_date'] != null
+              ? DateTime.tryParse('${m['expiry_date']}')
+              : null,
+        );
+      }).toList();
+
+      final statusStr = '${doc['status'] ?? ''}';
+      final state = statusStr == 'completed' || statusStr == 'confirmed'
+          ? CommerceOrderState.completed
+          : statusStr == 'converted'
+              ? CommerceOrderState.converted
+              : statusStr == 'draft'
+                  ? CommerceOrderState.draft
+                  : statusStr == 'cancelled'
+                      ? CommerceOrderState.cancelled
+                      : CommerceOrderState.pending;
+
+      final createdAt = doc['created_at'] != null
+          ? DateTime.tryParse('${doc['created_at']}') ?? DateTime.now()
+          : (doc['document_date'] != null
+              ? DateTime.tryParse('${doc['document_date']}') ?? DateTime.now()
+              : DateTime.now());
+
+      final order = CommerceOrder(
+        id: '${doc['id']}',
+        code: '${doc['code']}',
+        kind: kind,
+        partyName: '${doc['party_name'] ?? ''}',
+        createdAt: createdAt,
+        lines: lines,
+        subtotal: (doc['subtotal'] as num?)?.round() ?? 0,
+        discount: (doc['discount'] as num?)?.round() ?? 0,
+        vat: (doc['vat'] as num?)?.round() ?? 0,
+        shipping: (doc['shipping'] as num?)?.round() ?? 0,
+        total: (doc['total'] as num?)?.round() ?? 0,
+        paid: (doc['paid'] as num?)?.round() ?? 0,
+        state: state,
+        note: '${doc['note'] ?? ''}',
+        dueDate: doc['due_date'] != null
+            ? DateTime.tryParse('${doc['due_date']}')
+            : null,
+      );
+      parsedOrders.add(order);
+
+      if (doc['payments'] is List) {
+        for (final p in (doc['payments'] as List)) {
+          final pm = p as Map<String, dynamic>;
+          parsedPayments.add(CommercePayment(
+            orderCode: order.code,
+            partyName: order.partyName,
+            kind: kind == 'sale' ? 'Thu tiền' : 'Trả tiền',
+            amount: (pm['amount'] as num?)?.round() ?? 0,
+            date: pm['payment_date'] != null
+                ? DateTime.tryParse('${pm['payment_date']}') ?? order.createdAt
+                : order.createdAt,
+            method: '${pm['method'] ?? 'cash'}',
+            reference: '${pm['reference'] ?? ''}',
+          ));
+        }
+      }
+    }
+
+    replaceSnapshot(
+      products: parsedProducts,
+      customers: parsedCustomers,
+      suppliers: parsedSuppliers,
+      orders: parsedOrders,
+      payments: parsedPayments,
+    );
+  }
+
   /// Khôi phục toàn bộ dữ liệu mẫu ban đầu (demo)
   void resetToDefaultSample() {
     final demoStore = CommerceMemoryStore.demo();
@@ -1400,6 +1551,12 @@ class CommerceMemoryStore extends ChangeNotifier {
   int get lowStockCount => _products.where((p) => p.stock <= p.minimum).length;
   double get inventoryValue =>
       _products.fold<double>(0, (sum, p) => sum + p.stock * p.cost);
+
+  int get todayRevenue => revenueToday;
+  int get grossProfitToday => profitToday;
+  int get customerReceivables => receivableTotal;
+  int get supplierPayables => payableTotal;
+  int get lowStockItemsCount => lowStockCount;
 
   static bool sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

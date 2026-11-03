@@ -18,7 +18,12 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
 
 def is_valid_email(value: str | None) -> bool:
     """Chỉ chấp nhận email thật có format hợp lệ (dùng cho invite & reset)."""
-    return bool(value) and bool(_EMAIL_RE.match(value.strip().lower()))
+    if not value:
+        return False
+    val = value.strip().lower()
+    if ".." in val or val.startswith(".") or "@." in val or ".@" in val:
+        return False
+    return bool(_EMAIL_RE.match(val))
 
 
 def _build_otp_html(username: str, otp: str) -> str:
@@ -202,6 +207,8 @@ async def send_password_reset_email(to_email: str, username: str, otp: str) -> b
 
 _ROLE_TITLES = {
     "admin": "Chủ Quán / Quản Trị Viên (Administrator)",
+    "system_admin": "Quản Trị Viên Hệ Thống (System Administrator)",
+    "root_admin": "Quản Trị Viên Cấp Cao (Root Administrator)",
     "superadmin": "Tổng Quản Trị Hệ Thống (Super Administrator)",
     "manager": "Quản Lý Cửa Hàng / Trưởng Ca (Store Manager)",
     "staff": "Nhân Viên Vận Hành / Pha Chế (Store Staff)",
@@ -677,6 +684,338 @@ async def send_activation_confirmation_email(
         html_content=html_body,
         plain_text_content=plain_body,
         from_name=from_name,
+    )
+    return EmailSendResult(ok, msg)
+ 
+ 
+def _build_admin_role_granted_html(
+    username: str,
+    to_email: str = "",
+    display_name: str | None = None,
+    new_roles: list[str] | None = None,
+    granted_by_username: str | None = None,
+    granted_at_str: str = "",
+    app_url: str = "",
+) -> str:
+    """HTML template thông báo cấp quyền Quản Trị Viên (Admin) chuẩn doanh nghiệp."""
+    raw_full_name = (display_name or "").strip() or username
+    full_name = html.escape(raw_full_name)
+    safe_username = html.escape(username)
+    safe_email = html.escape(to_email if to_email else "Email đăng ký của bạn")
+    safe_time = html.escape(granted_at_str)
+    safe_app_url = html.escape(app_url)
+
+    role_labels = [_ROLE_TITLES.get(r.lower(), r) for r in (new_roles or [])]
+    role_desc = html.escape(", ".join(role_labels) if role_labels else "Quản Trị Viên (Admin)")
+
+    granter_display = (granted_by_username or "").strip()
+    if granter_display:
+        granter_intro = f"Quản trị viên <strong>{html.escape(granter_display)}</strong>"
+        safe_granter_val = html.escape(granter_display)
+    else:
+        granter_intro = "Ban Quản Trị Hệ Thống"
+        safe_granter_val = "Ban Quản Trị Hệ Thống"
+
+    return f"""<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thông Báo Cấp Quyền Quản Trị Viên (Admin) - Hệ Thống Quản Trị Doanh Nghiệp</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F1F5F9; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); border: 1px solid #E2E8F0;">
+          
+          <!-- Top Brand Header (Deep Slate / Navy with Royal Blue Accent) -->
+          <tr>
+            <td style="background-color: #0F172A; padding: 28px 36px; border-bottom: 3px solid #2563EB;">
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%">
+                <tr>
+                  <td>
+                    <span style="color: #FFFFFF; font-size: 18px; font-weight: 800; letter-spacing: 0.5px; display: block;">HỆ THỐNG QUẢN TRỊ DOANH NGHIỆP</span>
+                    <span style="color: #93C5FD; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">THÔNG BÁO CẤP QUYỀN QUẢN TRỊ VIÊN (ADMIN)</span>
+                  </td>
+                  <td align="right">
+                    <span style="background-color: #1E3A8A; color: #DBEAFE; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.5px; border: 1px solid #3B82F6;">ADMIN PRIVILEGE</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Content Body -->
+          <tr>
+            <td style="padding: 32px 36px 24px 36px;">
+              <h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 800; color: #0F172A; line-height: 1.4;">
+                Tài Khoản Đã Được Cấp Quyền Quản Trị Viên (Admin)
+              </h1>
+              <p style="margin: 0 0 14px 0; font-size: 14.5px; line-height: 1.6; color: #334155;">
+                Kính gửi Anh/Chị <strong>{full_name}</strong>,
+              </p>
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.65; color: #475569;">
+                Tài khoản của bạn (<strong>@{safe_username}</strong>) vừa được cập nhật và cấp quyền <strong>Quản Trị Viên (Admin)</strong> trên Hệ Thống Quản Trị Doanh Nghiệp. Quyền quản trị này được thiết lập bởi {granter_intro} vào lúc <strong>{safe_time}</strong>.
+              </p>
+
+              <!-- Account & Grant Info Box -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; margin-bottom: 24px; padding: 18px 20px;">
+                <tr>
+                  <td>
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0F172A; letter-spacing: 0.8px; display: block; margin-bottom: 12px; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px;">
+                      THÔNG TIN CẤP QUYỀN HỆ THỐNG
+                    </span>
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13.5px; color: #334155;">
+                      <tr>
+                        <td style="width: 38%; color: #64748B; font-weight: 600;">Họ và tên:</td>
+                        <td style="font-weight: 700; color: #0F172A;">{full_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #64748B; font-weight: 600;">Tên đăng nhập:</td>
+                        <td style="font-family: 'SF Mono', Consolas, Monaco, monospace; font-weight: 700; color: #2563EB;">@{safe_username}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #64748B; font-weight: 600;">Email liên kết:</td>
+                        <td style="color: #0F172A;">{safe_email}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #64748B; font-weight: 600;">Vai trò phân quyền:</td>
+                        <td style="font-weight: 700; color: #1E40AF;">{role_desc}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #64748B; font-weight: 600;">Người thực hiện:</td>
+                        <td style="font-weight: 600; color: #0F172A;">{safe_granter_val}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #64748B; font-weight: 600;">Thời gian cấp quyền:</td>
+                        <td style="color: #475569;">{safe_time}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Privilege & Capabilities Summary -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; margin-bottom: 24px; padding: 18px 20px;">
+                <tr>
+                  <td>
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #1E40AF; letter-spacing: 0.8px; display: block; margin-bottom: 10px;">
+                      📋 TỔNG HỢP QUYỀN HẠN & PHẠM VI QUẢN TRỊ
+                    </span>
+                    <ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: #1E3A8A;">
+                      <li><strong>Quản trị người dùng & Phân quyền (IAM):</strong> Toàn quyền khởi tạo, cấu hình vai trò, phân quyền truy cập và quản lý phạm vi tài khoản.</li>
+                      <li><strong>Phê duyệt kho & Kiểm soát vận hành:</strong> Phê duyệt các yêu cầu nhập, xuất kho, điều chỉnh tồn kho và kiểm soát tài sản doanh nghiệp.</li>
+                      <li><strong>Quản lý sổ quỹ & Đối soát tài chính:</strong> Giám sát dòng tiền, thiết lập định mức két tiền, phê duyệt thanh toán và đối soát số dư.</li>
+                      <li><strong>Cấu hình & Nhật ký kiểm toán:</strong> Truy cập hệ thống báo cáo phân tích số liệu kinh doanh và giám sát nhật ký Audit Trail toàn diện.</li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security Notice -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; border-radius: 4px; margin-bottom: 24px; padding: 14px 16px;">
+                <tr>
+                  <td>
+                    <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #92400E; display: block; margin-bottom: 4px;">
+                      🔒 LƯU Ý BẢO MẬT & AN NINH HỆ THỐNG
+                    </span>
+                    <p style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #78350F;">
+                      Vai trò Quản Trị Viên (Admin) có phạm vi ảnh hưởng trực tiếp đến toàn bộ hệ thống. Vui lòng bảo mật thông tin đăng nhập, không cung cấp mật khẩu hoặc mã xác thực (OTP/PIN) cho người khác. Nếu bạn không nhận diện hành vi cấp quyền này, vui lòng thông báo khẩn cấp cho Quản Trị Viên Hệ Thống.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 8px 0 20px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="{safe_app_url}" target="_blank" style="display: inline-block; background-color: #2563EB; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); letter-spacing: 0.3px;">
+                      Truy Cập Hệ Thống Quản Trị
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 24px 0 0 0; font-size: 13.5px; line-height: 1.5; color: #475569;">
+                Trân trọng,<br>
+                <strong style="color: #0F172A;">Ban Vận Hành & An Ninh Hệ Thống</strong><br>
+                <span style="font-size: 12px; color: #64748B;">Hệ Thống Quản Trị Doanh Nghiệp Core Operations</span>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 22px 36px; text-align: center;">
+              <p style="margin: 0 0 6px 0; font-size: 11.5px; color: #94A3B8; line-height: 1.4;">
+                Đây là thư điện tử được gửi tự động từ Hệ Thống Quản Trị Doanh Nghiệp. Vui lòng không trả lời trực tiếp email này.
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #CBD5E1;">
+                © 2026 Hệ Thống Quản Trị Doanh Nghiệp. All rights reserved. Tiêu chuẩn bảo mật ISO 27001.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def _build_admin_role_granted_plain(
+    username: str,
+    to_email: str = "",
+    display_name: str | None = None,
+    new_roles: list[str] | None = None,
+    granted_by_username: str | None = None,
+    granted_at_str: str = "",
+    app_url: str = "",
+) -> str:
+    """Nội dung văn bản thuần (plain-text) cho email thông báo cấp quyền Quản Trị Viên (Admin)."""
+    full_name = (display_name or "").strip() or username
+    role_labels = [_ROLE_TITLES.get(r.lower(), r) for r in (new_roles or [])]
+    role_desc = ", ".join(role_labels) if role_labels else "Quản Trị Viên (Admin)"
+    granter_display = (granted_by_username or "").strip() or "Ban Quản Trị Hệ Thống"
+
+    return (
+        f"=== THÔNG BÁO CẤP QUYỀN QUẢN TRỊ VIÊN (ADMIN) ===\n"
+        f"HỆ THỐNG QUẢN TRỊ DOANH NGHIỆP\n\n"
+        f"Kính gửi Anh/Chị {full_name},\n\n"
+        f"Tài khoản của bạn (@{username}) đã được cấp quyền Quản Trị Viên (Admin) trên Hệ Thống Quản Trị Doanh Nghiệp.\n\n"
+        f"--- THÔNG TIN CẤP QUYỀN HỆ THỐNG ---\n"
+        f"• Họ và tên: {full_name}\n"
+        f"• Tên đăng nhập: @{username}\n"
+        f"• Email liên kết: {to_email}\n"
+        f"• Vai trò phân quyền: {role_desc}\n"
+        f"• Người thực hiện: {granter_display}\n"
+        f"• Thời gian cấp quyền: {granted_at_str}\n\n"
+        f"--- TỔNG HỢP QUYỀN HẠN & PHẠM VI QUẢN TRỊ ---\n"
+        f"1. Quản trị người dùng & Phân quyền (IAM): Toàn quyền khởi tạo, cấu hình vai trò, phân quyền truy cập và quản lý phạm vi tài khoản.\n"
+        f"2. Phê duyệt kho & Kiểm soát vận hành: Phê duyệt các yêu cầu nhập, xuất kho, điều chỉnh tồn kho và kiểm soát tài sản doanh nghiệp.\n"
+        f"3. Quản lý sổ quỹ & Đối soát tài chính: Giám sát dòng tiền, thiết lập định mức két tiền, phê duyệt thanh toán và đối soát số dư.\n"
+        f"4. Cấu hình & Nhật ký kiểm toán: Truy cập hệ thống báo cáo phân tích số liệu kinh doanh và giám sát nhật ký Audit Trail toàn diện.\n\n"
+        f"--- HƯỚNG DẪN TRUY CẬP ---\n"
+        f"Đăng nhập vào hệ thống tại: {app_url}\n\n"
+        f"LƯU Ý BẢO MẬT:\n"
+        f"Vai trò Quản Trị Viên (Admin) có phạm vi ảnh hưởng trực tiếp đến toàn bộ hệ thống. Vui lòng bảo mật thông tin đăng nhập, không cung cấp mật khẩu hoặc mã xác thực (OTP/PIN) cho người khác. Nếu bạn không nhận diện hành vi cấp quyền này, vui lòng thông báo khẩn cấp cho Quản Trị Viên Hệ Thống.\n\n"
+        f"Trân trọng,\n"
+        f"Ban Vận Hành & An Ninh Hệ Thống\n"
+        f"Hệ Thống Quản Trị Doanh Nghiệp Core Operations\n"
+        f"© 2026 Hệ Thống Quản Trị Doanh Nghiệp. All rights reserved.\n"
+    )
+
+
+async def send_admin_role_granted_email(
+    to_email: str,
+    username: str,
+    display_name: str | None,
+    new_roles: list[str],
+    granted_by_username: str | None = None,
+) -> EmailSendResult:
+    """Gửi email thông báo trực tiếp khi người dùng được cấp quyền Quản Trị Viên (Admin).
+
+    Gracefully handle demo mode when SMTP credentials are not configured,
+    exactly like existing email methods.
+    """
+    clean_email = (to_email or "").strip().lower()
+    if not is_valid_email(clean_email):
+        logger.warning("Admin grant email skipped: email không hợp lệ cho user '%s': %s", username, to_email)
+        return EmailSendResult(False, f"Email '{to_email}' không có định dạng hợp lệ")
+
+    smtp_user = settings.smtp_user.strip()
+    smtp_pass = settings.smtp_password.strip()
+    if not smtp_user or not smtp_pass:
+        logger.info(
+            "[EmailService (Demo mode)] SMTP not configured. Admin role granted email for user '%s' (%s) with roles: %s",
+            username, clean_email, new_roles,
+        )
+        return EmailSendResult(False, "Chưa cấu hình tài khoản SMTP (SMTP_USER hoặc SMTP_PASSWORD)")
+
+    tz_vn = timezone(timedelta(hours=7))
+    time_str = datetime.now(UTC).astimezone(tz_vn).strftime("%H:%M:%S ngày %d/%m/%Y (Giờ Việt Nam)")
+
+    full_name = (display_name or "").strip() or username
+    subject = f"[Hệ Thống] Thông báo cấp quyền Quản Trị Viên (Admin) cho {full_name}"
+
+    granter_display = (granted_by_username or "").strip()
+    if granter_display:
+        from_name = f"{granter_display} (Ban Quản Trị Hệ Thống)"
+    else:
+        from_name = settings.smtp_from_name or "Ban Quản Trị Hệ Thống"
+
+    app_url = settings.frontend_base_url.rstrip("/")
+
+    html_body = _build_admin_role_granted_html(
+        username=username,
+        to_email=clean_email,
+        display_name=display_name,
+        new_roles=new_roles,
+        granted_by_username=granted_by_username,
+        granted_at_str=time_str,
+        app_url=app_url,
+    )
+    plain_body = _build_admin_role_granted_plain(
+        username=username,
+        to_email=clean_email,
+        display_name=display_name,
+        new_roles=new_roles,
+        granted_by_username=granted_by_username,
+        granted_at_str=time_str,
+        app_url=app_url,
+    )
+
+    ok, msg = await asyncio.to_thread(
+        _send_smtp_sync,
+        host=settings.smtp_host,
+        port=settings.smtp_port,
+        user=smtp_user,
+        password=smtp_pass,
+        to_email=clean_email,
+        subject=subject,
+        html_content=html_body,
+        plain_text_content=plain_body,
+        from_name=from_name,
+    )
+    return EmailSendResult(ok, msg)
+
+
+async def send_email(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    plain_text_content: str | None = None,
+    roles: list[str] | None = None,
+    username: str | None = None,
+    from_name: str | None = None,
+    **kwargs,
+) -> EmailSendResult:
+    """Generic async email dispatcher supporting general role and system updates."""
+    clean_email = (to_email or "").strip().lower()
+    if not is_valid_email(clean_email):
+        logger.warning("Email skipped: email không hợp lệ: %s", to_email)
+        return EmailSendResult(False, f"Email '{to_email}' không có định dạng hợp lệ")
+
+    smtp_user = settings.smtp_user.strip()
+    smtp_pass = settings.smtp_password.strip()
+    if not smtp_user or not smtp_pass:
+        logger.info("[EmailService (Demo mode)] SMTP not configured. Skipped email to %s (subject: %s)", clean_email, subject)
+        return EmailSendResult(False, "Chưa cấu hình tài khoản SMTP (SMTP_USER hoặc SMTP_PASSWORD)")
+
+    ok, msg = await asyncio.to_thread(
+        _send_smtp_sync,
+        host=settings.smtp_host,
+        port=settings.smtp_port,
+        user=smtp_user,
+        password=smtp_pass,
+        to_email=clean_email,
+        subject=subject,
+        html_content=html_content,
+        plain_text_content=plain_text_content,
+        from_name=from_name or settings.smtp_from_name or "Ban Quản Trị Hệ Thống",
     )
     return EmailSendResult(ok, msg)
 

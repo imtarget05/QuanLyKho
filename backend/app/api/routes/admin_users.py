@@ -9,7 +9,9 @@ Enforces:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -40,12 +42,16 @@ from app.models.iam import (
     UserRole,
     UserStatus,
 )
+from app.services import email_service
 from app.services.approval_controls import DEMO_SUPERVISOR_PIN
 from app.services.email_service import (
     check_smtp_health,
     is_valid_email,
+    send_admin_role_granted_email,
     send_invite_email,
 )
+
+logger = logging.getLogger("quanlykho.admin_users")
 
 router = APIRouter(prefix="/admin", tags=["Admin IAM"])
 
@@ -649,8 +655,54 @@ async def update_user_roles(
         payload={"username": user.username, "roles": cleaned_roles},
     )
 
+    is_newly_admin = bool(
+        (after & {"admin", "system_admin", "root_admin"})
+        and not (before & {"admin", "system_admin", "root_admin"})
+    )
+
     await db.commit()
     await db.refresh(user)
+
+    if user.email and hasattr(email_service, "send_email"):
+        try:
+            res = email_service.send_email(
+                to_email=user.email,
+                subject="[Thông báo] Cập nhật vai trò tài khoản Quản Lý Kho",
+                html_content=f"<p>Tài khoản {user.username} của bạn đã được cập nhật vai trò mới: {', '.join(cleaned_roles)}.</p>",
+                roles=cleaned_roles,
+                username=user.username,
+            )
+            if asyncio.iscoroutine(res):
+                await res
+        except Exception as exc:
+            logger.warning(
+                "Không thể gửi email_service.send_email tới %s (user: %s): %s",
+                user.email,
+                user.username,
+                exc,
+                exc_info=True,
+            )
+
+    if is_newly_admin:
+        if user.email:
+            try:
+                await send_admin_role_granted_email(
+                    to_email=user.email,
+                    username=user.username,
+                    display_name=getattr(user, "display_name_demo", None) or getattr(user, "display_name", None),
+                    new_roles=cleaned_roles,
+                    granted_by_username=current_user.username if current_user else None,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Không thể gửi email thông báo cấp quyền admin tới %s (user: %s): %s",
+                    user.email,
+                    user.username,
+                    exc,
+                    exc_info=True,
+                )
+        else:
+            logger.info("Bỏ qua gửi email cấp quyền admin vì user '%s' không có email.", user.username)
 
     return {"user": await _user_to_dict(db, user), "message": "Cập nhật vai trò thành công."}
 

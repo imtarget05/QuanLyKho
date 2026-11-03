@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -19,6 +20,7 @@ import '../../core/util/role_visibility.dart';
 import '../../core/widgets/store_logo.dart';
 import '../../core/widgets/animated_count_up.dart';
 import '../../core/widgets/user_avatar.dart';
+import '../../core/widgets/admin_promotion_banner.dart';
 import '../../data/models/dtos.dart';
 import '../auth/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +36,7 @@ class CommerceWorkspace extends StatefulWidget {
     this.onSignOut,
     this.capabilities,
     this.roles,
+    this.initialIndex = 1,
   });
 
   final CommerceMemoryStore store;
@@ -44,15 +47,176 @@ class CommerceWorkspace extends StatefulWidget {
   final Future<void> Function()? onSignOut;
   final Set<String>? capabilities;
   final Set<String>? roles;
+  final int initialIndex;
 
   @override
   State<CommerceWorkspace> createState() => _CommerceWorkspaceState();
 }
 
-class _CommerceWorkspaceState extends State<CommerceWorkspace> {
-  int _index = 1;
+class _CommerceWorkspaceState extends State<CommerceWorkspace>
+    with WidgetsBindingObserver {
+  late int _index = widget.initialIndex;
   static const _navigationPages = [0, 1, 2, 3, 4, 5, 6, 7];
   static const _mobilePages = [0, 1, 2, 3];
+
+  Timer? _backgroundReloadTimer;
+  DateTime _lastReloadTime = DateTime.now();
+  bool _isBackgroundReloading = false;
+  bool _isSessionRevokedDialogShowing = false;
+  bool _isAdminPromotionPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _setupSessionRevokedHook();
+    _startBackgroundReloadTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant CommerceWorkspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.api != oldWidget.api) {
+      _setupSessionRevokedHook();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _backgroundReloadTimer?.cancel();
+    super.dispose();
+  }
+
+  void _setupSessionRevokedHook() {
+    if (widget.api != null) {
+      widget.api!.onSessionRevoked = (msg) {
+        if (mounted) {
+          _showSessionRevokedDialog(msg);
+        }
+      };
+    }
+  }
+
+  void _startBackgroundReloadTimer() {
+    _backgroundReloadTimer?.cancel();
+    _backgroundReloadTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      _performSilentReload();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      if (now.difference(_lastReloadTime).inSeconds > 30) {
+        _performSilentReload();
+      }
+    }
+  }
+
+  Future<void> _performSilentReload() async {
+    if (_isBackgroundReloading || widget.api == null || !mounted) return;
+    _isBackgroundReloading = true;
+    try {
+      await widget.api!.reload(widget.store);
+      _lastReloadTime = DateTime.now();
+    } catch (_) {
+      // Background reloads are silent; do not show error alerts that disrupt the user
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBackgroundReloading = false;
+        });
+      }
+    }
+  }
+
+  void _selectTab(int newIndex) {
+    if (_index != newIndex) {
+      setState(() => _index = newIndex);
+      final now = DateTime.now();
+      if (now.difference(_lastReloadTime).inSeconds > 30) {
+        _performSilentReload();
+      }
+    }
+  }
+
+  void _showSessionRevokedDialog([String? detail]) {
+    if (!mounted || _isSessionRevokedDialogShowing) return;
+    _isSessionRevokedDialogShowing = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        key: const Key('session-revoked-dialog'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.security_update_warning_rounded,
+                color: Color(0xFFD97706), size: 28),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Thông báo quyền tài khoản',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Quyền tài khoản đã thay đổi. Vui lòng làm mới phiên đăng nhập để tiếp tục.',
+              style: TextStyle(
+                  fontSize: 14, height: 1.5, color: Color(0xFF334155)),
+            ),
+            if (detail != null && detail.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                detail,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontStyle: FontStyle.italic),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          FilledButton.icon(
+            key: const Key('btn-refresh-session'),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              _isSessionRevokedDialogShowing = false;
+              final auth = Provider.of<AuthService?>(context, listen: false);
+              if (auth != null) {
+                await auth.applyAdminPromotionAndRefresh();
+              }
+              if (widget.onRefresh != null) {
+                await widget.onRefresh!();
+              } else if (widget.api != null) {
+                try {
+                  await widget.api!.reload(widget.store);
+                } catch (_) {}
+              }
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Làm mới phiên'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF5F43B2),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) {
+      _isSessionRevokedDialogShowing = false;
+    });
+  }
 
   static List<String> pageTitles(BuildContext context) => [
     context.tr('workspace_overview'),
@@ -95,7 +259,8 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
   bool get _canViewOwnerData {
     final sessionUser = SessionScope.maybeOf(context)?.user;
     final authUser = Provider.of<AuthService?>(context, listen: false)?.user;
-    final currentUser = widget.user ?? sessionUser ?? authUser;
+    final authIsAdmin = authUser != null && RoleVisibility.isAdmin(authUser.roles.toSet());
+    final currentUser = authIsAdmin ? authUser : (widget.user ?? sessionUser ?? authUser);
     if (currentUser != null) {
       return RoleVisibility.canManageEmployees(currentUser);
     }
@@ -151,8 +316,12 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
     final canApprove = _hasAnyCapability(const ['inventory:approve_request']);
     final canViewOwnerData = _canViewOwnerData;
     final sessionUser = SessionScope.maybeOf(context)?.user;
-    final authUser = Provider.of<AuthService?>(context, listen: false)?.user;
-    final currentUser = widget.user ?? sessionUser ?? authUser;
+    final auth = Provider.of<AuthService?>(context);
+    final authUser = auth?.user;
+    final authIsAdmin =
+        authUser != null && RoleVisibility.isAdmin(authUser.roles.toSet());
+    final currentUser =
+        authIsAdmin ? authUser : (widget.user ?? sessionUser ?? authUser);
     final pageIndex =
         !canViewOwnerData && (_index == 4 || _index == 5) ? 0 : _index;
     final titles = pageTitles(context);
@@ -163,7 +332,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
           canWrite: canWrite,
           canApprove: canApprove,
           canViewOwnerData: canViewOwnerData,
-          onNavigate: (i) => setState(() => _index = i)),
+          onNavigate: (i) => _selectTab(i)),
       _OrderListPage(
           store: store,
           kind: 'sale',
@@ -185,7 +354,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
           canManageCatalog: canManageCatalog,
           canWrite: canWrite,
           canViewOwnerData: canViewOwnerData,
-          onNavigate: (i) => setState(() => _index = i),
+          onNavigate: (i) => _selectTab(i),
           api: widget.api,
           onRefresh: widget.onRefresh),
       _DebtPage(
@@ -231,7 +400,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
             if (wide)
               _WorkspaceSidebar(
                   index: pageIndex,
-                  onSelect: (i) => setState(() => _index = i),
+                  onSelect: (i) => _selectTab(i),
                   userName: widget.userName,
                   user: currentUser,
                   onSignOut: widget.onSignOut,
@@ -240,8 +409,30 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
             Expanded(
               child: Column(
                 children: [
+                  if (auth?.adminRolePromoted == true || _isAdminPromotionPending)
+                    AdminPromotionBanner(
+                      onRefresh: () async {
+                        setState(() => _isAdminPromotionPending = false);
+                        if (auth != null) {
+                          await auth.applyAdminPromotionAndRefresh();
+                        }
+                        if (widget.onRefresh != null) {
+                          await widget.onRefresh!();
+                        } else if (widget.api != null) {
+                          try {
+                            await widget.api!.reload(widget.store);
+                          } catch (_) {}
+                        }
+                      },
+                      onDismiss: () {
+                        setState(() => _isAdminPromotionPending = false);
+                        auth?.dismissAdminPromotionBanner();
+                      },
+                    ),
                   _WorkspaceTopbar(
                     title: name,
+                    pageIndex: pageIndex,
+                    onNavigateBack: () => _selectTab(0),
                     isLive: widget.api != null,
                     locations: widget.api?.locations ?? const [],
                     locationId: widget.api?.locationId,
@@ -257,6 +448,49 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                     user: currentUser,
                     onSignOut: widget.onSignOut,
                   ),
+                  if (!wide && pageIndex >= 4)
+                    Container(
+                      key: const Key('subpage-header-indicator'),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF0FDF4),
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFDCFCE7)),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.arrow_back_rounded, size: 16, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () => _selectTab(0),
+                            child: const Text(
+                              'Quay lại Tổng quan',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF16A34A),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Phân hệ: $name',
+                              textAlign: TextAlign.right,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Expanded(
                     child: AnimatedBuilder(
                       animation: store,
@@ -285,38 +519,97 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                 ListTile(
-                                    leading: const Icon(
-                                        Icons.account_balance_wallet_outlined),
-                                    title: Text(context.tr('workspace_debt')),
+                                    leading: const Icon(Icons.arrow_back_rounded,
+                                        color: Color(0xFF6B4BC3)),
+                                    title: const Text('Quay lại Tổng quan',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF6B4BC3))),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
-                                      setState(() => _index = 4);
+                                      _selectTab(0);
+                                    }),
+                                const Divider(height: 1),
+                                ListTile(
+                                    selected: pageIndex == 4,
+                                    selectedTileColor: const Color(0xFFEDE8FC),
+                                    leading: const Icon(
+                                        Icons.account_balance_wallet_outlined),
+                                    trailing: pageIndex == 4
+                                        ? const Icon(Icons.check,
+                                            color: Color(0xFF6B4BC3), size: 18)
+                                        : null,
+                                    title: Text(context.tr('workspace_debt'),
+                                        style: TextStyle(
+                                            fontWeight: pageIndex == 4
+                                                ? FontWeight.w700
+                                                : FontWeight.w500)),
+                                    onTap: () {
+                                      Navigator.pop(sheetContext);
+                                      _selectTab(4);
                                     }),
                                 if (canViewOwnerData)
                                   ListTile(
+                                      selected: pageIndex == 5,
+                                      selectedTileColor:
+                                          const Color(0xFFEDE8FC),
                                       leading:
                                           const Icon(Icons.bar_chart_outlined),
-                                      title: Text(context.tr('workspace_reports')),
+                                      trailing: pageIndex == 5
+                                          ? const Icon(Icons.check,
+                                              color: Color(0xFF6B4BC3),
+                                              size: 18)
+                                          : null,
+                                      title: Text(
+                                          context.tr('workspace_reports'),
+                                          style: TextStyle(
+                                              fontWeight: pageIndex == 5
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500)),
                                       onTap: () {
                                         Navigator.pop(sheetContext);
-                                        setState(() => _index = 5);
+                                        _selectTab(5);
                                       }),
                                 if (canApprove)
                                   ListTile(
-                                      leading:
-                                          const Icon(Icons.fact_check_outlined),
-                                      title: Text(context.tr('workspace_approvals')),
+                                      selected: pageIndex == 6,
+                                      selectedTileColor:
+                                          const Color(0xFFEDE8FC),
+                                      leading: const Icon(
+                                          Icons.fact_check_outlined),
+                                      trailing: pageIndex == 6
+                                          ? const Icon(Icons.check,
+                                              color: Color(0xFF6B4BC3),
+                                              size: 18)
+                                          : null,
+                                      title: Text(
+                                          context.tr('workspace_approvals'),
+                                          style: TextStyle(
+                                              fontWeight: pageIndex == 6
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500)),
                                       onTap: () {
                                         Navigator.pop(sheetContext);
-                                        setState(() => _index = 6);
+                                        _selectTab(6);
                                       }),
                                 ListTile(
+                                    selected: pageIndex == 7,
+                                    selectedTileColor: const Color(0xFFEDE8FC),
                                     leading:
                                         const Icon(Icons.settings_outlined),
-                                    title: Text(context.tr('workspace_settings')),
+                                    trailing: pageIndex == 7
+                                        ? const Icon(Icons.check,
+                                            color: Color(0xFF6B4BC3), size: 18)
+                                        : null,
+                                    title: Text(
+                                        context.tr('workspace_settings'),
+                                        style: TextStyle(
+                                            fontWeight: pageIndex == 7
+                                                ? FontWeight.w700
+                                                : FontWeight.w500)),
                                     onTap: () {
                                       Navigator.pop(sheetContext);
-                                      setState(() => _index = 7);
+                                      _selectTab(7);
                                     }),
                                 const Divider(),
                                 ListTile(
@@ -338,7 +631,7 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                                     }),
                               ])));
                 } else {
-                  setState(() => _index = _mobilePages[value]);
+                  _selectTab(_mobilePages[value]);
                 }
               },
               height: 68,
@@ -368,7 +661,9 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace> {
                 NavigationDestination(
                   icon: const Icon(Icons.more_horiz_outlined),
                   selectedIcon: const Icon(Icons.more_horiz),
-                  label: context.tr('workspace_more'),
+                  label: pageIndex >= 4
+                      ? titles[pageIndex]
+                      : context.tr('workspace_more'),
                 ),
               ],
             ),
@@ -468,15 +763,23 @@ class _WorkspaceSidebar extends StatelessWidget {
                       letterSpacing: 1,
                       fontWeight: FontWeight.w800)),
             ),
-            for (var i = 0; i < titles.length; i++)
-              if ((pages[i] != 6 || canApprove) &&
-                  (canViewOwnerData || pages[i] != 5))
-                _SideNavItem(
-                    label: titles[i],
-                    icon: icons[i],
-                    selected: index == pages[i],
-                    onTap: () => onSelect(pages[i])),
-            const Spacer(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < titles.length; i++)
+                      if ((pages[i] != 6 || canApprove) &&
+                          (canViewOwnerData || pages[i] != 5))
+                        _SideNavItem(
+                            label: titles[i],
+                            icon: icons[i],
+                            selected: index == pages[i],
+                            onTap: () => onSelect(pages[i])),
+                  ],
+                ),
+              ),
+            ),
             const Divider(height: 1, color: Color(0xFFE8EAE7)),
             Material(
               color: Colors.transparent,
@@ -605,6 +908,8 @@ class _WorkspaceTopbar extends StatelessWidget {
     required this.userName,
     this.user,
     required this.onSignOut,
+    this.pageIndex = 0,
+    this.onNavigateBack,
   });
   final String title;
   final VoidCallback? onCreate;
@@ -616,6 +921,8 @@ class _WorkspaceTopbar extends StatelessWidget {
   final String userName;
   final AppUser? user;
   final Future<void> Function()? onSignOut;
+  final int pageIndex;
+  final VoidCallback? onNavigateBack;
 
   static IconData _locationIcon(String name) {
     final lower = name.toLowerCase();
@@ -654,46 +961,66 @@ class _WorkspaceTopbar extends StatelessWidget {
     final compact = contentWidth < 600;
     return Container(
       height: 66,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 26),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 26),
       decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(bottom: BorderSide(color: Color(0xFFE8EAE7)))),
       child: Row(
         children: [
-          const StoreLogo(size: 28),
-          const SizedBox(width: 10),
+          if (compact && pageIndex >= 4 && onNavigateBack != null)
+            IconButton(
+              key: const Key('workspace-topbar-back-btn'),
+              icon: const Icon(Icons.arrow_back_rounded,
+                  size: 20, color: Color(0xFF0F172A)),
+              tooltip: 'Quay lại Tổng quan',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              onPressed: onNavigateBack,
+            )
+          else
+            StoreLogo(size: compact ? 24 : 28),
+          SizedBox(width: compact ? 6 : 10),
           if (compact)
             Expanded(
-              child: Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                      color: Color(0xFF0F172A),
-                      letterSpacing: -.4)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 140),
+                child: Text(title,
+                    key: const Key('workspace-topbar-title'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -.4)),
+              ),
             )
           else
             Text(title,
+                key: const Key('workspace-topbar-title'),
                 style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 17,
                     color: Color(0xFF0F172A),
                     letterSpacing: -.4)),
-          if (!compact && isLive) ...[
-            const SizedBox(width: 10),
-            Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFE7F6EF),
-                    borderRadius: BorderRadius.circular(18)),
-                child: Text(context.tr('workspace_connected_server'),
-                    style: const TextStyle(
-                        fontSize: 9,
-                        color: Color(0xFF168256),
-                        fontWeight: FontWeight.w800))),
+          if (!compact) ...[
+            if (isLive) ...[
+              const SizedBox(width: 10),
+              Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFE7F6EF),
+                      borderRadius: BorderRadius.circular(18)),
+                  child: Text(context.tr('workspace_connected_server'),
+                      style: const TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFF168256),
+                          fontWeight: FontWeight.w800))),
+            ],
+            const Spacer(),
+          ] else ...[
+            const SizedBox(width: 6),
           ],
-          const Spacer(),
           if (isLive && locations.isNotEmpty) ...[
             Builder(builder: (context) {
               final activeLoc = locations.firstWhere(
@@ -706,9 +1033,10 @@ class _WorkspaceTopbar extends StatelessWidget {
               final activeIcon = _locationIcon(activeName);
 
               final chipWidget = Container(
+                key: const Key('workspace-topbar-location-chip'),
                 padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 8 : 12,
-                  vertical: 6,
+                  horizontal: compact ? 6 : 12,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
@@ -720,30 +1048,30 @@ class _WorkspaceTopbar extends StatelessWidget {
                   children: [
                     Icon(
                       activeIcon,
-                      size: 15,
+                      size: compact ? 14 : 15,
                       color: const Color(0xFF6B4BC3),
                     ),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 4),
                     ConstrainedBox(
                       constraints:
-                          BoxConstraints(maxWidth: compact ? 78 : 140),
+                          BoxConstraints(maxWidth: compact ? (screenWidth < 400 ? 52 : 72) : 140),
                       child: Text(
                         activeName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: compact ? 11 : 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
+                          color: const Color(0xFF1E293B),
                         ),
                       ),
                     ),
                     if (locations.length > 1) ...[
                       const SizedBox(width: 2),
-                      const Icon(
+                      Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: Color(0xFF64748B),
+                        size: compact ? 14 : 16,
+                        color: const Color(0xFF64748B),
                       ),
                     ],
                   ],
@@ -811,21 +1139,28 @@ class _WorkspaceTopbar extends StatelessWidget {
                 child: chipWidget,
               );
             }),
-            const SizedBox(width: 8),
+            SizedBox(width: compact ? 4 : 8),
           ],
           if (onCreate != null) ...[
             if (!compact) const SizedBox(width: 6),
             compact
-                ? IconButton.filled(
-                    onPressed: onCreate,
-                    tooltip: createLabel,
-                    icon: const Icon(Icons.add, size: 20),
-                    style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B4BC3),
-                        foregroundColor: Colors.white,
-                        visualDensity: VisualDensity.compact),
+                ? SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: IconButton.filled(
+                      key: const Key('workspace-topbar-create-btn'),
+                      onPressed: onCreate,
+                      tooltip: createLabel,
+                      icon: const Icon(Icons.add, size: 18),
+                      style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B4BC3),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact),
+                    ),
                   )
                 : FilledButton.icon(
+                    key: const Key('workspace-topbar-create-btn'),
                     onPressed: onCreate,
                     icon: const Icon(Icons.add, size: 18),
                     label: Text(createLabel),
@@ -841,7 +1176,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                   ),
           ],
           if (screenWidth < 700) ...[
-            const SizedBox(width: 4),
+            SizedBox(width: compact ? 4 : 6),
             PopupMenuButton<String>(
               tooltip: context.tr('topbar_account'),
               offset: const Offset(0, 42),
@@ -851,7 +1186,7 @@ class _WorkspaceTopbar extends StatelessWidget {
                 name: effectiveDisplayName,
                 email: effectiveEmail,
                 avatarUrl: effectiveUser?.avatarUrl,
-                size: 32,
+                size: compact ? 28 : 32,
               ),
               itemBuilder: (context) {
                 final displayName = effectiveDisplayName;
@@ -994,90 +1329,79 @@ class _OverviewPage extends StatelessWidget {
         : width >= 650
             ? 2
             : 1;
-    final totalRevenue =
-        store.confirmedSales.fold<int>(0, (s, o) => s + o.total);
-    final totalGrossProfit = store.confirmedSales.fold<int>(
-        0,
-        (s, o) =>
-            s +
-            o.subtotal -
-            o.discount -
-            o.lines.fold(0, (c, l) => c + l.costAmount));
-    final profitMargin = totalRevenue > 0
-        ? (totalGrossProfit * 100 / totalRevenue).toStringAsFixed(1)
-        : '0.0';
+    final todayRev = store.todayRevenue;
+    final profitToday = store.grossProfitToday;
+    final inventoryVal = store.inventoryValue.round();
+    final receivables = store.customerReceivables;
+    final payables = store.supplierPayables;
+    final lowStock = store.lowStockItemsCount;
+
     final cards = [
       if (canViewOwnerData)
         _MetricCard(
-            label: context.tr('overview_kpi_net_revenue'),
-            value: _money(totalRevenue),
-            numericValue: totalRevenue,
+            key: const Key('kpi-today-revenue'),
+            label: 'Doanh thu hôm nay',
+            value: _money(todayRev),
+            numericValue: todayRev,
             isCurrency: true,
             icon: Icons.payments_outlined,
             color: const Color(0xFF7555D1),
-            foot: 'Tổng đơn hoàn tất'),
+            trendBadge: 'Hôm nay',
+            foot: 'Đơn bán hoàn tất trong ngày'),
       if (canViewOwnerData)
         _MetricCard(
-            label: context.tr('overview_kpi_gross_profit'),
-            value: _money(totalGrossProfit),
-            numericValue: totalGrossProfit,
+            key: const Key('kpi-gross-profit'),
+            label: 'Lợi nhuận gộp',
+            value: _money(profitToday),
+            numericValue: profitToday,
             isCurrency: true,
             icon: Icons.trending_up_rounded,
             color: const Color(0xFF15966A),
-            foot: 'Tỷ suất: $profitMargin%'),
-      _MetricCard(
-          label: context.tr('overview_kpi_sales_count'),
-          value: '${store.confirmedSales.length} đơn',
-          numericValue: store.confirmedSales.length,
-          suffix: 'đơn',
-          icon: Icons.receipt_long_outlined,
-          color: const Color(0xFF2980B9),
-          foot: 'Hoàn tất giao hàng'),
+            trendBadge: 'Hôm nay',
+            foot: 'Lợi nhuận gộp sau trừ giá vốn'),
       if (canViewOwnerData)
         _MetricCard(
-            label: context.tr('overview_kpi_inventory_value'),
-            value: _money(store.inventoryValue.round()),
-            numericValue: store.inventoryValue.round(),
+            key: const Key('kpi-inventory-value'),
+            label: 'Giá trị tồn kho',
+            value: _money(inventoryVal),
+            numericValue: inventoryVal,
             isCurrency: true,
             icon: Icons.inventory_2_outlined,
             color: const Color(0xFF0284C7),
-            foot: '${store.products.length} mặt hàng'),
+            trendBadge: 'Tồn kho',
+            foot: '${store.products.length} mặt hàng trong danh mục'),
       if (canViewOwnerData)
         _MetricCard(
-            label: context.tr('overview_kpi_profit_margin'),
-            value: '$profitMargin%',
-            numericValue: double.tryParse(profitMargin) ?? 0.0,
-            suffix: '%',
-            decimalDigits: 1,
-            icon: Icons.percent_rounded,
-            color: const Color(0xFFD97706),
-            foot: 'Biên lợi nhuận gộp'),
-      _MetricCard(
-          label: context.tr('overview_kpi_stock_warning'),
-          value: '${store.lowStockCount} mặt hàng',
-          numericValue: store.lowStockCount,
-          suffix: 'mặt hàng',
-          icon: Icons.warning_amber_rounded,
-          color: const Color(0xFFE11D48),
-          foot: 'Cần bổ sung kho ngay'),
-      if (canViewOwnerData)
-        _MetricCard(
-            label: context.tr('overview_kpi_receivable'),
-            value: _money(store.receivableTotal),
-            numericValue: store.receivableTotal,
+            key: const Key('kpi-customer-receivables'),
+            label: 'Phải thu khách hàng',
+            value: _money(receivables),
+            numericValue: receivables,
             isCurrency: true,
             icon: Icons.call_received_rounded,
             color: const Color(0xFF8B5CF6),
+            trendBadge: 'Phải thu',
             foot: '${store.receivables.length} hóa đơn chưa thu'),
       if (canViewOwnerData)
         _MetricCard(
-            label: context.tr('overview_kpi_payable'),
-            value: _money(store.payableTotal),
-            numericValue: store.payableTotal,
+            key: const Key('kpi-supplier-payables'),
+            label: 'Phải trả nhà cung cấp',
+            value: _money(payables),
+            numericValue: payables,
             isCurrency: true,
             icon: Icons.call_made_rounded,
             color: const Color(0xFFDC2626),
+            trendBadge: 'Phải trả',
             foot: '${store.payables.length} phiếu cần thanh toán'),
+      _MetricCard(
+          key: const Key('kpi-low-stock'),
+          label: 'Cảnh báo tồn kho',
+          value: '$lowStock mặt hàng',
+          numericValue: lowStock,
+          suffix: 'mặt hàng',
+          icon: Icons.warning_amber_rounded,
+          color: const Color(0xFFE11D48),
+          trendBadge: 'Cảnh báo',
+          foot: 'Mặt hàng chạm hoặc dưới định mức'),
     ];
     return _PageFrame(children: [
       _PageHeading(context.tr('overview_title'), context.tr('overview_subtitle')),
@@ -1090,37 +1414,62 @@ class _OverviewPage extends StatelessWidget {
           childAspectRatio: width < 650 ? 2.2 : (width < 1100 ? 1.85 : 2.2),
           children: cards),
       const SizedBox(height: 22),
+      Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Row(
+          children: const [
+            Icon(Icons.dashboard_customize_outlined,
+                size: 18, color: Color(0xFF475569)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Phân hệ tác nghiệp & quản lý',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF334155),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       Wrap(spacing: 12, runSpacing: 10, children: [
-        if (canWrite)
-          _QuickAction(
-              label: context.tr('overview_action_create_sale'),
-              icon: Icons.add_shopping_cart,
-              onTap: () => onNavigate(1)),
-        if (canWrite)
-          _QuickAction(
-              label: context.tr('overview_action_create_purchase'),
-              icon: Icons.add_box_outlined,
-              onTap: () => onNavigate(2)),
-        if (canWrite)
-          _QuickAction(
-              label: context.tr('overview_action_stocktake'),
-              icon: Icons.fact_check_outlined,
-              onTap: () => onNavigate(3)),
-        if (canViewOwnerData)
-          _QuickAction(
-              label: context.tr('overview_action_debt'),
-              icon: Icons.account_balance_wallet_outlined,
-              onTap: () => onNavigate(4)),
-        if (canViewOwnerData)
-          _QuickAction(
-              label: context.tr('overview_action_reports'),
-              icon: Icons.bar_chart_rounded,
-              onTap: () => onNavigate(5)),
-        if (canApprove)
-          _QuickAction(
-              label: context.tr('overview_action_approvals'),
-              icon: Icons.fact_check_outlined,
-              onTap: () => onNavigate(6)),
+        _QuickAction(
+            key: const Key('tile-subsystem-sales'),
+            label: 'Bán hàng (POS)',
+            icon: Icons.storefront_outlined,
+            onTap: () => onNavigate(1)),
+        _QuickAction(
+            key: const Key('tile-subsystem-purchases'),
+            label: 'Nhập hàng',
+            icon: Icons.shopping_bag_outlined,
+            onTap: () => onNavigate(2)),
+        _QuickAction(
+            key: const Key('tile-subsystem-inventory'),
+            label: 'Kho hàng',
+            icon: Icons.inventory_2_outlined,
+            onTap: () => onNavigate(3)),
+        _QuickAction(
+            key: const Key('tile-subsystem-debt'),
+            label: 'Công nợ',
+            icon: Icons.account_balance_wallet_outlined,
+            onTap: () => onNavigate(4)),
+        _QuickAction(
+            key: const Key('tile-subsystem-reports'),
+            label: 'Báo cáo',
+            icon: Icons.bar_chart_rounded,
+            onTap: () => onNavigate(5)),
+        _QuickAction(
+            key: const Key('tile-subsystem-approvals'),
+            label: 'Phê duyệt',
+            icon: Icons.fact_check_outlined,
+            onTap: () => onNavigate(6)),
+        _QuickAction(
+            key: const Key('tile-subsystem-settings'),
+            label: 'Cấu hình',
+            icon: Icons.settings_outlined,
+            onTap: () => onNavigate(7)),
       ]),
       if (canViewOwnerData) ...[
         const SizedBox(height: 22),
@@ -1509,6 +1858,7 @@ class _RevenueTrendCard extends StatelessWidget {
 
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
+    super.key,
     required this.label,
     required this.value,
     required this.icon,
@@ -1518,6 +1868,7 @@ class _MetricCard extends StatelessWidget {
     this.isCurrency = false,
     this.suffix = '',
     this.decimalDigits = 0,
+    this.trendBadge,
   });
   final String label;
   final String value;
@@ -1528,11 +1879,23 @@ class _MetricCard extends StatelessWidget {
   final bool isCurrency;
   final String suffix;
   final int decimalDigits;
+  final String? trendBadge;
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: _cardDecoration(),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFFE9EBE7)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1546,6 +1909,26 @@ class _MetricCard extends StatelessWidget {
                             fontSize: 11,
                             color: Color(0xFF777D76),
                             fontWeight: FontWeight.w600))),
+                if (trendBadge != null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: color.withValues(alpha: .2)),
+                    ),
+                    child: Text(
+                      trendBadge!,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
                 Container(
                     width: 28,
                     height: 28,
@@ -1588,8 +1971,12 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction(
-      {required this.label, required this.icon, required this.onTap});
+  const _QuickAction({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -2329,14 +2716,19 @@ class _MiniSummaryRow extends StatelessWidget {
                               color: Color(0xFF7F857D),
                               fontWeight: FontWeight.w600)),
                       const SizedBox(height: 3),
-                      Text(e.$2,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          e.$2,
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF0F172A),
-                              letterSpacing: -.3))
+                              letterSpacing: -.3),
+                        ),
+                      ),
                     ]))
               ]));
         }).toList());
@@ -2355,47 +2747,47 @@ class _OrdersTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: SizedBox(
-          width: showFinancialDetails ? 1160 : 820,
-          child: DataTable(
-              headingRowHeight: 38,
-              dataRowMinHeight: 46,
-              dataRowMaxHeight: 54,
-              horizontalMargin: 8,
-              columnSpacing: 20,
-              headingTextStyle: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF737971),
-                  fontWeight: FontWeight.w700),
-              columns: [
-                const DataColumn(label: Text('MÃ PHIẾU')),
-                const DataColumn(label: Text('NGÀY')),
-                const DataColumn(label: Text('ĐỐI TÁC')),
-                if (showFinancialDetails) ...[
-                  const DataColumn(label: Text('TỔNG TIỀN'), numeric: true),
-                  const DataColumn(label: Text('CÒN NỢ'), numeric: true),
-                  const DataColumn(label: Text('THANH TOÁN')),
-                ],
-                const DataColumn(label: Text('GHI CHÚ')),
-                const DataColumn(label: Text('TRẠNG THÁI')),
-                if (showFinancialDetails)
-                  const DataColumn(label: Text('IN PHIẾU')),
-                if (onConvert != null)
-                  const DataColumn(label: Text('THAO TÁC')),
-              ],
-              rows: orders
-                  .map((o) => DataRow(cells: [
-                        DataCell(Text(o.code,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF6546BA)))),
-                        DataCell(Text(
-                            DateFormat('dd/MM/yyyy').format(o.createdAt),
-                            style: const TextStyle(fontSize: 10))),
-                        DataCell(Text(o.partyName,
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600))),
+      child: DataTable(
+          headingRowHeight: 38,
+          dataRowMinHeight: 46,
+          dataRowMaxHeight: 54,
+          horizontalMargin: 16,
+          columnSpacing: 28,
+          headingTextStyle: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF737971),
+              fontWeight: FontWeight.w700),
+          columns: [
+            const DataColumn(label: Text('MÃ PHIẾU')),
+            const DataColumn(label: Text('NGÀY')),
+            const DataColumn(label: Text('ĐỐI TÁC')),
+            if (showFinancialDetails) ...[
+              const DataColumn(label: Text('TỔNG TIỀN'), numeric: true),
+              const DataColumn(label: Text('CÒN NỢ'), numeric: true),
+              const DataColumn(label: Text('THANH TOÁN')),
+            ],
+            const DataColumn(label: Text('GHI CHÚ')),
+            const DataColumn(label: Text('TRẠNG THÁI')),
+            if (showFinancialDetails)
+              const DataColumn(label: Text('IN PHIẾU')),
+            if (onConvert != null)
+              const DataColumn(label: Text('THAO TÁC')),
+          ],
+          rows: orders
+              .map((o) => DataRow(cells: [
+                    DataCell(Text(o.code,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6546BA)))),
+                    DataCell(Text(
+                        DateFormat('dd/MM/yyyy').format(o.createdAt),
+                        style: const TextStyle(fontSize: 10))),
+                    DataCell(Text(o.partyName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600))),
                         if (showFinancialDetails)
                           DataCell(Text(_money(o.total),
                               style: const TextStyle(
@@ -2431,7 +2823,7 @@ class _OrdersTable extends StatelessWidget {
                             child: const Text('Chuyển thành đơn'),
                           )),
                       ]))
-                  .toList())));
+                  .toList()));
 }
 
 class _OrderStatusBadge extends StatelessWidget {
@@ -2507,7 +2899,12 @@ class _OrderListTile extends StatelessWidget {
                   fontSize: 11,
                   color: Color(0xFF6546BA))),
           const SizedBox(height: 3),
-          Text(order.partyName, style: const TextStyle(fontSize: 11)),
+          Text(
+            order.partyName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11),
+          ),
           const SizedBox(height: 6),
           if (showFinancialDetails) _PaymentBadge(label: order.paymentStatus)
         ])),
@@ -2637,7 +3034,7 @@ class _LowStockCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Expanded(
-              child: Text('Cảnh báo tồn kho',
+              child: Text('Danh sách cảnh báo tồn kho',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800))),
           Text('${products.length} mặt hàng',
               style: const TextStyle(
@@ -2814,8 +3211,16 @@ class _InventoryPageState extends State<_InventoryPage> {
     const title = Text('Danh sách tồn kho',
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800));
     return _PageFrame(children: [
-      const _PageHeading('Quản lý kho hàng',
+      const _PageHeading('Kho hàng & Tồn kho',
           'Quản lý danh mục sản phẩm, tồn kho và lịch sử biến động.'),
+      const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: Text('Quản lý kho hàng',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF555F71))),
+      ),
       _WorkspaceSectionTabs(
         labels: [
           'Tổng quan kho',
@@ -2945,7 +3350,7 @@ class _StocktakeHistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final tickets = store.stocktakeHistory;
     return _PageFrame(children: [
-      const _PageHeading('Quản lý kho hàng',
+      const _PageHeading('Kho hàng & Tồn kho',
           'Quản lý danh mục sản phẩm, tồn kho và lịch sử biến động.'),
       _WorkspaceSectionTabs(
         labels: const [
@@ -3453,7 +3858,64 @@ class _ProductTile extends StatelessWidget {
   final CommerceProduct product;
   final bool showFinancialDetails;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 480;
+    if (compact) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: const Color(0xFFFAFBF9),
+            borderRadius: BorderRadius.circular(10)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _StockBadge(product: product),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${product.sku} · ${product.category}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)),
+                  ),
+                ),
+                Text(
+                  '${product.stock} ${product.unit}',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w800),
+                ),
+                if (showFinancialDetails) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    _money((product.stock * product.cost).round()),
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -3464,11 +3926,16 @@ class _ProductTile extends StatelessWidget {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(product.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style:
                   const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
           Text('${product.sku} · ${product.category}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)))
         ])),
+        const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text('${product.stock} ${product.unit}',
               style:
@@ -3479,7 +3946,9 @@ class _ProductTile extends StatelessWidget {
         ]),
         const SizedBox(width: 8),
         _StockBadge(product: product)
-      ]));
+      ]),
+    );
+  }
 }
 
 class _StockBadge extends StatelessWidget {
@@ -3508,7 +3977,7 @@ class _StockBadge extends StatelessWidget {
   }
 }
 
-class _DebtPage extends StatelessWidget {
+class _DebtPage extends StatefulWidget {
   const _DebtPage({
     required this.store,
     required this.canWrite,
@@ -3519,30 +3988,54 @@ class _DebtPage extends StatelessWidget {
   final bool canWrite;
   final CommerceApi? api;
   final Future<void> Function()? onRefresh;
+
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-      length: 2,
-      child: _PageFrame(children: [
-        _PageHeading(context.tr('debt_title'), context.tr('debt_subtitle')),
+  State<_DebtPage> createState() => _DebtPageState();
+}
+
+class _DebtPageState extends State<_DebtPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _PageFrame(children: [
+        _PageHeading('Sổ công nợ', context.tr('debt_subtitle')),
         _MiniSummaryRow(items: [
           (
             context.tr('debt_kpi_receivable'),
-            _money(store.receivableTotal),
+            _money(widget.store.receivableTotal),
             Icons.call_received_rounded
           ),
           (
             context.tr('debt_kpi_payable'),
-            _money(store.payableTotal),
+            _money(widget.store.payableTotal),
             Icons.call_made_rounded
           ),
           (
             context.tr('debt_kpi_orders_to_collect'),
-            '${store.receivables.length}',
+            '${widget.store.receivables.length}',
             Icons.receipt_long_outlined
           ),
           (
             context.tr('debt_kpi_bills_to_pay'),
-            '${store.payables.length}',
+            '${widget.store.payables.length}',
             Icons.request_quote_outlined
           )
         ]),
@@ -3551,6 +4044,7 @@ class _DebtPage extends StatelessWidget {
             decoration: _cardDecoration(),
             child: Column(children: [
               TabBar(
+                  controller: _tabController,
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   labelColor: const Color(0xFF6848BC),
@@ -3560,24 +4054,16 @@ class _DebtPage extends StatelessWidget {
                     Tab(text: context.tr('debt_tab_receivable')),
                     Tab(text: context.tr('debt_tab_payable'))
                   ]),
-              SizedBox(
-                  height: 480,
-                  child: TabBarView(children: [
-                    _DebtList(
-                        orders: store.receivables,
-                        store: store,
-                        canWrite: canWrite,
-                        api: api,
-                        onRefresh: onRefresh),
-                    _DebtList(
-                        orders: store.payables,
-                        store: store,
-                        canWrite: canWrite,
-                        api: api,
-                        onRefresh: onRefresh)
-                  ]))
+              _DebtList(
+                  orders: _tabController.index == 0
+                      ? widget.store.receivables
+                      : widget.store.payables,
+                  store: widget.store,
+                  canWrite: widget.canWrite,
+                  api: widget.api,
+                  onRefresh: widget.onRefresh),
             ])),
-      ]));
+      ]);
 }
 
 class _DebtList extends StatefulWidget {
@@ -3670,27 +4156,29 @@ class _DebtListState extends State<_DebtList> {
             ],
           ),
         ),
-        Expanded(
-          child: orders.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(context.tr('debt_empty'),
-                        style:
-                            const TextStyle(fontSize: 12, color: Color(0xFF81877F))),
-                  ),
-                )
-              : compact
-                  ? ListView(
-                      padding: const EdgeInsets.all(14),
-                      children: [
-                        for (final order in orders) _debtTile(order),
-                      ],
-                    )
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: 1100,
+        if (orders.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(context.tr('debt_empty'),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF81877F))),
+            ),
+          )
+        else if (compact)
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                for (final order in orders) _debtTile(order),
+              ],
+            ),
+          )
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 1100,
                         child: DataTable(
                           headingRowHeight: 38,
                           dataRowMinHeight: 52,
@@ -3755,63 +4243,152 @@ class _DebtListState extends State<_DebtList> {
                         ),
                       ),
                     ),
-        ),
       ],
     );
   }
 
-  Widget _debtTile(CommerceOrder order) => Container(
+  Widget _debtTile(CommerceOrder order) {
+    final compact = MediaQuery.sizeOf(context).width < 500;
+    if (compact) {
+      return Container(
         margin: const EdgeInsets.only(bottom: 9),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
             color: const Color(0xFFFAFBF9),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFECEEEA))),
-        child: Row(children: [
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(order.partyName,
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(
-                    '${order.code} · ${DateFormat('dd/MM/yyyy').format(order.createdAt)}',
-                    style: const TextStyle(
-                        fontSize: 10, color: Color(0xFF81877F))),
-                if (order.dueDate != null)
-                  Text(
-                    '${order.dueDate!.isBefore(DateTime.now()) ? '${context.tr('debt_filter_overdue')} · ' : '${context.tr('debt_col_due_date')} · '}${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: order.dueDate!.isBefore(DateTime.now())
-                          ? const Color(0xFFB34B43)
-                          : const Color(0xFF81877F),
-                      fontWeight: order.dueDate!.isBefore(DateTime.now())
-                          ? FontWeight.w700
-                          : FontWeight.w400,
-                    ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(order.partyName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(
+                          '${order.code} · ${DateFormat('dd/MM/yyyy').format(order.createdAt)}',
+                          style: const TextStyle(
+                              fontSize: 10, color: Color(0xFF81877F))),
+                      if (order.dueDate != null)
+                        Text(
+                          '${order.dueDate!.isBefore(DateTime.now()) ? '${context.tr('debt_filter_overdue')} · ' : '${context.tr('debt_col_due_date')} · '}${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: order.dueDate!.isBefore(DateTime.now())
+                                ? const Color(0xFFB34B43)
+                                : const Color(0xFF81877F),
+                            fontWeight: order.dueDate!.isBefore(DateTime.now())
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
+                        ),
+                    ],
                   ),
-              ])),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('${context.tr('debt_remaining_prefix')} ${_money(order.outstanding)}',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFB34B43),
-                    fontWeight: FontWeight.w800)),
-            Text('${context.tr('debt_total_prefix')} ${_money(order.total)}',
-                style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)))
-          ]),
-          if (widget.canWrite) ...[
-            const SizedBox(width: 10),
-            OutlinedButton(
-                onPressed: () => _showPayment(context, widget.store, order,
-                    api: widget.api, onRefresh: widget.onRefresh),
-                child: const Text('Ghi nhận', style: TextStyle(fontSize: 10)))
-          ]
-        ]),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                        '${context.tr('debt_remaining_prefix')} ${_money(order.outstanding)}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFB34B43),
+                            fontWeight: FontWeight.w800)),
+                    Text(
+                        '${context.tr('debt_total_prefix')} ${_money(order.total)}',
+                        style: const TextStyle(
+                            fontSize: 10, color: Color(0xFF81877F))),
+                  ],
+                ),
+              ],
+            ),
+            if (widget.canWrite) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  height: 28,
+                  child: OutlinedButton(
+                    onPressed: () => _showPayment(context, widget.store, order,
+                        api: widget.api, onRefresh: widget.onRefresh),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    child: const Text('Ghi nhận',
+                        style: TextStyle(fontSize: 10)),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: const Color(0xFFFAFBF9),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFECEEEA))),
+      child: Row(children: [
+        Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(order.partyName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                  '${order.code} · ${DateFormat('dd/MM/yyyy').format(order.createdAt)}',
+                  style: const TextStyle(
+                      fontSize: 10, color: Color(0xFF81877F))),
+              if (order.dueDate != null)
+                Text(
+                  '${order.dueDate!.isBefore(DateTime.now()) ? '${context.tr('debt_filter_overdue')} · ' : '${context.tr('debt_col_due_date')} · '}${DateFormat('dd/MM/yyyy').format(order.dueDate!)}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: order.dueDate!.isBefore(DateTime.now())
+                        ? const Color(0xFFB34B43)
+                        : const Color(0xFF81877F),
+                    fontWeight: order.dueDate!.isBefore(DateTime.now())
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                  ),
+                ),
+            ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('${context.tr('debt_remaining_prefix')} ${_money(order.outstanding)}',
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFB34B43),
+                  fontWeight: FontWeight.w800)),
+          Text('${context.tr('debt_total_prefix')} ${_money(order.total)}',
+              style: const TextStyle(fontSize: 10, color: Color(0xFF81877F)))
+        ]),
+        if (widget.canWrite) ...[
+          const SizedBox(width: 10),
+          OutlinedButton(
+              onPressed: () => _showPayment(context, widget.store, order,
+                  api: widget.api, onRefresh: widget.onRefresh),
+              child: const Text('Ghi nhận', style: TextStyle(fontSize: 10)))
+        ]
+      ]),
+    );
+  }
 }
 
 class _ApprovalPage extends StatefulWidget {
@@ -3954,8 +4531,16 @@ class _ApprovalPageState extends State<_ApprovalPage> {
 
   @override
   Widget build(BuildContext context) => _PageFrame(children: [
-        _PageHeading('Phiếu chờ duyệt',
+        _PageHeading('Phê duyệt phiếu',
             'Duyệt đơn bán, phiếu nhập và kiểm kê theo phân quyền maker–checker.'),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text('Phiếu chờ duyệt',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6848BC))),
+        ),
         if (widget.api == null &&
             widget.store.pendingOrders.isEmpty &&
             widget.store.pendingStocktakes.isEmpty)
@@ -4070,96 +4655,141 @@ Future<void> _showStockTransferDialog(
   await showDialog<void>(
     context: context,
     builder: (dialogCtx) => StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
-        title: const Text('Chuyển kho nội bộ (Transfer)'),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Sản phẩm chuyển',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedProduct.id,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                      border: OutlineInputBorder(), isDense: true),
-                  items: store.products
-                      .map((p) => DropdownMenuItem(
-                            value: p.id,
-                            child: Text(
-                                '${p.sku} · ${p.name} (Tồn: ${p.stock} ${p.unit})',
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setDialogState(() {
-                        selectedProduct = store.product(v);
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
+      builder: (ctx, setDialogState) {
+        final isCompact = MediaQuery.sizeOf(context).width < 600;
+        return AlertDialog(
+          insetPadding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 12 : 40, vertical: 24),
+          title: const Text('Chuyển kho nội bộ (Transfer)'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SizedBox(
+              width: isCompact ? double.maxFinite : 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    const Text('Sản phẩm chuyển',
+                        style:
+                            TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedProduct.id,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                          border: OutlineInputBorder(), isDense: true),
+                      items: store.products
+                          .map((p) => DropdownMenuItem(
+                                value: p.id,
+                                child: Text(
+                                    '${p.sku} · ${p.name} (Tồn: ${p.stock} ${p.unit})',
+                                    overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setDialogState(() {
+                            selectedProduct = store.product(v);
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    if (isCompact) ...[
+                      const Text('Từ kho nguồn',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12)),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        initialValue: fromLoc,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(), isDense: true),
+                        items: store.locations
+                            .map((loc) => DropdownMenuItem(
+                                value: loc.id,
+                                child: Text(loc.name,
+                                    overflow: TextOverflow.ellipsis)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setDialogState(() => fromLoc = v ?? fromLoc),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('Đến kho đích',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12)),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        initialValue: toLoc,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                            border: OutlineInputBorder(), isDense: true),
+                        items: store.locations
+                            .map((loc) => DropdownMenuItem(
+                                value: loc.id,
+                                child: Text(loc.name,
+                                    overflow: TextOverflow.ellipsis)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setDialogState(() => toLoc = v ?? toLoc),
+                      ),
+                    ] else
+                      Row(
                         children: [
-                          const Text('Từ kho nguồn',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 12)),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: fromLoc,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                                border: OutlineInputBorder(), isDense: true),
-                            items: store.locations
-                                .map((loc) => DropdownMenuItem(
-                                    value: loc.id,
-                                    child: Text(loc.name,
-                                        overflow: TextOverflow.ellipsis)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setDialogState(() => fromLoc = v ?? fromLoc),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Từ kho nguồn',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700, fontSize: 12)),
+                                const SizedBox(height: 6),
+                                DropdownButtonFormField<String>(
+                                  initialValue: fromLoc,
+                                  isExpanded: true,
+                                  decoration: const InputDecoration(
+                                      border: OutlineInputBorder(), isDense: true),
+                                  items: store.locations
+                                      .map((loc) => DropdownMenuItem(
+                                          value: loc.id,
+                                          child: Text(loc.name,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setDialogState(() => fromLoc = v ?? fromLoc),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Đến kho đích',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700, fontSize: 12)),
+                                const SizedBox(height: 6),
+                                DropdownButtonFormField<String>(
+                                  initialValue: toLoc,
+                                  isExpanded: true,
+                                  decoration: const InputDecoration(
+                                      border: OutlineInputBorder(), isDense: true),
+                                  items: store.locations
+                                      .map((loc) => DropdownMenuItem(
+                                          value: loc.id,
+                                          child: Text(loc.name,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setDialogState(() => toLoc = v ?? toLoc),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Đến kho đích',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 12)),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: toLoc,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                                border: OutlineInputBorder(), isDense: true),
-                            items: store.locations
-                                .map((loc) => DropdownMenuItem(
-                                    value: loc.id,
-                                    child: Text(loc.name,
-                                        overflow: TextOverflow.ellipsis)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setDialogState(() => toLoc = v ?? toLoc),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: qtyCtrl,
@@ -4186,48 +4816,50 @@ Future<void> _showStockTransferDialog(
             ),
           ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Hủy')),
-          FilledButton(
-            onPressed: () {
-              final q = double.tryParse(qtyCtrl.text.trim()) ?? 0;
-              if (q <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Số lượng chuyển phải lớn hơn 0.')),
-                );
-                return;
-              }
-              if (fromLoc == toLoc) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text(
-                          'Kho nguồn và kho đích không được trùng nhau.')),
-                );
-                return;
-              }
-              store.transferStock(
-                productId: selectedProduct.id,
-                fromLocationId: fromLoc,
-                toLocationId: toLoc,
-                quantity: q,
-                note: noteCtrl.text.trim(),
-              );
-              Navigator.pop(dialogCtx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(
-                        'Đã chuyển $q ${selectedProduct.unit} ${selectedProduct.name} thành công.')),
-              );
-            },
-            child: const Text('Xác nhận chuyển'),
-          ),
-        ],
       ),
-    ),
-  );
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Hủy')),
+        FilledButton(
+          onPressed: () {
+            final q = double.tryParse(qtyCtrl.text.trim()) ?? 0;
+            if (q <= 0) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Số lượng chuyển phải lớn hơn 0.')),
+              );
+              return;
+            }
+            if (fromLoc == toLoc) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text(
+                        'Kho nguồn và kho đích không được trùng nhau.')),
+              );
+              return;
+            }
+            store.transferStock(
+              productId: selectedProduct.id,
+              fromLocationId: fromLoc,
+              toLocationId: toLoc,
+              quantity: q,
+              note: noteCtrl.text.trim(),
+            );
+            Navigator.pop(dialogCtx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Đã chuyển $q ${selectedProduct.unit} ${selectedProduct.name} thành công.')),
+            );
+          },
+          child: const Text('Xác nhận chuyển'),
+        ),
+      ],
+    );
+  },
+),
+);
 }
 
 Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
@@ -4244,31 +4876,45 @@ Future<void> _showCreateProduct(BuildContext context, CommerceMemoryStore store,
   final cost = TextEditingController(text: '0');
   final price = TextEditingController(text: '0');
   final minimum = TextEditingController(text: '0');
+  final isCompact = MediaQuery.sizeOf(context).width < 600;
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
+      insetPadding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 12 : 40, vertical: 24),
       title: const Text('Thêm sản phẩm'),
-      content: SizedBox(
-        width: 440,
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            _FormInput('Mã sản phẩm', sku),
-            _FormInput('Tên sản phẩm', name),
-            _FormInput('Nhóm hàng', category),
-            Row(children: [
-              Expanded(child: _FormInput('Đơn vị cơ bản (xuất/bán)', unit)),
-              const SizedBox(width: 8),
-              Expanded(child: _FormInput('Đơn vị nhập (vd: Thùng)', purchaseUnit)),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: SizedBox(
+          width: isCompact ? double.maxFinite : 440,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _FormInput('Mã sản phẩm', sku),
+              _FormInput('Tên sản phẩm', name),
+              _FormInput('Nhóm hàng', category),
+              if (isCompact) ...[
+                _FormInput('Đơn vị cơ bản (xuất/bán)', unit),
+                _FormInput('Đơn vị nhập (vd: Thùng)', purchaseUnit),
+              ] else
+                Row(children: [
+                  Expanded(child: _FormInput('Đơn vị cơ bản (xuất/bán)', unit)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _FormInput('Đơn vị nhập (vd: Thùng)', purchaseUnit)),
+                ]),
+              _FormInput('Tỷ lệ quy đổi (1 ĐV nhập = x ĐV cơ bản)', conversionRate, numeric: true),
+              if (canViewOwnerData)
+                if (isCompact) ...[
+                  _FormInput('Giá vốn', cost, numeric: true),
+                  _FormInput('Giá bán', price, numeric: true),
+                ] else
+                  Row(children: [
+                    Expanded(child: _FormInput('Giá vốn', cost, numeric: true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _FormInput('Giá bán', price, numeric: true)),
+                  ]),
+              _FormInput('Tồn tối thiểu', minimum, numeric: true),
             ]),
-            _FormInput('Tỷ lệ quy đổi (1 ĐV nhập = x ĐV cơ bản)', conversionRate, numeric: true),
-            if (canViewOwnerData)
-              Row(children: [
-                Expanded(child: _FormInput('Giá vốn', cost, numeric: true)),
-                const SizedBox(width: 8),
-                Expanded(child: _FormInput('Giá bán', price, numeric: true)),
-              ]),
-            _FormInput('Tồn tối thiểu', minimum, numeric: true),
-          ]),
+          ),
         ),
       ),
       actions: [
@@ -4478,7 +5124,10 @@ Future<void> _showCreateOrder(
             final taxable = (subtotal - discountAmount).clamp(0, subtotal);
             final vatAmount = (taxable * vatPercent / 100).round();
             final total = taxable + vatAmount + shippingAmount;
+            final isCompact = width < 600;
             return AlertDialog(
+              insetPadding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 12 : 40, vertical: 24),
               title: Row(children: [
                 Icon(
                     quote
@@ -4500,8 +5149,10 @@ Future<void> _showCreateOrder(
                     onPressed: () => Navigator.pop(dialogContext),
                     icon: const Icon(Icons.close))
               ]),
-              content: SizedBox(
-                  width: width < 700 ? width - 42 : 650,
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 650),
+                child: SizedBox(
+                  width: isCompact ? double.maxFinite : (width < 700 ? width - 42 : 650),
                   child: SingleChildScrollView(
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4511,6 +5162,7 @@ Future<void> _showCreateOrder(
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: selectedParty,
+                              isExpanded: true,
                               decoration: InputDecoration(
                                   labelText: customerDocument
                                       ? 'Khách hàng'
@@ -4600,146 +5252,420 @@ Future<void> _showCreateOrder(
                         for (var i = 0; i < lines.length; i++)
                           Column(children: [
                             Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(children: [
-                                  Expanded(
-                                      flex: 5,
-                                      child: DropdownButtonFormField<String>(
-                                          initialValue: lines[i].productId,
-                                          decoration: const InputDecoration(
-                                              labelText: 'Sản phẩm',
-                                              border: OutlineInputBorder(),
-                                              isDense: true),
-                                          items: store.products
-                                              .map((p) => DropdownMenuItem(
-                                                  value: p.id,
-                                                  child: Text(
-                                                      '${p.sku} · ${p.name}',
-                                                      overflow: TextOverflow
-                                                          .ellipsis)))
-                                              .toList(),
-                                          onChanged: (v) => setState(() =>
-                                              lines[i].productId =
-                                                  v ?? lines[i].productId))),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                      width: 110,
-                                      child: TextFormField(
-                                          initialValue: '${lines[i].quantity}',
-                                          keyboardType: const TextInputType
-                                              .numberWithOptions(decimal: true),
-                                          decoration: InputDecoration(
-                                              labelText: 'Số lượng',
-                                              border: const OutlineInputBorder(),
-                                              isDense: true,
-                                              helperText: kind == 'sale'
-                                                  ? 'Tồn: ${store.product(lines[i].productId).stock}'
-                                                  : null,
-                                              helperStyle: TextStyle(
-                                                fontSize: 9,
-                                                color: (kind == 'sale' &&
-                                                        lines[i].quantity >
-                                                            store.product(lines[i].productId).stock)
-                                                    ? const Color(0xFFB34B43)
-                                                    : const Color(0xFF737971),
-                                              )),
-                                          onChanged: (v) => setState(() =>
-                                              lines[i].quantity =
-                                                  double.tryParse(v) ?? 0))),
-                                  IconButton(
-                                      tooltip: 'Xóa sản phẩm',
-                                      onPressed: () =>
-                                          setState(() => lines.removeAt(i)),
-                                      icon: const Icon(Icons.delete_outline,
-                                          color: Color(0xFFB34B43), size: 19))
-                                ])),
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: isCompact
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(children: [
+                                          Expanded(
+                                            child: DropdownButtonFormField<String>(
+                                              initialValue: lines[i].productId,
+                                              isExpanded: true,
+                                              decoration: const InputDecoration(
+                                                  labelText: 'Sản phẩm',
+                                                  border: OutlineInputBorder(),
+                                                  isDense: true),
+                                              items: store.products
+                                                  .map((p) => DropdownMenuItem(
+                                                      value: p.id,
+                                                      child: Text(
+                                                          '${p.sku} · ${p.name}',
+                                                          overflow: TextOverflow
+                                                              .ellipsis)))
+                                                  .toList(),
+                                              onChanged: (v) => setState(() =>
+                                                  lines[i].productId =
+                                                      v ?? lines[i].productId),
+                                            ),
+                                          ),
+                                          IconButton(
+                                              tooltip: 'Xóa sản phẩm',
+                                              onPressed: () =>
+                                                  setState(() => lines.removeAt(i)),
+                                              icon: const Icon(Icons.delete_outline,
+                                                  color: Color(0xFFB34B43), size: 19))
+                                        ]),
+                                        const SizedBox(height: 6),
+                                        TextFormField(
+                                            initialValue: '${lines[i].quantity}',
+                                            keyboardType: const TextInputType
+                                                .numberWithOptions(decimal: true),
+                                            decoration: InputDecoration(
+                                                labelText: 'Số lượng',
+                                                border: const OutlineInputBorder(),
+                                                isDense: true,
+                                                helperText: kind == 'sale'
+                                                    ? 'Tồn: ${store.product(lines[i].productId).stock}'
+                                                    : null,
+                                                helperStyle: TextStyle(
+                                                  fontSize: 9,
+                                                  color: (kind == 'sale' &&
+                                                          lines[i].quantity >
+                                                              store.product(lines[i].productId).stock)
+                                                      ? const Color(0xFFB34B43)
+                                                      : const Color(0xFF737971),
+                                                )),
+                                            onChanged: (v) => setState(() =>
+                                                lines[i].quantity =
+                                                    double.tryParse(v) ?? 0)),
+                                      ],
+                                    )
+                                  : Row(children: [
+                                      Expanded(
+                                          flex: 5,
+                                          child: DropdownButtonFormField<String>(
+                                              initialValue: lines[i].productId,
+                                              isExpanded: true,
+                                              decoration: const InputDecoration(
+                                                  labelText: 'Sản phẩm',
+                                                  border: OutlineInputBorder(),
+                                                  isDense: true),
+                                              items: store.products
+                                                  .map((p) => DropdownMenuItem(
+                                                      value: p.id,
+                                                      child: Text(
+                                                          '${p.sku} · ${p.name}',
+                                                          overflow: TextOverflow
+                                                              .ellipsis)))
+                                                  .toList(),
+                                              onChanged: (v) => setState(() =>
+                                                  lines[i].productId =
+                                                      v ?? lines[i].productId))),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                          width: 110,
+                                          child: TextFormField(
+                                              initialValue: '${lines[i].quantity}',
+                                              keyboardType: const TextInputType
+                                                  .numberWithOptions(decimal: true),
+                                              decoration: InputDecoration(
+                                                  labelText: 'Số lượng',
+                                                  border: const OutlineInputBorder(),
+                                                  isDense: true,
+                                                  helperText: kind == 'sale'
+                                                      ? 'Tồn: ${store.product(lines[i].productId).stock}'
+                                                      : null,
+                                                  helperStyle: TextStyle(
+                                                    fontSize: 9,
+                                                    color: (kind == 'sale' &&
+                                                            lines[i].quantity >
+                                                                store.product(lines[i].productId).stock)
+                                                        ? const Color(0xFFB34B43)
+                                                        : const Color(0xFF737971),
+                                                  )),
+                                              onChanged: (v) => setState(() =>
+                                                  lines[i].quantity =
+                                                      double.tryParse(v) ?? 0))),
+                                      IconButton(
+                                          tooltip: 'Xóa sản phẩm',
+                                          onPressed: () =>
+                                              setState(() => lines.removeAt(i)),
+                                          icon: const Icon(Icons.delete_outline,
+                                              color: Color(0xFFB34B43), size: 19))
+                                    ]),
+                            ),
                             if (kind == 'purchase')
                               Padding(
                                 padding:
                                     const EdgeInsets.only(bottom: 9, left: 4),
-                                child: Row(children: [
-                                  Expanded(
-                                    child: TextFormField(
-                                      initialValue: lines[i].lotNo,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Số lô',
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                      onChanged: (value) =>
-                                          lines[i].lotNo = value,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        TextFormField(
-                                          key: ValueKey('expiry_${lines[i].expiryDate}_$i'),
-                                          initialValue: lines[i].expiryDate,
-                                          keyboardType: TextInputType.datetime,
-                                          decoration: InputDecoration(
-                                            labelText: 'Hạn dùng (YYYY-MM-DD)',
-                                            border: const OutlineInputBorder(),
-                                            isDense: true,
-                                            suffixIcon: IconButton(
-                                              icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                                              tooltip: 'Chọn hạn dùng trên lịch',
-                                              onPressed: () async {
-                                                final now = DateTime.now();
-                                                final cur = lines[i].expiryDateTime ?? now.add(const Duration(days: 90));
-                                                final picked = await showDatePicker(
-                                                  context: context,
-                                                  initialDate: cur.isBefore(now) ? now : cur,
-                                                  firstDate: now,
-                                                  lastDate: DateTime(now.year + 10),
-                                                );
-                                                if (picked != null) {
-                                                  setState(() {
-                                                    lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(picked);
-                                                  });
-                                                }
-                                              },
+                                child: isCompact
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          TextFormField(
+                                            initialValue: lines[i].lotNo,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Số lô',
+                                              border: OutlineInputBorder(),
+                                              isDense: true,
                                             ),
+                                            onChanged: (value) =>
+                                                lines[i].lotNo = value,
                                           ),
-                                          onChanged: (value) =>
-                                              lines[i].expiryDate = value,
+                                          const SizedBox(height: 8),
+                                          TextFormField(
+                                            key: ValueKey(
+                                                'expiry_${lines[i].expiryDate}_$i'),
+                                            initialValue: lines[i].expiryDate,
+                                            keyboardType:
+                                                TextInputType.datetime,
+                                            decoration: InputDecoration(
+                                              labelText:
+                                                  'Hạn dùng (YYYY-MM-DD)',
+                                              border:
+                                                  const OutlineInputBorder(),
+                                              isDense: true,
+                                              suffixIcon: IconButton(
+                                                icon: const Icon(
+                                                    Icons
+                                                        .calendar_today_outlined,
+                                                    size: 16),
+                                                tooltip:
+                                                    'Chọn hạn dùng trên lịch',
+                                                onPressed: () async {
+                                                  final now = DateTime.now();
+                                                  final cur = lines[i]
+                                                          .expiryDateTime ??
+                                                      now.add(const Duration(
+                                                          days: 90));
+                                                  final picked =
+                                                      await showDatePicker(
+                                                    context: context,
+                                                    initialDate:
+                                                        cur.isBefore(now)
+                                                            ? now
+                                                            : cur,
+                                                    firstDate: now,
+                                                    lastDate: DateTime(
+                                                        now.year + 10),
+                                                  );
+                                                  if (picked != null) {
+                                                    setState(() {
+                                                      lines[i].expiryDate =
+                                                          DateFormat(
+                                                                  'yyyy-MM-dd')
+                                                              .format(picked);
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                            onChanged: (value) =>
+                                                lines[i].expiryDate = value,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Wrap(
+                                            spacing: 4,
+                                            children: [
+                                              ActionChip(
+                                                labelPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 2),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                label: const Text('+30n',
+                                                    style: TextStyle(
+                                                        fontSize: 10)),
+                                                onPressed: () => setState(
+                                                    () => lines[i].expiryDate =
+                                                        DateFormat('yyyy-MM-dd')
+                                                            .format(DateTime.now()
+                                                                .add(const Duration(
+                                                                    days: 30)))),
+                                              ),
+                                              ActionChip(
+                                                labelPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 2),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                label: const Text('+90n',
+                                                    style: TextStyle(
+                                                        fontSize: 10)),
+                                                onPressed: () => setState(
+                                                    () => lines[i].expiryDate =
+                                                        DateFormat('yyyy-MM-dd')
+                                                            .format(DateTime.now()
+                                                                .add(const Duration(
+                                                                    days: 90)))),
+                                              ),
+                                              ActionChip(
+                                                labelPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 2),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                label: const Text('+6th',
+                                                    style: TextStyle(
+                                                        fontSize: 10)),
+                                                onPressed: () => setState(
+                                                    () => lines[i].expiryDate =
+                                                        DateFormat('yyyy-MM-dd')
+                                                            .format(DateTime.now()
+                                                                .add(const Duration(
+                                                                    days: 180)))),
+                                              ),
+                                              ActionChip(
+                                                labelPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 2),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                label: const Text('+1năm',
+                                                    style: TextStyle(
+                                                        fontSize: 10)),
+                                                onPressed: () => setState(
+                                                    () => lines[i].expiryDate =
+                                                        DateFormat('yyyy-MM-dd')
+                                                            .format(DateTime.now()
+                                                                .add(const Duration(
+                                                                    days: 365)))),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    : Row(children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            initialValue: lines[i].lotNo,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Số lô',
+                                              border: OutlineInputBorder(),
+                                              isDense: true,
+                                            ),
+                                            onChanged: (value) =>
+                                                lines[i].lotNo = value,
+                                          ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Wrap(
-                                          spacing: 4,
-                                          children: [
-                                            ActionChip(
-                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-                                              visualDensity: VisualDensity.compact,
-                                              label: const Text('+30n', style: TextStyle(fontSize: 10)),
-                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)))),
-                                            ),
-                                            ActionChip(
-                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-                                              visualDensity: VisualDensity.compact,
-                                              label: const Text('+90n', style: TextStyle(fontSize: 10)),
-                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 90)))),
-                                            ),
-                                            ActionChip(
-                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-                                              visualDensity: VisualDensity.compact,
-                                              label: const Text('+6th', style: TextStyle(fontSize: 10)),
-                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 180)))),
-                                            ),
-                                            ActionChip(
-                                              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-                                              visualDensity: VisualDensity.compact,
-                                              label: const Text('+1năm', style: TextStyle(fontSize: 10)),
-                                              onPressed: () => setState(() => lines[i].expiryDate = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 365)))),
-                                            ),
-                                          ],
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              TextFormField(
+                                                key: ValueKey(
+                                                    'expiry_${lines[i].expiryDate}_$i'),
+                                                initialValue:
+                                                    lines[i].expiryDate,
+                                                keyboardType:
+                                                    TextInputType.datetime,
+                                                decoration: InputDecoration(
+                                                  labelText:
+                                                      'Hạn dùng (YYYY-MM-DD)',
+                                                  border:
+                                                      const OutlineInputBorder(),
+                                                  isDense: true,
+                                                  suffixIcon: IconButton(
+                                                    icon: const Icon(
+                                                        Icons
+                                                            .calendar_today_outlined,
+                                                        size: 16),
+                                                    tooltip:
+                                                        'Chọn hạn dùng trên lịch',
+                                                    onPressed: () async {
+                                                      final now =
+                                                          DateTime.now();
+                                                      final cur = lines[i]
+                                                              .expiryDateTime ??
+                                                          now.add(
+                                                              const Duration(
+                                                                  days: 90));
+                                                      final picked =
+                                                          await showDatePicker(
+                                                        context: context,
+                                                        initialDate:
+                                                            cur.isBefore(now)
+                                                                ? now
+                                                                : cur,
+                                                        firstDate: now,
+                                                        lastDate: DateTime(
+                                                            now.year + 10),
+                                                      );
+                                                      if (picked != null) {
+                                                        setState(() {
+                                                          lines[i].expiryDate =
+                                                              DateFormat(
+                                                                      'yyyy-MM-dd')
+                                                                  .format(
+                                                                      picked);
+                                                        });
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
+                                                onChanged: (value) =>
+                                                    lines[i].expiryDate = value,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Wrap(
+                                                spacing: 4,
+                                                children: [
+                                                  ActionChip(
+                                                    labelPadding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 2),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    label: const Text('+30n',
+                                                        style: TextStyle(
+                                                            fontSize: 10)),
+                                                    onPressed: () => setState(
+                                                        () => lines[i].expiryDate =
+                                                            DateFormat(
+                                                                    'yyyy-MM-dd')
+                                                                .format(DateTime.now()
+                                                                    .add(const Duration(
+                                                                        days:
+                                                                            30)))),
+                                                  ),
+                                                  ActionChip(
+                                                    labelPadding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 2),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    label: const Text('+90n',
+                                                        style: TextStyle(
+                                                            fontSize: 10)),
+                                                    onPressed: () => setState(
+                                                        () => lines[i].expiryDate =
+                                                            DateFormat(
+                                                                    'yyyy-MM-dd')
+                                                                .format(DateTime.now()
+                                                                    .add(const Duration(
+                                                                        days:
+                                                                            90)))),
+                                                  ),
+                                                  ActionChip(
+                                                    labelPadding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 2),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    label: const Text('+6th',
+                                                        style: TextStyle(
+                                                            fontSize: 10)),
+                                                    onPressed: () => setState(
+                                                        () => lines[i].expiryDate =
+                                                            DateFormat(
+                                                                    'yyyy-MM-dd')
+                                                                .format(DateTime.now()
+                                                                    .add(const Duration(
+                                                                        days:
+                                                                            180)))),
+                                                  ),
+                                                  ActionChip(
+                                                    labelPadding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 2),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    label: const Text('+1năm',
+                                                        style: TextStyle(
+                                                            fontSize: 10)),
+                                                    onPressed: () => setState(
+                                                        () => lines[i].expiryDate =
+                                                            DateFormat(
+                                                                    'yyyy-MM-dd')
+                                                                .format(DateTime.now()
+                                                                    .add(const Duration(
+                                                                        days:
+                                                                            365)))),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ]),
+                                      ]),
                               ),
                           ]),
                         const SizedBox(height: 10),
@@ -4826,7 +5752,7 @@ Future<void> _showCreateOrder(
                                     value: _money(total),
                                     bold: true)
                               ])),
-                      ]))),
+                      ])))),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(dialogContext),
@@ -5080,198 +6006,286 @@ Future<void> _showStocktake(BuildContext context, CommerceMemoryStore store,
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDE8FC),
-                borderRadius: BorderRadius.circular(10),
+      builder: (ctx, setDialogState) {
+        final isCompact = MediaQuery.of(dialogContext).size.width < 600;
+        return AlertDialog(
+          insetPadding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 12 : 40, vertical: 24),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          title: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE8FC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.fact_check_outlined,
+                    color: Color(0xFF6B4BC3), size: 20),
               ),
-              child: const Icon(Icons.fact_check_outlined,
-                  color: Color(0xFF6B4BC3), size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tạo phiếu kiểm kê',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  Text('Đối chiếu tồn hệ thống và tồn thực tế',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF7F857D))),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 20),
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 580,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                Row(
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today_outlined,
-                                size: 16, color: Color(0xFF6B4BC3)),
-                            const SizedBox(width: 8),
-                            Text('Ngày kiểm kê: $dateText',
-                                style: const TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ),
+                    Text('Tạo phiếu kiểm kê',
+                        style:
+                            TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text('Đối chiếu tồn hệ thống và tồn thực tế',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF7F857D))),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Row(
-                    children: [
-                      Expanded(
-                          flex: 5,
-                          child: Text('SẢN PHẨM',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4B5563)))),
-                      Expanded(
-                          flex: 2,
-                          child: Text('HỆ THỐNG',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4B5563)))),
-                      Expanded(
-                          flex: 3,
-                          child: Text('THỰC TẾ',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4B5563)))),
-                      Expanded(
-                          flex: 2,
-                          child: Text('LỆCH',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4B5563)))),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                for (final p in store.products) ...[
-                  Builder(builder: (_) {
-                    final actual =
-                        double.tryParse(countInputs[p.id]?.text ?? '') ??
-                            p.stock;
-                    final diff = actual - p.stock;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 5,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 580),
+            child: SizedBox(
+              width: isCompact ? double.maxFinite : 580,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: Row(
                               children: [
-                                Text(p.name,
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600)),
-                                Text('${p.sku} · ${p.unit}',
-                                    style: const TextStyle(
-                                        fontSize: 9.5,
-                                        color: Color(0xFF81877F))),
+                                const Icon(Icons.calendar_today_outlined,
+                                    size: 16, color: Color(0xFF6B4BC3)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text('Ngày kiểm kê: $dateText',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.w600)),
+                                ),
                               ],
                             ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              '${p.stock}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (!isCompact)
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          children: [
+                            Expanded(
+                                flex: 5,
+                                child: Text('SẢN PHẨM',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF4B5563)))),
+                            Expanded(
+                                flex: 2,
+                                child: Text('HỆ THỐNG',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF4B5563)))),
+                            Expanded(
+                                flex: 3,
+                                child: Text('THỰC TẾ',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF4B5563)))),
+                            Expanded(
+                                flex: 2,
+                                child: Text('LỆCH',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF4B5563)))),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                    for (final p in store.products) ...[
+                      Builder(builder: (_) {
+                        final actual =
+                            double.tryParse(countInputs[p.id]?.text ?? '') ??
+                                p.stock;
+                        final diff = actual - p.stock;
+                        if (isCompact) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(p.name,
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600)),
+                                          Text('${p.sku} · ${p.unit}',
+                                              style: const TextStyle(
+                                                  fontSize: 9.5,
+                                                  color: Color(0xFF81877F))),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Hệ thống: ${p.stock}',
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF4B5563)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Text('Thực tế: ',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF6B7280))),
+                                    SizedBox(
+                                      width: 80,
+                                      height: 32,
+                                      child: TextField(
+                                        controller: countInputs[p.id],
+                                        textAlign: TextAlign.center,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                                decimal: true),
+                                        onChanged: (_) => setDialogState(() {}),
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 6),
+                                          border: OutlineInputBorder(),
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      'Lệch: ${diff == 0 ? '0' : diff > 0 ? '+$diff' : '$diff'}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: diff == 0
+                                            ? const Color(0xFF6B7280)
+                                            : diff > 0
+                                                ? const Color(0xFF16A34A)
+                                                : const Color(0xFFDC2626),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: SizedBox(
-                              height: 36,
-                              child: TextField(
-                                controller: countInputs[p.id],
-                                textAlign: TextAlign.center,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                onChanged: (_) => setDialogState(() {}),
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  border: OutlineInputBorder(),
+                          );
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p.name,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                    Text('${p.sku} · ${p.unit}',
+                                        style: const TextStyle(
+                                            fontSize: 9.5,
+                                            color: Color(0xFF81877F))),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              diff == 0
-                                  ? '0'
-                                  : diff > 0
-                                      ? '+$diff'
-                                      : '$diff',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: diff == 0
-                                    ? const Color(0xFF6B7280)
-                                    : diff > 0
-                                        ? const Color(0xFF16A34A)
-                                        : const Color(0xFFDC2626),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${p.stock}',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.w700),
+                                ),
                               ),
-                            ),
+                              Expanded(
+                                flex: 3,
+                                child: SizedBox(
+                                  height: 36,
+                                  child: TextField(
+                                    controller: countInputs[p.id],
+                                    textAlign: TextAlign.center,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                            decimal: true),
+                                    onChanged: (_) => setDialogState(() {}),
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 8),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  diff == 0
+                                      ? '0'
+                                      : diff > 0
+                                          ? '+$diff'
+                                          : '$diff',
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: diff == 0
+                                        ? const Color(0xFF6B7280)
+                                        : diff > 0
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFDC2626),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-                  const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                ],
+                        );
+                      }),
+                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                    ],
                 const SizedBox(height: 12),
                 TextField(
                   controller: noteController,
@@ -5285,49 +6299,51 @@ Future<void> _showStocktake(BuildContext context, CommerceMemoryStore store,
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF6B4BC3)),
-            onPressed: () async {
-              try {
-                final quantities = {
-                  for (final p in store.products)
-                    p.id: double.parse(countInputs[p.id]!.text),
-                };
-                if (api != null) {
-                  await api.submitStocktake(quantities,
-                      idempotencyKey: requestKey);
-                  await onRefresh?.call();
-                } else {
-                  store.recordDirectStocktake(quantities,
-                      note: noteController.text);
-                }
-                if (!context.mounted) return;
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content:
-                        Text('Đã lưu kết quả kiểm kê và điều chỉnh tồn kho.'),
-                    backgroundColor: Color(0xFF16A34A),
-                  ),
-                );
-              } catch (error) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('$error')));
-              }
-            },
-            icon: const Icon(Icons.save_outlined, size: 16),
-            label: const Text('Lưu kiểm kê'),
-          ),
-        ],
       ),
-    ),
-  );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Hủy'),
+        ),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF6B4BC3)),
+          onPressed: () async {
+            try {
+              final quantities = {
+                for (final p in store.products)
+                  p.id: double.parse(countInputs[p.id]!.text),
+              };
+              if (api != null) {
+                await api.submitStocktake(quantities,
+                    idempotencyKey: requestKey);
+                await onRefresh?.call();
+              } else {
+                store.recordDirectStocktake(quantities,
+                    note: noteController.text);
+              }
+              if (!context.mounted) return;
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content:
+                      Text('Đã lưu kết quả kiểm kê và điều chỉnh tồn kho.'),
+                  backgroundColor: Color(0xFF16A34A),
+                ),
+              );
+            } catch (error) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text('$error')));
+            }
+          },
+          icon: const Icon(Icons.save_outlined, size: 16),
+          label: const Text('Lưu kiểm kê'),
+        ),
+      ],
+    );
+  },
+),
+);
 
   for (final controller in countInputs.values) {
     controller.dispose();
