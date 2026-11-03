@@ -22,8 +22,8 @@ void main() {
       expect(RoleVisibility.canCreate({'staff', 'approver'}), isTrue);
       expect(RoleVisibility.canCreate({'auditor', 'admin'}), isTrue);
 
-      // Empty roles defaults to true (fail-open for unauthenticated dev/test)
-      expect(RoleVisibility.canCreate({}), isTrue);
+      // Unknown identity/roles must not expose write actions.
+      expect(RoleVisibility.canCreate({}), isFalse);
     });
 
     test('canApprove: correct permission per role', () {
@@ -45,8 +45,8 @@ void main() {
       expect(RoleVisibility.canApprove({'staff', 'approver'}), isTrue);
       expect(RoleVisibility.canApprove({'auditor', 'checker'}), isTrue);
 
-      // Empty roles defaults to true
-      expect(RoleVisibility.canApprove({}), isTrue);
+      // Unknown identity/roles must not expose approval actions.
+      expect(RoleVisibility.canApprove({}), isFalse);
     });
 
     test('isAuditorOnly: strictly identifies unprivileged auditors', () {
@@ -119,6 +119,21 @@ void main() {
       expect(RoleVisibility.canManageCatalog({'staff'}), isFalse);
       expect(RoleVisibility.canManageCatalog({'auditor'}), isFalse);
       expect(RoleVisibility.canManageCatalog({'approver'}), isFalse);
+      expect(RoleVisibility.canManageCatalog({}), isFalse);
+    });
+
+    test('sensitive actions fail closed when the session or roles are missing', () {
+      expect(RoleVisibility.isAdminUser(null), isFalse);
+      expect(RoleVisibility.canPostCashAdjustment(null), isFalse);
+
+      const noRoleUser = AppUser(
+        id: 'u_no_role',
+        username: 'no_role',
+        displayName: 'No Role',
+        roles: [],
+      );
+      expect(RoleVisibility.isAdminUser(noRoleUser), isFalse);
+      expect(RoleVisibility.canPostCashAdjustment(noRoleUser), isFalse);
     });
 
     test('canManageEmployees: only for admin roles or authorized email/username', () {
