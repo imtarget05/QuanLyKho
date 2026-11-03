@@ -47,14 +47,13 @@ class RoleVisibility {
 
   /// Được tạo/gửi phiếu (Yêu cầu + Tích hợp staging).
   static bool canCreate(Set<String> roles) =>
-      roles.isEmpty || roles.intersection(_creators).isNotEmpty;
+      roles.intersection(_creators).isNotEmpty;
 
   /// Được duyệt phiếu (Hộp thư duyệt).
   static bool canApprove(Set<String> roles) =>
-      roles.isEmpty || roles.intersection(_approvers).isNotEmpty;
+      roles.intersection(_approvers).isNotEmpty;
 
   static bool canManageCatalog(Set<String> roles) =>
-      roles.isEmpty ||
       roles.contains('admin') ||
       roles.contains('root_admin') ||
       roles.contains('inventory_manager');
@@ -68,7 +67,7 @@ class RoleVisibility {
 
   /// Kiểm tra xem user có phải là Quản lý / Admin hay không.
   static bool isAdminUser(AppUser? user) {
-    if (user == null) return true; // dev default
+    if (user == null) return false;
     final roles = rolesOf(user);
     return isAdmin(roles) || canManageEmployees(user);
   }
@@ -143,14 +142,12 @@ class RoleVisibility {
   /// Nguồn sự thật là capability `cash:post_adjustment` trả về từ backend
   /// (đã nằm sẵn trong `AppUser.capabilities` của auth store) — không chế
   /// hệ thống quyền mới. Khi server đã trả danh sách capability thì tin
-  /// chính xác danh sách đó; chỉ khi danh sách rỗng (chưa rõ) mới fallback
-  /// theo vai trò để phiên offline/dev vẫn dùng được.
+  /// chính xác danh sách đó; chỉ khi danh sách rỗng mới fallback theo vai trò.
   static bool canPostCashAdjustment(AppUser? user) {
-    if (user == null) return true; // dev default
+    if (user == null) return false;
     final caps = user.capabilities.map((e) => e.toLowerCase()).toSet();
     if (caps.isNotEmpty) return caps.contains(cashPostAdjustmentCapability);
     final roles = rolesOf(user);
-    if (roles.isEmpty) return true;
     return roles.intersection(_cashAdjustmentRoles).isNotEmpty;
   }
 
