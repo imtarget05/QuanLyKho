@@ -1,0 +1,19 @@
+UTC 2026-11-04T15:02:00.693172+00:00
+environment Cloudflare Pages Preview
+deployment_id e7d10857-4c58-4525-be79-3c1ac9a39841
+source_sha 2f976dd55ed6e183d70d602f5bda08229523b006
+url https://e7d10857.quan-ly-kho-tra-sua.pages.dev
+expected HTTP 200 for entry/runtime/manifest; manifest SHA matches source
+GET /: HTTP 200, bytes=11312
+GET /flutter_bootstrap.js: HTTP 200, bytes=13091
+GET /main.dart.js: HTTP 200, bytes=5301508
+GET /assets/AssetManifest.json: HTTP 200, bytes=11312 (SPA fallback, not a valid asset; excluded from PASS)
+GET /assets/AssetManifest.bin.json: HTTP 200, bytes=542
+GET /assets/FontManifest.json: HTTP 200, bytes=82
+GET /release-manifest.json: HTTP 200, bytes=221
+manifest_sha_match True
+manifest_mode offline-synthetic-demo
+manifest_api_release None
+browser: preview landing showed illustrative-data label; Demo button opened commerce workspace; synthetic/no-API banner visible
+production: Wrangler list still showed Production main source 2ea8fae
+result: preview frontend PASS; 21 cloud MVP journeys remain OPEN
