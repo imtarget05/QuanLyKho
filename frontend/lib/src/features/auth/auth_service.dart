@@ -580,8 +580,9 @@ class AuthService extends ChangeNotifier {
         if (!r.contains('admin')) r.add('admin');
         final c = List<String>.from((u['capabilities'] as List?) ?? []);
         if (!c.contains('iam:admin')) c.add('iam:admin');
-        if (!c.contains('admin:user_management'))
+        if (!c.contains('admin:user_management')) {
           c.add('admin:user_management');
+        }
         u['roles'] = r;
         u['capabilities'] = c;
       }

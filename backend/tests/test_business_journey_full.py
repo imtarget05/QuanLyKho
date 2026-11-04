@@ -179,6 +179,81 @@ def test_fefo_outbound_classification(client):
     )
 
 
+def test_spoilage_requires_reason_and_posts_inventory_movement(client):
+    """Damaged ingredients require a reason and reduce stock only after approval."""
+    maker = _login(client, "demo_maker")
+    checker = _login(client, "demo_checker")
+
+    sku = f"SPOILAGE-{uuid.uuid4().hex[:8].upper()}"
+    created_item = _h(client, "POST", "/inventory/items", token=checker, json={
+        "sku": sku,
+        "name": f"Trà hỏng {sku}",
+        "unit": "Hộp",
+        "selling_price": "50000",
+    })
+    assert created_item.status_code == 201, created_item.text
+    item_id = created_item.json()["id"]
+
+    locations = _h(client, "GET", "/inventory/locations", token=maker).json()["locations"]
+    location_id = next(
+        (row for row in locations if row["code"] == "BAR-MAIN"), locations[0]
+    )["id"]
+
+    missing_reason = _h(client, "POST", "/inventory/requests", token=maker, json={
+        "kind": "issue",
+        "sub_kind": "spoilage",
+        "source_id": location_id,
+        "lines": [{"item_id": item_id, "quantity": "1"}],
+    })
+    assert missing_reason.status_code == 422, missing_reason.text
+    assert missing_reason.json()["error"]["code"] == "MISSING_REASON"
+
+    receipt = _h(client, "POST", "/inventory/requests", token=maker, json={
+        "kind": "receipt",
+        "dest_id": location_id,
+        "supplier": "NCC kiểm thử spoilage",
+        "lines": [{
+            "item_id": item_id,
+            "quantity": "5",
+            "unit_price": "12000",
+            "lot_no": f"LOT-{sku}",
+            "expiry_date": (date.today() + timedelta(days=30)).isoformat(),
+        }],
+    })
+    assert receipt.status_code == 201, receipt.text
+    receipt_id = receipt.json()["id"]
+    assert _h(client, "POST", f"/inventory/requests/{receipt_id}/submit", token=maker).status_code == 200
+    assert _h(client, "POST", f"/inventory/requests/{receipt_id}/approve", token=checker).status_code == 200
+
+    before = fetch_all_balances(client, maker, params={"location_id": location_id})
+    before_qty = sum(
+        float(row["quantity"]) for row in before if str(row["item_id"]) == item_id
+    )
+    spoilage = _h(client, "POST", "/inventory/requests", token=maker, json={
+        "kind": "issue",
+        "sub_kind": "spoilage",
+        "source_id": location_id,
+        "reason": "Nguyên liệu bị hỏng trong ca",
+        "lines": [{"item_id": item_id, "quantity": "2"}],
+    })
+    assert spoilage.status_code == 201, spoilage.text
+    spoilage_id = spoilage.json()["id"]
+    assert _h(client, "POST", f"/inventory/requests/{spoilage_id}/submit", token=maker).status_code == 200
+    posted = _h(client, "POST", f"/inventory/requests/{spoilage_id}/approve", token=checker)
+    assert posted.status_code == 200, posted.text
+
+    movements = _h(
+        client, "GET", f"/inventory/movements?request_id={spoilage_id}", token=maker
+    ).json()["movements"]
+    assert len(movements) == 1
+    assert float(movements[0]["quantity_signed"]) == -2.0
+    after = fetch_all_balances(client, maker, params={"location_id": location_id})
+    after_qty = sum(
+        float(row["quantity"]) for row in after if str(row["item_id"]) == item_id
+    )
+    assert after_qty == before_qty - 2.0
+
+
 # ──────────────────────────────────────────────
 # Test: 3 — Shift stocktake open/close cycle
 # ──────────────────────────────────────────────

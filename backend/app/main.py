@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.errors import register_error_handlers
 from app.api.middleware.correlation import CorrelationIdMiddleware
+from app.api.middleware.idempotency import IdempotencyMiddleware
 from app.api.observability import configure_metrics
 from app.api.openapi import custom_openapi
 from app.api.request_context import correlation_id_var, request_id_var
@@ -120,6 +121,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Correlation-ID"],
 )
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(IdempotencyMiddleware)
 instrument_fastapi(app, tracer_provider=tracer_provider)
 
 # --- Error envelope docs/06:44 -----------------------------------------------

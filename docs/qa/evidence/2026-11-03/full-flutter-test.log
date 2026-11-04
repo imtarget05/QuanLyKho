@@ -1,0 +1,375 @@
+00:00 +0: loading /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart
+00:00 +0: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:07 +1: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:08 +2: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:10 +3: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:12 +4: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:13 +5: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:13 +6: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:13 +7: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:14 +8: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_add_new_admin_flow_test.dart: Admin provisions new Administrator with email mainguyenbinhtan2005@gmail.com via email invite flow
+00:15 +9: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/streamline_and_sop_admin_test.dart: 3. AI Assistant Khai Non-Modal & Structured SOP responses AiAssistantDialog opens as bottom sheet and local SOP resolver answers Maker-Checker
+00:15 +10: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/streamline_and_sop_admin_test.dart: 3. AI Assistant Khai Non-Modal & Structured SOP responses AiAssistantDialog opens as bottom sheet and local SOP resolver answers Maker-Checker
+00:15 +11: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_edge_cases_test.dart: ReportsScreen handles zero/empty consumption top list
+00:15 +12: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_edge_cases_test.dart: ReportsScreen handles zero/empty consumption top list
+00:15 +13: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_edge_cases_test.dart: ReportsScreen handles zero/empty consumption top list
+00:16 +14: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_edge_cases_test.dart: ReportsScreen handles zero/empty shift history
+00:16 +15: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_edge_cases_test.dart: ReportsScreen handles reconciliation tab with no runs
+00:17 +16: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +17: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +18: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +19: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +20: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +21: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +22: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:21 +23: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/denomination_dialog_test.dart: DenominationBreakdownDialog calculates total and returns DenominationResult
+00:23 +24: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_chart_test.dart: ReportsScreen renders inventory/cashflow charts, toggles daily/monthly, and shows stagnation
+00:25 +25: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_chart_test.dart: ReportsScreen renders inventory/cashflow charts, toggles daily/monthly, and shows stagnation
+00:25 +26: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_chart_test.dart: ReportsScreen renders inventory/cashflow charts, toggles daily/monthly, and shows stagnation
+00:25 +27: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_chart_test.dart: ReportsScreen renders inventory/cashflow charts, toggles daily/monthly, and shows stagnation
+00:28 +28: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:30 +29: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:30 +30: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:30 +31: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:30 +32: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:31 +32: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_message_safety_test.dart: AsyncView error formatting generic transport exception is shown friendly, no URL leaked
+[friendlyError] Exception: ClientException: Failed to fetch, uri=https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1/reports/inventory-daily
+00:32 +33: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:32 +33: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_message_safety_test.dart: AsyncView error formatting ApiException message is preserved (server is the source)
+[friendlyError] ApiException(NOT_FOUND): Phiếu không tồn tại
+00:32 +34: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:32 +34: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_message_safety_test.dart: AsyncView error formatting FormatException message is preserved
+[friendlyError] FormatException: Dữ liệu trả về không hợp lệ
+00:33 +35: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:33 +35: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_message_safety_test.dart: AuthService error formatting network failure does not leak baseUrl or raw exception
+[friendlyError] Exception: ClientException: Failed to fetch, uri=https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1/reports/inventory-daily
+00:33 +36: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:36 +37: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_reports_and_settings_test.dart: CommerceWorkspace renders Settings tab and allows navigating to it
+00:36 +38: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:40 +39: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:40 +40: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:40 +41: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:40 +42: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:40 +43: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +44: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +45: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +46: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +47: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +48: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +49: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +50: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:41 +51: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +52: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +53: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +54: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +55: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +56: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +57: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +58: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +59: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +60: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:47 +61: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:51 +62: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stocktake_offline_draft_and_print_test.dart: Stocktake dialog restores offline draft from SharedPreferences and displays print button
+00:54 +63: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/bulk_approve_test.dart: ApprovalsScreen bulk-select approves all pending items at once
+00:55 +64: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:56 +65: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:56 +66: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:56 +67: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:56 +68: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:56 +69: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:57 +70: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:57 +71: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 422 DIRECT_BALANCE_WRITE_FORBIDDEN -> hiện message tiếng Việt, không crash
+00:57 +72: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_voucher_audit_test.dart: ApprovalPdf AI Audit Stamp Integration Tests ApprovalPdf.encode generates valid PDF with clean AI verification stamp
+00:57 +73: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/cash_balance_adjustment_flow_test.dart: UI — xử lý lỗi có cấu trúc từ backend 403 -> báo rõ thiếu quyền cash:post_adjustment
+00:59 +74: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_voucher_audit_test.dart: AiVoucherAuditDialog UI Tests AiVoucherAuditDialog displays warning report and action buttons
+01:01 +75: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:02 +76: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:02 +77: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:02 +78: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:02 +79: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:08 +80: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:20 +81: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:20 +82: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:21 +83: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:22 +84: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:22 +85: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:23 +86: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:23 +87: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:25 +88: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:26 +89: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:26 +90: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:26 +91: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:26 +92: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:27 +93: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/tea_srs_features_test.dart: InventoryScreen renders Expiry Alert Banner and 10-column Stocktake Table with touch +/- controls
+01:28 +94: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/import_items_catalog_test.dart: Tab 2 parses pasted CSV text and imports items
+01:31 +95: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/import_items_catalog_test.dart: Tab 2 parses pasted CSV text and imports items
+01:35 +96: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/mobile_viewport_audit_test.dart: Milestone M2 - Mobile Viewport Parity & Responsiveness Audit Overview Page on 375x667 has title width >= 140 and zero overflows
+01:36 +97: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/mobile_viewport_audit_test.dart: Milestone M2 - Mobile Viewport Parity & Responsiveness Audit Overview Page on 375x667 has title width >= 140 and zero overflows
+01:38 +98: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/mobile_viewport_audit_test.dart: Milestone M2 - Mobile Viewport Parity & Responsiveness Audit Overview Page on 375x667 has title width >= 140 and zero overflows
+01:42 +99: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +100: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +101: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +102: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +103: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +104: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +105: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +106: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +107: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +108: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +109: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:42 +110: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:45 +111: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Overview dashboard renders operational KPI cards and formatted numbers
+01:46 +112: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/landing_demo_test.dart: CTA demo opens offline sandbox without login
+01:49 +113: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/landing_demo_test.dart: CTA demo opens offline sandbox without login
+01:49 +114: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/landing_demo_test.dart: CTA demo opens offline sandbox without login
+01:49 +115: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/mobile_viewport_audit_test.dart: Milestone M2 - Mobile Viewport Parity & Responsiveness Audit Inventory and Debt Pages on 375x667 render without nested scroll overflow
+01:50 +116: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:52 +117: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:53 +118: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:53 +119: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:54 +120: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:54 +121: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:55 +122: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:56 +123: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+01:58 +124: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+02:00 +125: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+02:02 +126: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+02:04 +127: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/homepage_subsystem_sync_test.dart: Milestone M1 - Homepage Revamp & Operational KPI Cards Quick-action subsystem launch tiles directly on homepage navigate into all 7 subsystems
+02:05 +128: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:05 +129: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:05 +130: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:08 +131: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:08 +132: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:09 +133: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/widget_test.dart: AppShell renders navigation and dashboard
+02:11 +134: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/shift_stocktake_desk_test.dart: counter desk shows all shifts and reconciliation columns
+02:12 +135: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/shift_stocktake_desk_test.dart: counter desk shows all shifts and reconciliation columns
+02:12 +136: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:12 +137: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:12 +138: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:14 +139: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:16 +140: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:18 +141: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:18 +142: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:19 +143: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:20 +144: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:28 +145: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_levels_and_stocktake_test.dart: InventoryScreen displays low stock alerts and allows stocktaking workflow
+02:29 +146: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/requests_autocomplete_test.dart: Stock reason field shows autocomplete suggestions and lets user pick one
+02:29 +147: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/requests_autocomplete_test.dart: Stock reason field shows autocomplete suggestions and lets user pick one
+02:29 +148: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_price_permission_test.dart: Role-Based Price Protection & Reset Data Tests Admin user can see selling price, cost price, and total valuation
+02:29 +149: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_price_permission_test.dart: Role-Based Price Protection & Reset Data Tests Admin user can see selling price, cost price, and total valuation
+02:30 +150: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_price_permission_test.dart: Role-Based Price Protection & Reset Data Tests Admin user can see selling price, cost price, and total valuation
+02:31 +151: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/requests_autocomplete_test.dart: Inventory adjustment reason field shows autocomplete suggestions and lets user pick one
+02:31 +152: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_price_permission_test.dart: Role-Based Price Protection & Reset Data Tests Non-admin user (staff) sees masked prices and cannot see total valuation
+02:33 +153: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_price_permission_test.dart: Role-Based Price Protection & Reset Data Tests Non-admin user (staff) sees masked prices and cannot see total valuation
+02:34 +154: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_adversarial_test.dart: Adversarial Viewport Stress Tests (320px, 375px, 390px, 414px) PASSES: Viewport 375.0x667.0 adapts cleanly without overflow
+02:34 +155: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_adversarial_test.dart: Adversarial Viewport Stress Tests (320px, 375px, 390px, 414px) PASSES: Viewport 375.0x667.0 adapts cleanly without overflow
+02:35 +156: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:35 +157: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:35 +158: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:35 +159: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:35 +160: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:35 +161: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:36 +162: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:37 +163: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:37 +164: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/global_search_test.dart: Global search finds seeded items and returns target tab
+02:38 +165: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_adversarial_test.dart: Adversarial Viewport Stress Tests (320px, 375px, 390px, 414px) PASSES: CommerceWorkspace at 320px adapts cleanly without overflow in AdminPromotionBanner
+02:39 +166: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_adversarial_test.dart: Adversarial Viewport Stress Tests (320px, 375px, 390px, 414px) PASSES: CommerceWorkspace at 320px adapts cleanly without overflow in AdminPromotionBanner
+02:39 +167: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:39 +168: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:39 +169: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:39 +170: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:39 +171: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +172: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +173: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +174: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +175: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +176: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +177: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +178: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +179: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +180: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +181: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +182: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +183: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +184: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:41 +185: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:42 +186: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:42 +187: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:42 +188: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:42 +189: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/root_role_update_test.dart: self root-only role update does not reuse a revoked token for scopes
+02:43 +190: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_adversarial_test.dart: Draft Resilience & pauseCountdown Safety Stress Tests ANALYSIS: CommerceWorkspace mounts AdminPromotionBanner without pauseCountdown parameter
+02:43 +191: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:43 +192: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:44 +193: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:45 +194: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:45 +195: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:45 +196: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/sidebar_breadcrumb_test.dart: Sidebar renders multi-level navigation with collapsible state
+02:48 +197: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_risk_dual_control_test.dart: AI Copilot risk assessment modal displays score, rules and audit stamp
+02:48 +197: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_text_test.dart: friendlyError — không lộ URL/exception nội bộ giữ nguyên message có chủ đích của server
+[friendlyError] ApiException(VALIDATION): Số tiền vượt hạn mức quầy
+[friendlyError] FormatException: Cú pháp JSON không hợp lệ
+02:48 +198: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_risk_dual_control_test.dart: AI Copilot risk assessment modal displays score, rules and audit stamp
+02:48 +198: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_text_test.dart: friendlyError — không lộ URL/exception nội bộ che transport exception (chứa URI nội bộ)
+[friendlyError] Exception: ClientException: Failed to fetch, uri=https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1/inventory/items
+02:48 +199: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_risk_dual_control_test.dart: AI Copilot risk assessment modal displays score, rules and audit stamp
+02:48 +199: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/error_text_test.dart: friendlyError — không lộ URL/exception nội bộ che null và lỗi lạ
+[friendlyError] null
+[friendlyError] boom
+02:48 +200: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/ai_risk_dual_control_test.dart: AI Copilot risk assessment modal displays score, rules and audit stamp
+02:50 +201: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:51 +202: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:52 +203: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:52 +204: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:53 +205: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:53 +206: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:55 +207: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:55 +208: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:55 +209: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:55 +210: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_item_detail_and_price_toggle_test.dart: Inventory spreadsheet renders 30 items, supports price toggle and clicking row opens detail sheet
+02:58 +211: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: AppShell dynamically switches navigation tab labels between VI and EN without restart
+03:04 +212: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: AppShell dynamically switches navigation tab labels between VI and EN without restart
+03:06 +213: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: AppShell dynamically switches navigation tab labels between VI and EN without restart
+03:07 +214: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: AppShell dynamically switches navigation tab labels between VI and EN without restart
+03:08 +215: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: mobile workspace keeps the main business pages usable
+03:08 +216: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: mobile workspace keeps the main business pages usable
+03:09 +217: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: multiline_receipt_adds_lines_and_calculates_total
+03:09 +218: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: multiline_receipt_adds_lines_and_calculates_total
+03:10 +219: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: ReportsScreen dynamically translates headers and all 7 tabs between VI and EN
+03:10 +220: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/i18n_language_switch_test.dart: ReportsScreen dynamically translates headers and all 7 tabs between VI and EN
+03:11 +221: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: mobile approval cards fit and keep both actions visible
+03:11 +222: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: spoilage_outbound_requires_reason
+03:12 +223: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: spoilage_outbound_requires_reason
+03:12 +224: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: spoilage_outbound_requires_reason
+03:12 +225: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: spoilage_outbound_requires_reason
+03:12 +226: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: empty workspace exposes simple commerce sections and RAM setup
+03:14 +227: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: empty workspace exposes simple commerce sections and RAM setup
+03:15 +228: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/pwa_install_and_ios_guide_test.dart: PWA Install & Simplified Background Install Tests Settings screen renders streamlined 1-click install card with QR code, hides manual guides
+03:15 +229: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/pwa_install_and_ios_guide_test.dart: PWA Install & Simplified Background Install Tests Settings screen renders streamlined 1-click install card with QR code, hides manual guides
+03:16 +230: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/pwa_install_and_ios_guide_test.dart: PWA Install & Simplified Background Install Tests Settings screen renders streamlined 1-click install card with QR code, hides manual guides
+03:16 +231: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: live read-only capabilities hide all write actions
+03:16 +232: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/stock_multiline_and_kinds_dialog_test.dart: quick_stepper_and_reason_chips_update_inputs
+03:16 +233: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_test.dart: AdminPromotionBanner Widget & Lifecycle Test Suite Test 2: Tapping btn-admin-promoted-refresh calls onRefresh immediately and cancels timer
+03:16 +234: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/pwa_install_and_ios_guide_test.dart: PWA Install & Simplified Background Install Tests Small mobile screen layout (360px) does not overflow or wrap words awkwardly
+03:17 +235: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: desktop exposes approval only to approvers
+03:17 +236: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: desktop exposes approval only to approvers
+03:17 +237: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: desktop exposes approval only to approvers
+03:17 +238: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: desktop exposes approval only to approvers
+03:17 +239: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/commerce_workspace_test.dart: desktop exposes approval only to approvers
+03:17 +240: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_test.dart: AdminPromotionBanner Widget & Lifecycle Test Suite Test 6: Role promotion unlock: after refresh, RoleVisibility.isAdmin == true, userRoleLabel == Chủ Quán (Admin), and Reports, Approvals, RBAC unlock
+03:18 +241: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_test.dart: AdminPromotionBanner Widget & Lifecycle Test Suite Test 6: Role promotion unlock: after refresh, RoleVisibility.isAdmin == true, userRoleLabel == Chủ Quán (Admin), and Reports, Approvals, RBAC unlock
+03:21 +242: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_test.dart: AdminPromotionBanner Widget & Lifecycle Test Suite Test 6: Role promotion unlock: after refresh, RoleVisibility.isAdmin == true, userRoleLabel == Chủ Quán (Admin), and Reports, Approvals, RBAC unlock
+03:22 +243: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:22 +244: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:22 +245: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:23 +246: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:26 +247: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:26 +248: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:26 +249: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:26 +250: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:26 +251: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +252: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +253: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +254: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +255: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +256: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +257: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +258: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +259: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +260: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +261: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +262: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +262: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/auth_offline_fallback_test.dart: LOW: 401/403 + FormatException khong fallback FormatException khong fallback offline
+[friendlyError] FormatException: bad body
+03:27 +263: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +264: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:27 +265: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:28 +266: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can delete a single item with confirmation dialog
+03:29 +267: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/auth_offline_fallback_test.dart: HIGH #2b: login banner consume needsOfflineRelogin banner hien khi co set + nut Dang nhap lai clear co
+03:30 +268: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/auth_offline_fallback_test.dart: HIGH #2b: login banner consume needsOfflineRelogin banner hien khi co set + nut Dang nhap lai clear co
+03:30 +269: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +270: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +271: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +272: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +273: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +274: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:31 +275: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/inventory_shift_tabs_and_more_menu_test.dart: AppShell "Chọn màn" more menu opens DraggableScrollableSheet with full scrollable list
+03:32 +276: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Confirmation dialog shows warning when item has stock > 0
+03:32 +277: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Confirmation dialog shows warning when item has stock > 0
+03:32 +278: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Confirmation dialog shows warning when item has stock > 0
+03:32 +279: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests Tapping sidebar bottom profile tile navigates to Settings and does NOT sign out immediately
+03:35 +280: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests Tapping sidebar bottom profile tile navigates to Settings and does NOT sign out immediately
+03:35 +281: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests Tapping sidebar bottom profile tile navigates to Settings and does NOT sign out immediately
+03:36 +282: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests Tapping sidebar bottom profile tile navigates to Settings and does NOT sign out immediately
+03:36 +283: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can toggle batch selection mode, select all, and batch delete
+03:36 +284: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can toggle batch selection mode, select all, and batch delete
+03:36 +285: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can toggle batch selection mode, select all, and batch delete
+03:36 +286: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can toggle batch selection mode, select all, and batch delete
+03:36 +287: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/delete_inventory_item_test.dart: Manager can toggle batch selection mode, select all, and batch delete
+03:36 +288: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests CommerceWorkspace bottom nav bar uses storefront and shopping_bag icons
+03:37 +289: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/user_sync_and_header_icons_test.dart: User Profile Sync, Role Priority & Sidebar Access Tests CommerceWorkspace bottom nav bar uses storefront and shopping_bag icons
+03:38 +290: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/request_timeline_test.dart: RequestsScreen history button opens timeline sheet
+03:38 +291: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_m3_stress_test.dart: Empirical Challenge: Timer Cancellation & Stress Lifecycle CHALLENGE 6: Rapid unmount and remount stress (50 cycles) leaves zero orphaned timers
+03:38 +292: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_m3_stress_test.dart: Empirical Challenge: Timer Cancellation & Stress Lifecycle CHALLENGE 6: Rapid unmount and remount stress (50 cycles) leaves zero orphaned timers
+03:39 +293: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_m3_stress_test.dart: Empirical Challenge: Timer Cancellation & Stress Lifecycle CHALLENGE 6: Rapid unmount and remount stress (50 cycles) leaves zero orphaned timers
+03:39 +294: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_m3_stress_test.dart: Empirical Challenge: Timer Cancellation & Stress Lifecycle CHALLENGE 7: Rapidly toggling pauseCountdown 30 times does not duplicate timer ticks
+03:40 +295: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen denies access when user lacks IAM admin capability
+03:40 +296: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen denies access when user lacks IAM admin capability
+03:42 +297: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/rbac_test.dart: RBAC - Maker/Checker Inventory Flow Maker can access inventory screen
+03:43 +298: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/rbac_test.dart: RBAC - Maker/Checker Inventory Flow Maker can access inventory screen
+03:43 +299: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/rbac_test.dart: RBAC - Maker/Checker Inventory Flow Maker can access inventory screen
+03:43 +300: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: LoginScreen Redesign Tests LoginScreen inputs start empty and demo chips are removed
+03:44 +301: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: LoginScreen Redesign Tests LoginScreen inputs start empty and demo chips are removed
+03:44 +302: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: LoginScreen Redesign Tests LoginScreen inputs start empty and demo chips are removed
+03:44 +303: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: LoginScreen Redesign Tests LoginScreen inputs start empty and demo chips are removed
+03:44 +304: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:44 +305: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:45 +306: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:45 +307: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:45 +308: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:46 +309: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/iam_admin_screen_test.dart: EmployeeManagementScreen displays employees, stats, and creates new employee
+03:46 +310: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePasswordDialog Tests Validates inputs and calls repository on valid submission
+03:46 +311: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePasswordDialog Tests Validates inputs and calls repository on valid submission
+03:46 +312: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePasswordDialog Tests Validates inputs and calls repository on valid submission
+03:46 +313: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/rbac_test.dart: RBAC - Cross-branch Access Control (403) Staff in branch B only sees branch B reports data
+03:47 +314: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/avatar_and_streamline_fixes_test.dart: 3. AvatarEditorSheet Component Tests Displays options to upload from device, email, and presets
+03:47 +315: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/avatar_and_streamline_fixes_test.dart: 3. AvatarEditorSheet Component Tests Displays options to upload from device, email, and presets
+03:47 +316: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/avatar_and_streamline_fixes_test.dart: 3. AvatarEditorSheet Component Tests Displays options to upload from device, email, and presets
+03:47 +317: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/avatar_and_streamline_fixes_test.dart: 3. AvatarEditorSheet Component Tests Displays options to upload from device, email, and presets
+03:47 +318: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/avatar_and_streamline_fixes_test.dart: 3. AvatarEditorSheet Component Tests Displays options to upload from device, email, and presets
+03:47 +319: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePinDialog Tests Validates 6-digit PIN and calls repository on valid submission
+03:47 +320: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePinDialog Tests Validates 6-digit PIN and calls repository on valid submission
+03:47 +321: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: ChangePinDialog Tests Validates 6-digit PIN and calls repository on valid submission
+03:48 +322: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: Meeting Summary & PDF Unit Tests MeetingSummaryFormatter produces structured markdown with all sections
+03:48 +323: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: SettingsScreen Security Options Tests SettingsScreen displays change password and removed change PIN action
+03:48 +324: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/security_settings_test.dart: SettingsScreen Security Options Tests SettingsScreen displays change password and removed change PIN action
+03:49 +325: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:49 +326: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:50 +327: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:50 +328: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:50 +329: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:50 +330: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:50 +331: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:51 +332: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:52 +333: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:52 +334: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/meeting_report_test.dart: ReportsScreen Executive Business UI Tests Renders Executive KPI Deck, opens Voucher Print Modal, and views Report Summary
+03:52 +335: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/dashboard_roles_test.dart: Quick action navigates to approvals tab instead of snackbar
+03:54 +336: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/dashboard_roles_test.dart: Quick action navigates to approvals tab instead of snackbar
+03:54 +337: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_layout_and_settings_copy_test.dart: Báo cáo scroll toàn trang thay vì giữ header cố định
+03:55 +338: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_layout_and_settings_copy_test.dart: Báo cáo scroll toàn trang thay vì giữ header cố định
+03:55 +339: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_layout_and_settings_copy_test.dart: Báo cáo scroll toàn trang thay vì giữ header cố định
+03:55 +340: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/reports_layout_and_settings_copy_test.dart: Báo cáo scroll toàn trang thay vì giữ header cố định
+03:56 +341: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_challenger_m3_2_test.dart: Challenger M3-2: AdminPromotionBanner Lifecycle & Timer Leak Safety Stress 1: Rapid 50x mount and immediate dispose without timer leak or unhandled exception
+03:56 +342: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_challenger_m3_2_test.dart: Challenger M3-2: AdminPromotionBanner Lifecycle & Timer Leak Safety Stress 1: Rapid 50x mount and immediate dispose without timer leak or unhandled exception
+03:56 +343: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_challenger_m3_2_test.dart: Challenger M3-2: AdminPromotionBanner Lifecycle & Timer Leak Safety Stress 1: Rapid 50x mount and immediate dispose without timer leak or unhandled exception
+03:57 +344: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_challenger_m3_2_test.dart: Challenger M3-2: AdminPromotionBanner Lifecycle & Timer Leak Safety Stress 1: Rapid 50x mount and immediate dispose without timer leak or unhandled exception
+03:57 +345: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/admin_promotion_banner_challenger_m3_2_test.dart: Challenger M3-2: AdminPromotionBanner Lifecycle & Timer Leak Safety Stress 1: Rapid 50x mount and immediate dispose without timer leak or unhandled exception
+03:58 +346: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +347: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +348: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +349: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +350: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +351: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +352: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlStudioScreen renders tabs, pipelines, and creates new connection
+03:58 +353: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlRunScreen loads pipeline, allows JSON payload and triggers staging
+03:58 +354: /Users/mainguyenbinhtan/Downloads/QuanLyKho/frontend/test/etl_studio_screen_test.dart: EtlReviewScreen displays staging details, Single-Admin Override badge and post button
+03:59 +355: All tests passed!

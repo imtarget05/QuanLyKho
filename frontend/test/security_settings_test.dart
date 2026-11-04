@@ -670,9 +670,17 @@ void main() {
       await tester.pumpWidget(
         RepositoryScope(
           repository: fakeRepo,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: ApprovalsScreen()),
+          child: SessionScope(
+            user: const AppUser(
+              id: 'security-checker',
+              username: 'security_checker',
+              displayName: 'Security Checker',
+              roles: ['admin'],
+            ),
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: ApprovalsScreen()),
+            ),
           ),
         ),
       );

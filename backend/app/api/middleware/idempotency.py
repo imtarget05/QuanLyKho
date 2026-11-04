@@ -86,6 +86,16 @@ class IdempotencyMiddleware:
         request = Request(scope, receive)
         method = request.method
         key = (request.headers.get("idempotency-key") or "").strip()
+        # Route handlers also use the durable store, often hashing their
+        # normalized business operation instead of the raw HTTP body. The HTTP
+        # replay key needs its own namespace and identity context: otherwise a
+        # second bearer token could receive the first actor's cached response.
+        # Hash the composite to fit the durable key column and avoid storing a
+        # credential in that column.
+        replay_scope = "\n".join(
+            (method, scope["path"], request.headers.get("authorization", ""), key)
+        )
+        middleware_key = "http:" + hashlib.sha256(replay_scope.encode("utf-8")).hexdigest()
 
         is_write = method in _WRITE_METHODS and bool(key)
         body_hash: str | None = None
@@ -108,7 +118,7 @@ class IdempotencyMiddleware:
             else:
                 body_hash = idempotency.payload_hash(_parse_body(body))
                 try:
-                    cached = idempotency.check(key, body_hash)
+                    cached = idempotency.check(middleware_key, body_hash)
                 except idempotency.IdempotencyConflict:
                     request_id = request.headers.get("x-request-id", "")
                     await _send_json(
@@ -158,7 +168,7 @@ class IdempotencyMiddleware:
                     response_body = body_bytes.decode("utf-8", errors="replace")
             else:
                 response_body = {}
-            idempotency.remember(None, key, body_hash or "", status, response_body or {})
+            idempotency.remember(None, middleware_key, body_hash or "", status, response_body or {})
 
 
 class _ResponseCapture:

@@ -1,11 +1,19 @@
 import 'package:kho_tra_sua/src/app/app_shell.dart';
 import 'package:kho_tra_sua/src/core/theme/app_theme.dart';
+import 'package:kho_tra_sua/src/data/models/dtos.dart';
 import 'package:kho_tra_sua/src/data/repositories/fake_repository.dart';
 import 'package:kho_tra_sua/src/features/approvals/approvals_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const checker = AppUser(
+    id: 'bulk-approver',
+    username: 'bulk_approver',
+    displayName: 'Bulk Approver',
+    roles: ['admin'],
+  );
+
   testWidgets(
     'ApprovalsScreen bulk-select approves all pending items at once',
     (WidgetTester tester) async {
@@ -17,9 +25,12 @@ void main() {
       await tester.pumpWidget(
         RepositoryScope(
           repository: repo,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: ApprovalsScreen()),
+          child: SessionScope(
+            user: checker,
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: ApprovalsScreen()),
+            ),
           ),
         ),
       );
@@ -71,9 +82,12 @@ void main() {
       await tester.pumpWidget(
         RepositoryScope(
           repository: repo,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: ApprovalsScreen()),
+          child: SessionScope(
+            user: checker,
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: ApprovalsScreen()),
+            ),
           ),
         ),
       );

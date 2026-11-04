@@ -367,7 +367,13 @@ async def run_job_with_retry(session: AsyncSession, claimed_job: Job) -> bool:
 
 
 async def dispatch_outbox(session: AsyncSession) -> int:
-    """Materialize unpublished outbox rows as durable activity events once."""
+    """Publish and materialize unpublished outbox rows with at-least-once delivery."""
+    from app.config import settings
+    from app.services.kafka_publisher import KafkaOutboxPublisher
+
+    publisher = KafkaOutboxPublisher(
+        environment="test" if settings.is_demo_mode else settings.app_env,
+    )
     statement = (
         select(OutboxEvent)
         .where(OutboxEvent.published_at.is_(None))
@@ -379,23 +385,27 @@ async def dispatch_outbox(session: AsyncSession) -> int:
     if not events:
         return 0
 
-    now = _utcnow()
-    for event in events:
-        session.add(
-            ActivityEvent(
-                id=uuid.uuid4(),
-                type=event.event_type,
-                subject=event.aggregate_id,
-                message_key=event.event_type,
-                payload=(event.payload_json if isinstance(event.payload_json, dict) else {}),
-                occurred_at=now,
-                outbox_event_id=event.id,
+    try:
+        now = _utcnow()
+        for event in events:
+            await publisher.publish(event)
+            session.add(
+                ActivityEvent(
+                    id=uuid.uuid4(),
+                    type=event.event_type,
+                    subject=event.aggregate_id,
+                    message_key=event.event_type,
+                    payload=(event.payload_json if isinstance(event.payload_json, dict) else {}),
+                    occurred_at=now,
+                    outbox_event_id=event.id,
+                )
             )
-        )
-        event.attempts = (event.attempts or 0) + 1
-        event.published_at = now
-    await session.commit()
-    return len(events)
+            event.attempts = (event.attempts or 0) + 1
+            event.published_at = now
+        await session.commit()
+        return len(events)
+    finally:
+        await publisher.close()
 
 
 async def poll_once(session: AsyncSession) -> dict[str, str | int | None]:

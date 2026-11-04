@@ -7,17 +7,25 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.auth_utils import (
     get_accessible_cashbox_ids,
     get_accessible_location_ids,
+    get_user_capabilities,
     require_any_capability,
 )
 from app.database import get_db
 from app.models.cash_sim import CashEntry, CashJournal, CashRequest
-from app.models.inventory import Balance, InventoryRequest, Item, Movement
+from app.models.inventory import (
+    Balance,
+    InventoryJournal,
+    InventoryRequest,
+    Item,
+    Movement,
+)
+from app.models.ledger import ChartOfAccounts, GeneralLedgerEntry, GeneralLedgerJournal
 
 router = APIRouter()
 
@@ -28,6 +36,13 @@ _READ_CAPS = (
     "cash:reconcile",
     "audit:view",
     "approval:view_inbox",
+)
+_GENERAL_LEDGER_READ_CAPS = (
+    "inventory:view_balances",
+    "inventory:manage_catalog",
+    "cash:view_balances",
+    "cash:reconcile",
+    "audit:view",
 )
 
 _WATCH_DEFAULT = 30
@@ -676,4 +691,131 @@ async def stagnation(
         "items": out,
         "thresholds": {"watch": watch_days, "stagnant": stagnant_days, "critical": critical_days},
         "simulation": True,
+    }
+
+
+@router.get("/general-ledger")
+async def general_ledger(
+    current_user=Depends(require_any_capability(*_GENERAL_LEDGER_READ_CAPS)),
+    db: AsyncSession = Depends(get_db),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    include_simulation: bool = Query(default=False),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+):
+    """Read-only account totals; simulation journals are excluded by default."""
+    from decimal import Decimal
+
+    from app.api.errors import AppError
+
+    start = _parse_date(date_from, "date_from")
+    end = _parse_date(date_to, "date_to")
+    if start and end and start > end:
+        raise AppError(422, "INVALID_DATE_RANGE", "date_from must not be after date_to")
+
+    capabilities = set(await get_user_capabilities(db, str(current_user.id)))
+    has_audit_access = "audit:view" in capabilities
+    can_view_inventory = has_audit_access or bool(
+        capabilities.intersection(
+            {"inventory:view_balances", "inventory:manage_catalog"}
+        )
+    )
+    can_view_cash = has_audit_access or bool(
+        capabilities.intersection({"cash:view_balances", "cash:reconcile"})
+    )
+    source_conditions = []
+
+    if can_view_inventory:
+        allowed_location_ids = await get_accessible_location_ids(db, current_user)
+        inventory_sources = select(InventoryJournal.id).join(
+            InventoryRequest, InventoryRequest.id == InventoryJournal.request_id
+        )
+        if allowed_location_ids is not None:
+            inventory_sources = inventory_sources.where(
+                or_(
+                    InventoryRequest.source_id.in_(allowed_location_ids),
+                    InventoryRequest.dest_id.in_(allowed_location_ids),
+                )
+            )
+        source_conditions.append(
+            and_(
+                GeneralLedgerJournal.source_type == "inventory",
+                GeneralLedgerJournal.source_journal_id.in_(inventory_sources),
+            )
+        )
+
+    if can_view_cash:
+        allowed_cashbox_ids = await get_accessible_cashbox_ids(db, current_user)
+        cash_sources = select(CashJournal.id).join(
+            CashRequest, CashRequest.id == CashJournal.request_id
+        )
+        if allowed_cashbox_ids is not None:
+            cash_sources = cash_sources.where(
+                CashRequest.cashbox_id.in_(allowed_cashbox_ids)
+            )
+        source_conditions.append(
+            and_(
+                GeneralLedgerJournal.source_type == "cash_simulation",
+                GeneralLedgerJournal.source_journal_id.in_(cash_sources),
+            )
+        )
+
+    stmt = (
+        select(
+            ChartOfAccounts.code,
+            ChartOfAccounts.name,
+            func.sum(GeneralLedgerEntry.debit).label("debit_total"),
+            func.sum(GeneralLedgerEntry.credit).label("credit_total"),
+            ChartOfAccounts.simulation_only,
+        )
+        .join(
+            GeneralLedgerEntry,
+            GeneralLedgerEntry.account_code == ChartOfAccounts.code,
+        )
+        .join(
+            GeneralLedgerJournal,
+            GeneralLedgerJournal.id == GeneralLedgerEntry.journal_id,
+        )
+        .where(
+            or_(*source_conditions) if source_conditions else False
+        )
+        .group_by(
+            ChartOfAccounts.code,
+            ChartOfAccounts.name,
+            ChartOfAccounts.simulation_only,
+        )
+        .order_by(ChartOfAccounts.code)
+        .limit(limit)
+        .offset(offset)
+    )
+    if not include_simulation:
+        stmt = stmt.where(GeneralLedgerJournal.simulation_only.is_(False))
+    if start:
+        stmt = stmt.where(GeneralLedgerJournal.posted_at >= start)
+    if end:
+        stmt = stmt.where(GeneralLedgerJournal.posted_at <= end)
+
+    rows = (await db.execute(stmt)).all()
+    accounts = []
+    for code, name, debit_total, credit_total, simulation_only in rows:
+        debit = Decimal(str(debit_total or 0)).quantize(Decimal("0.01"))
+        credit = Decimal(str(credit_total or 0)).quantize(Decimal("0.01"))
+        accounts.append(
+            {
+                "account_code": code,
+                "name": name,
+                "debit_total": str(debit),
+                "credit_total": str(credit),
+                "balance": str(debit - credit),
+                "simulation_only": bool(simulation_only),
+            }
+        )
+
+    return {
+        "accounts": accounts,
+        "currency": "VND",
+        "includes_simulation": include_simulation,
+        "limit": limit,
+        "offset": offset,
     }

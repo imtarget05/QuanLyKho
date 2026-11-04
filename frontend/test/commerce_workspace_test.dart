@@ -123,7 +123,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(
         store: store,
-        capabilities: {'inventory:view_balances'},
+        capabilities: const {'inventory:view_balances'},
       ),
     ));
 
@@ -155,7 +155,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(
         store: store,
-        capabilities: {'inventory:approve_request'},
+        capabilities: const {'inventory:approve_request'},
       ),
     ));
     expect(find.text('Duyệt phiếu'), findsOneWidget);

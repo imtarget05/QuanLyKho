@@ -223,25 +223,66 @@ _redis_client = None
 _redis_resolved = False
 
 
+def _redis_required() -> bool:
+    return settings.app_env.strip().lower() == "production" and not settings.is_demo_mode
+
+
+def _redis_unavailable(exc: Exception) -> None:
+    logger.warning("Redis rate limiting unavailable (%s)", type(exc).__name__)
+    if _redis_required():
+        raise HTTPException(
+            status_code=503,
+            detail="LOGIN_RATE_LIMIT_UNAVAILABLE",
+        ) from exc
+
+
 def _get_redis_client():
-    """Redis client cho rate limit (None nếu chưa cấu hình `REDIS_URL`)."""
+    """Get the shared Redis client or fail closed in production."""
     global _redis_client, _redis_resolved
     if _redis_resolved:
+        if _redis_client is None and _redis_required():
+            raise HTTPException(status_code=503, detail="LOGIN_RATE_LIMIT_UNAVAILABLE")
         return _redis_client
-    _redis_resolved = True
-    url = (os.environ.get("REDIS_URL") or "").strip()
+    url = (settings.redis_url or os.environ.get("REDIS_URL") or "").strip()
     if not url:
+        _redis_resolved = True
+        if _redis_required():
+            raise HTTPException(status_code=503, detail="LOGIN_RATE_LIMIT_UNAVAILABLE")
         return None
+    if _redis_required() and not url.startswith("rediss://"):
+        raise HTTPException(
+            status_code=503,
+            detail="LOGIN_RATE_LIMIT_REQUIRES_TLS",
+        )
     try:
         import redis
 
         _redis_client = redis.Redis.from_url(
-            url, socket_connect_timeout=0.25, socket_timeout=0.25
+            url,
+            decode_responses=True,
+            socket_connect_timeout=0.25,
+            socket_timeout=0.25,
         )
     except Exception as exc:  # noqa: BLE001 - thiếu client/URL sai -> fallback RAM
-        logger.warning("Không dùng được Redis cho rate limit: %s", exc)
+        _redis_unavailable(exc)
         _redis_client = None
+    _redis_resolved = True
     return _redis_client
+
+
+def assert_redis_ready() -> None:
+    """Require a reachable TLS Redis service before starting production traffic."""
+    if not _redis_required():
+        return
+    url = (settings.redis_url or os.environ.get("REDIS_URL") or "").strip()
+    if not url.startswith("rediss://"):
+        raise RuntimeError("Production requires a TLS-protected REDIS_URL")
+    client = _get_redis_client()
+    try:
+        client.ping()
+    except Exception as exc:  # noqa: BLE001 - driver-specific network errors
+        logger.error("Required Redis readiness check failed (%s)", type(exc).__name__)
+        raise RuntimeError("Required Redis service is unavailable") from exc
 
 
 def _redis_key(rate_key: str) -> str:
@@ -265,7 +306,7 @@ def login_rate_limited(username: str, ip: str | None = None) -> bool:
             count = int(client.get(_redis_key(key)) or 0)
             return count >= settings.rate_limit_login_attempts
         except Exception as exc:  # noqa: BLE001 - Redis lỗi -> fallback RAM
-            logger.warning("Redis rate limit lỗi, fallback RAM: %s", exc)
+            _redis_unavailable(exc)
 
     recent = [t for t in _login_failures.get(key, []) if now - t < window]
     _login_failures[key] = recent
@@ -280,11 +321,20 @@ def record_login_failure(username: str, ip: str | None = None) -> None:
     if client is not None:
         try:
             rkey = _redis_key(key)
-            client.incr(rkey)
-            client.expire(rkey, window)
+            pipeline_factory = getattr(client, "pipeline", None)
+            if callable(pipeline_factory):
+                pipeline = pipeline_factory(transaction=True)
+                pipeline.incr(rkey)
+                pipeline.expire(rkey, window)
+                pipeline.execute()
+            else:
+                # Keep minimal Redis-compatible clients usable in tests and
+                # adapters while real redis-py clients retain atomic batching.
+                client.incr(rkey)
+                client.expire(rkey, window)
             return
         except Exception as exc:  # noqa: BLE001 - Redis lỗi -> fallback RAM
-            logger.warning("Redis rate limit lỗi, fallback RAM: %s", exc)
+            _redis_unavailable(exc)
 
     _login_failures.setdefault(key, []).append(time.time())
 
@@ -299,7 +349,7 @@ def reset_login_failures(username: str, ip: str | None = None) -> None:
         try:
             client.delete(_redis_key(key))
         except Exception as exc:  # noqa: BLE001 - Redis lỗi -> fallback RAM
-            logger.warning("Redis rate limit lỗi, fallback RAM: %s", exc)
+            _redis_unavailable(exc)
 
     if ip is None:
         for stale in [k for k in list(_login_failures) if k.split("|", 1)[0] == user]:
@@ -323,7 +373,7 @@ def login_retry_after_seconds(username: str, ip: str | None = None) -> int:
             if ttl == -1:  # khoá không có TTL -> còn hiệu lực hết window
                 return window
         except Exception as exc:  # noqa: BLE001 - Redis lỗi -> fallback RAM
-            logger.warning("Redis rate limit lỗi, fallback RAM: %s", exc)
+            _redis_unavailable(exc)
 
     failures = _login_failures.get(key, [])
     if not failures:

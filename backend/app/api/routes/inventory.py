@@ -63,6 +63,7 @@ from app.models.inventory import (
 from app.services import idempotency
 from app.services.approval_controls import verify_supervisor_pin
 from app.services.approval_events import broadcast_approval_event
+from app.services.general_ledger import post_subledger_journal
 
 router = APIRouter()
 
@@ -1752,6 +1753,12 @@ async def _post_inventory_journal(
             amount += qty
 
     if amount <= _ZERO:
+        await post_subledger_journal(
+            db,
+            source_type="inventory",
+            source_journal=journal,
+            entries=[],
+        )
         return
 
     entries: list[InventoryEntry] = []
@@ -1783,11 +1790,23 @@ async def _post_inventory_journal(
             entries.append(
                 InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=Decimal("0"), credit=amount)
             )
+            entries.append(
+                InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="632", debit=amount, credit=Decimal("0"))
+            )
         else:
             entries.append(
                 InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="156", debit=amount, credit=Decimal("0"))
             )
+            entries.append(
+                InventoryEntry(id=uuid.uuid4(), journal_id=journal.id, account_code="632", debit=Decimal("0"), credit=amount)
+            )
     db.add_all(entries)
+    await post_subledger_journal(
+        db,
+        source_type="inventory",
+        source_journal=journal,
+        entries=entries,
+    )
 
 
 @router.post("/inventory/requests/{request_id}/approve")
@@ -3550,4 +3569,3 @@ async def reject_stocktake(
         meta={"stocktake_id": str(st.id), "reason": reason},
     )
     return {"id": str(st.id), "status": "open", "version": st.version, "note": st.note}
-

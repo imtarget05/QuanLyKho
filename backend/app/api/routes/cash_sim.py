@@ -25,6 +25,12 @@ from app.models import (
 )
 from app.models.activity import AuditEvent, OutboxEvent
 from app.models.cash_sim import (
+    SIM_CASH_PREFIX as _SIM_CASH_PREFIX,
+)
+from app.models.cash_sim import (
+    SIM_OFFSET_ACCOUNT as _SIM_OFFSET,
+)
+from app.models.cash_sim import (
     CashBalance,
     CashBox,
     CashEntry,
@@ -34,6 +40,7 @@ from app.models.cash_sim import (
 from app.services import idempotency
 from app.services.approval_controls import verify_supervisor_pin
 from app.services.approval_events import broadcast_approval_event
+from app.services.general_ledger import post_subledger_journal
 
 router = APIRouter()
 
@@ -44,8 +51,6 @@ class ApprovalInput(BaseModel):
     supervisor_pin: str | None = Field(default=None, min_length=1, max_length=128)
 
 
-_SIM_CASH_PREFIX = "SIM_CASH:"
-_SIM_OFFSET = "SIM_OFFSET:DEMO"
 _SUBJECT = "cash_request"
 _SUBJECT_BOX = "cash_box"
 
@@ -356,8 +361,17 @@ async def create_cashbox(
         )
         db.add(journal)
         await db.flush()
-        db.add(_cash_entry(journal.id, f"{_SIM_CASH_PREFIX}{box.id}", opening, _ZERO))
-        db.add(_cash_entry(journal.id, _SIM_OFFSET, _ZERO, opening))
+        entries = [
+            _cash_entry(journal.id, f"{_SIM_CASH_PREFIX}{box.id}", opening, _ZERO),
+            _cash_entry(journal.id, _SIM_OFFSET, _ZERO, opening),
+        ]
+        db.add_all(entries)
+        await post_subledger_journal(
+            db,
+            source_type="cash_simulation",
+            source_journal=journal,
+            entries=entries,
+        )
         balance.amount = opening
         balance.version += 1
 
@@ -871,8 +885,14 @@ async def approve_cash_request(
         debit = _cash_entry(journal.id, _SIM_OFFSET, amount, _ZERO)
         credit = _cash_entry(journal.id, f"{_SIM_CASH_PREFIX}{req.cashbox_id}", _ZERO, amount)
 
-    db.add(debit)
-    db.add(credit)
+    entries = [debit, credit]
+    db.add_all(entries)
+    await post_subledger_journal(
+        db,
+        source_type="cash_simulation",
+        source_journal=journal,
+        entries=entries,
+    )
 
     box.amount = (
         Decimal(str(box.amount)) + amount
@@ -1095,7 +1115,14 @@ async def reverse_cash_request(
         credit = _cash_entry(rev_j.id, _SIM_OFFSET, _ZERO, amount)
         box.amount = Decimal(str(box.amount)) + amount
 
-    db.add_all([debit, credit])
+    entries = [debit, credit]
+    db.add_all(entries)
+    await post_subledger_journal(
+        db,
+        source_type="cash_simulation",
+        source_journal=rev_j,
+        entries=entries,
+    )
     box.version += 1
     await _audit(db, user.id, "reverse", rev_req)
     await _outbox(db, "cash_request.reversed", rev_req, {"reversal_of": str(orig_j.id)})

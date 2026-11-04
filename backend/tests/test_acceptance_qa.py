@@ -139,19 +139,23 @@ class TestA1SelfApproval:
 
     def test_admin_also_cannot_self_approve(self, api):
         """docs/00 invariant 1: 'kể cả admin'."""
-        try:
-            a = api.as_user("demo_admin")
-        except pytest.fail.Exception:
-            pytest.skip("seed không tạo user demo_admin -> không kiểm chứng được nhánh admin")
+        a = api.as_user("demo_admin")
         r = a.c.post(
             "/inventory/requests",
             headers={**a.h("demo_admin"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "adjustment", "reason": "admin self", "lines": []},
         )
-        if r.status_code not in (200, 201):
-            pytest.skip(f"admin không tạo được draft: {r.status_code}")
+        assert r.status_code in (200, 201), (
+            f"admin không tạo được draft: {r.status_code} {r.text[:300]}"
+        )
         rid = r.json()["id"]
-        a.c.post(f"/inventory/requests/{rid}/submit", headers=a.h("demo_admin"))
+        submitted = a.c.post(
+            f"/inventory/requests/{rid}/submit", headers=a.h("demo_admin")
+        )
+        assert submitted.status_code in (200, 201), (
+            f"admin không submit được draft: {submitted.status_code} "
+            f"{submitted.text[:300]}"
+        )
         ap = a.c.post(
             f"/inventory/requests/{rid}/approve",
             headers={**a.h("demo_admin"), "Idempotency-Key": str(uuid.uuid4())},
@@ -186,18 +190,9 @@ class TestA2ConcurrentApprove:
         checkers = ["demo_checker", "demo_approver2"]
         headers_list = []
         for c in checkers:
-            try:
-                api.login(c)
-            except pytest.fail.Exception:
-                if c == "demo_approver2":
-                    continue
+            api.login(c)
             headers_list.append({**api.h(c), "Idempotency-Key": str(uuid.uuid4())})
-
-        if len(headers_list) < 2:
-            pytest.skip(
-                "seed chỉ tạo 1 checker -> không thể kiểm chứng ca A2 "
-                "(hai checker approve đồng thời) với dữ liệu hiện có"
-            )
+        assert len(headers_list) == 2
 
         def call(hdr):
             return api.c.post(f"/inventory/requests/{rid}/approve", headers=hdr)
@@ -354,8 +349,6 @@ class TestI3Serial:
         r1 = api.c.post("/inventory/assets",
                         headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
                         json=payload)
-        if r1.status_code == 404:
-            pytest.skip("chưa có POST /inventory/assets -> B07 chưa triển khai, I3 không kiểm chứng được")
         assert r1.status_code in (200, 201), f"I3 tạo lần 1: {r1.status_code} {r1.text[:300]}"
         r2 = api.c.post("/inventory/assets",
                         headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
@@ -483,8 +476,6 @@ class TestC1C2C3Cash:
             headers={**api.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"reason": "C3 reversal"},
         )
-        if rev.status_code == 404:
-            pytest.skip("chưa có endpoint reverse -> C3 (docs/05 'reversal là journal mới') chưa làm")
         assert rev.status_code in (200, 201), f"C3: {rev.status_code} {rev.text[:300]}"
 
         jr = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
@@ -564,8 +555,10 @@ class TestS1Authorization:
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "issue", "lines": []},
         )
-        if created.status_code not in (200, 201):
-            pytest.skip("không tạo được object để kiểm tra object-level auth")
+        assert created.status_code in (200, 201), (
+            f"Không tạo được object để kiểm tra object-level auth: "
+            f"{created.status_code} {created.text[:300]}"
+        )
         rid = created.json()["id"]
         o = api.as_user("demo_auditor")
         r = o.c.get(f"/inventory/requests/{rid}", headers=o.h("demo_auditor"))
@@ -585,8 +578,9 @@ class TestR1Reconciliation:
             headers={**api.h("demo_checker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"scope": "cash"},
         )
-        if r.status_code == 404:
-            pytest.skip("chưa có POST /reconciliations -> B14 chưa triển khai, R1 không kiểm chứng được")
+        assert r.status_code in (200, 201), (
+            f"R1: không chạy được reconciliation: {r.status_code} {r.text[:300]}"
+        )
         run = r.json()
         assert run.get("status") in ("matched", "exception", "running", "failed"), (
             f"R1: status không thuộc bộ docs/05: {run.get('status')!r}"

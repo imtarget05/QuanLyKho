@@ -1214,7 +1214,7 @@ class CommerceMemoryStore extends ChangeNotifier {
     store._stocktakeHistory.addAll([
       CommerceStocktake(
         id: 'KK07',
-        counts: {
+        counts: const {
           'p-cp001': 290,
           'p-td011': 80,
           'p-st010': 179,
@@ -1222,7 +1222,7 @@ class CommerceMemoryStore extends ChangeNotifier {
           'p-sy001': 0,
           'p-ln001': 600
         },
-        bookCounts: {
+        bookCounts: const {
           'p-cp001': 304,
           'p-td011': 80,
           'p-st010': 179,
@@ -1237,8 +1237,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK06',
-        counts: {'p-bm02': 17, 'p-bt018': 3},
-        bookCounts: {'p-bm02': 15, 'p-bt018': 3},
+        counts: const {'p-bm02': 17, 'p-bt018': 3},
+        bookCounts: const {'p-bm02': 15, 'p-bt018': 3},
         createdAt: DateTime(now.year, 6, 17),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -1246,8 +1246,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK05',
-        counts: {'p-tc099': 220},
-        bookCounts: {'p-tc099': 223},
+        counts: const {'p-tc099': 220},
+        bookCounts: const {'p-tc099': 223},
         createdAt: DateTime(now.year, 6, 2),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -1255,8 +1255,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK04',
-        counts: {'p-hg005': 181},
-        bookCounts: {'p-hg005': 181},
+        counts: const {'p-hg005': 181},
+        bookCounts: const {'p-hg005': 181},
         createdAt: DateTime(now.year, 5, 18),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -1264,8 +1264,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK03',
-        counts: {'p-tm027': 61},
-        bookCounts: {'p-tm027': 59},
+        counts: const {'p-tm027': 61},
+        bookCounts: const {'p-tm027': 59},
         createdAt: DateTime(now.year, 5, 3),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -1273,8 +1273,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK02',
-        counts: {'p-st010': 174},
-        bookCounts: {'p-st010': 179},
+        counts: const {'p-st010': 174},
+        bookCounts: const {'p-st010': 179},
         createdAt: DateTime(now.year, 4, 18),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',
@@ -1282,8 +1282,8 @@ class CommerceMemoryStore extends ChangeNotifier {
       ),
       CommerceStocktake(
         id: 'KK01',
-        counts: {'p-mp015': 3},
-        bookCounts: {'p-mp015': 2},
+        counts: const {'p-mp015': 3},
+        bookCounts: const {'p-mp015': 2},
         createdAt: DateTime(now.year, 4, 3),
         status: 'Hoàn tất',
         inspector: 'Hệ thống',

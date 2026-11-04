@@ -73,3 +73,24 @@
  **14/15 acceptance criteria PASS** (93.3%)
  
  The 1 failure (I1) is a **pre-existing test isolation issue** — the business logic is correct. The test assertion at line 294 expects submit to return 200/201, but the system correctly returns 409 `INSUFFICIENT_STOCK` when issuing more than available stock. This is expected behavior, not a regression.
+
+ ## Current Local Verification — 2026-11-03
+
+ The results above are the historical 2026-10-14 run. Current local verification is recorded separately so old cloud evidence is not mistaken for the current release.
+
+ | Area | Command / evidence | Result |
+ |---|---|---|
+ | Required backend acceptance | `DATABASE_URL=postgresql://…/bankops_test APP_ENV=demo DEMO_MODE=true .venv/bin/python -m pytest tests/test_acceptance_qa.py -q` on a fresh isolated PostgreSQL 16 database after `alembic upgrade head` and `app.seed` | **20 passed, 0 skipped**; includes maker/admin self-approval, concurrent checker, serial uniqueness, cash reversal, object-scope authorization, and reconciliation. |
+ | Business journey + spoilage | `.venv/bin/python -m pytest tests/test_business_journey_full.py -q` on the same isolated database | **9 passed**; spoilage requires a reason, waits for checker approval, then posts exactly one negative movement and reduces balance by the same quantity. |
+ | Full backend suite | Prior full `backend/tests` run on isolated, migrated and seeded `bankops_test` | **932 passed, 8 skipped, 1 xfailed** before this continuation's test additions. After the test changes, both relevant backend targets were rerun: acceptance **20 passed** and business journey **9 passed**. |
+ | Frontend suite | `cd frontend && flutter test --no-pub` | **355 passed**. |
+ | Focused frontend acceptance | Offline outbox, web cache policy, mobile/landscape responsive, and approval role tests | **47 passed**. |
+ | Flutter analysis | `flutter analyze --no-fatal-infos --no-fatal-warnings` | Exit 0; 90 existing info/warning diagnostics, same as the recorded baseline; no new fatal errors. |
+ | Flutter Web release | `flutter build web --release` with local verification build number | Build succeeded; `index.html` and `version.json` carried the same build identifier. |
+ | Cache data preservation | `web_cache_policy_test.dart` | Confirms update cleanup removes CacheStorage/service-worker state but does not clear localStorage or IndexedDB. Offline drafts remain in their separate SharedPreferences queue. |
+
+ ### Release boundary
+
+ - No production deployment, CDN purge, or production database operation was performed.
+ - Staging was not deployed: the current asset workflow points at the production API and production Workers Assets name; the Kubernetes staging overlay still contains placeholder host/image tags, and the Wrangler staging environment is only for the retired API Worker. There is no verified, isolated staging target for this Flutter release.
+ - Physical-device offline UAT, cloud UAT against the current commit, and confirmation of variance-recount UX remain open acceptance items.

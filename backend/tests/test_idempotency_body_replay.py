@@ -37,3 +37,35 @@ async def test_json_body_reaches_handler_after_idempotency_hash(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"quantity": 5}
+
+
+@pytest.mark.asyncio
+async def test_http_replay_does_not_cross_authentication_context(monkeypatch):
+    stored = {}
+
+    def check(key, digest):
+        return stored.get(key)
+
+    def remember(_db, key, digest, status, body):
+        stored[key] = (status, body)
+
+    monkeypatch.setattr(idempotency, "check", check)
+    monkeypatch.setattr(idempotency, "remember", remember)
+
+    app = FastAPI()
+
+    @app.post("/actor")
+    async def actor(request: Request):
+        return {"actor": request.headers["authorization"]}
+
+    app.add_middleware(IdempotencyMiddleware)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        first = await client.post(
+            "/actor", headers={"Idempotency-Key": "same", "Authorization": "Bearer maker"}, json={}
+        )
+        second = await client.post(
+            "/actor", headers={"Idempotency-Key": "same", "Authorization": "Bearer checker"}, json={}
+        )
+
+    assert first.json() == {"actor": "Bearer maker"}
+    assert second.json() == {"actor": "Bearer checker"}

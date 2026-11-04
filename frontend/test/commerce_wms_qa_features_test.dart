@@ -4,7 +4,7 @@ import 'package:kho_tra_sua/src/features/commerce/commerce_memory_store.dart';
 void main() {
   group('WMS QA Improvements & Business Logic Tests', () {
     test('Multi-UOM support on CommerceProduct works correctly', () {
-      final p1 = CommerceProduct(
+      const p1 = CommerceProduct(
         id: 'p-syrup',
         sku: 'NL-SYRUP',
         name: 'Siro Đường Đen',
@@ -22,7 +22,7 @@ void main() {
       expect(p1.effectivePurchaseUnit, equals('Thùng'));
       expect(p1.conversionRate, equals(12.0));
 
-      final p2 = CommerceProduct(
+      const p2 = CommerceProduct(
         id: 'p-cup',
         sku: 'VT-LY',
         name: 'Ly Nhựa 500ml',

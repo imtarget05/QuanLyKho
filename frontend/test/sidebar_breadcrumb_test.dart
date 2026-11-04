@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kho_tra_sua/src/app/app_shell.dart';
 import 'package:kho_tra_sua/src/core/theme/app_theme.dart';
+import 'package:kho_tra_sua/src/data/models/dtos.dart';
 import 'package:kho_tra_sua/src/data/repositories/fake_repository.dart';
 import 'package:kho_tra_sua/src/features/auth/auth_service.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  const adminUser = AppUser(
+    id: 'sidebar-admin',
+    username: 'sidebar_admin',
+    displayName: 'Sidebar Admin',
+    roles: ['admin'],
+  );
+
   testWidgets('Sidebar renders multi-level navigation with collapsible state',
       (WidgetTester tester) async {
     // Setup
@@ -22,7 +30,10 @@ void main() {
         create: (_) => AuthService(baseUrl: 'http://localhost:8000'),
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: AppShell(repository: fakeRepo),
+          home: SessionScope(
+            user: adminUser,
+            child: AppShell(repository: fakeRepo),
+          ),
         ),
       ),
     );
@@ -68,7 +79,10 @@ void main() {
         create: (_) => AuthService(baseUrl: 'http://localhost:8000'),
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: AppShell(repository: fakeRepo),
+          home: SessionScope(
+            user: adminUser,
+            child: AppShell(repository: fakeRepo),
+          ),
         ),
       ),
     );
@@ -94,7 +108,10 @@ void main() {
         create: (_) => AuthService(baseUrl: 'http://localhost:8000'),
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: AppShell(repository: fakeRepo),
+          home: SessionScope(
+            user: adminUser,
+            child: AppShell(repository: fakeRepo),
+          ),
         ),
       ),
     );
