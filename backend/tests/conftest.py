@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import make_url
 
 """Shared fixtures for BankOps audit tests.
@@ -79,6 +80,13 @@ def _import_or_fail(module: str):
 def app():
     """Import the FastAPI application, failing loudly if it cannot boot."""
     return _import_or_fail("app.main").app
+
+
+@pytest.fixture
+async def async_client(app):
+    """HTTP client against the application without binding a network port."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        yield client
 
 
 @pytest.fixture(scope="session")

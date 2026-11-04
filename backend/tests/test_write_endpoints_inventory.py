@@ -5,24 +5,15 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-
-from app.database import AsyncSessionLocal
+from portfolio_test_helpers import async_sql as _sql
+from portfolio_test_helpers import first_location_and_item as _first_location_and_item
+from portfolio_test_helpers import idem_headers as _idem
+from portfolio_test_helpers import login_headers as _headers
 
 DEMO_PASSWORD = "DemoPass123!"
 MAKER = "demo_maker"
 CHECKER = "demo_checker"
 BRANCH_HO = "11111111-1111-4111-8111-111111111111"
-
-
-async def _sql(sql: str, **params):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(text(sql), params)
-        await session.commit()
-        if not result.returns_rows:
-            return []
-        return result.fetchall()
 
 
 async def _ensure_staff_user(username: str) -> str:
@@ -53,43 +44,6 @@ async def _ensure_staff_user(username: str) -> str:
     await _sql("DELETE FROM iam_user_roles WHERE user_id = :id", id=user_id)
     await _sql("INSERT INTO iam_user_roles (user_id, role_code) VALUES (:id, 'staff')", id=user_id)
     return username
-
-
-@pytest.fixture
-async def async_client(app):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        yield client
-
-
-async def _login(async_client, username: str, password: str = DEMO_PASSWORD):
-    return await async_client.post(
-        "/auth/login",
-        data={"username": username, "password": password},
-    )
-
-
-async def _headers(async_client, username: str) -> dict:
-    r = await _login(async_client, username)
-    assert r.status_code == 200, r.text
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
-
-
-async def _first_location_and_item(async_client, headers) -> tuple:
-    locs = (
-        await async_client.get("/inventory/locations", headers=headers)
-    ).json()["locations"]
-    assert locs, "Can it kho"
-    items = (
-        await async_client.get("/inventory/items", headers=headers)
-    ).json()["items"]
-    assert items, "Can it hang"
-    return locs[0]["id"], items[0]["id"]
-
-
-def _idem(headers: dict) -> dict:
-    return {**headers, "Idempotency-Key": str(uuid.uuid4())}
 
 
 async def _create_receipt(async_client, headers, dest_id: str, item_id: str, quantity: str = "5"):
