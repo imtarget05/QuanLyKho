@@ -28,10 +28,10 @@ REPO_DIR = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_DIR / "scripts" / "setup_secrets_and_deploy.sh"
 
 # Giá trị thử nghiệm — KHÔNG phải credential thật, KHÔNG dùng ở production.
-TEST_SIGNING_KEY = "TESTONLY-SIGNING-KEY-DO-NOT-USE"
-TEST_SESSION_SECRET = "TESTONLY-SESSION-SECRET-DO-NOT-USE"
-TEST_SMTP_USER = "testonly-smtp-user@example.invalid"
-TEST_SMTP_PASSWORD = "TESTONLY-SMTP-PASSWORD-DO-NOT-USE"
+TEST_SIGNING_KEY = "demo-signing-key"
+TEST_SESSION_SECRET = "demo-session-secret"
+TEST_SMTP_USER = "demo-smtp-user@example.invalid"
+TEST_SMTP_PASSWORD = "demo-smtp-password"
 TEST_PIN = "918273"
 TEST_DB_URL = "postgresql+asyncpg://testonly:testonly@127.0.0.1:5432/testonly_db"
 
