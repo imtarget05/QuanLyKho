@@ -288,9 +288,11 @@ def detect_drift(
     So sánh phân phối features trong cửa sổ tham chiếu (reference_days) với cửa sổ hiện tại (current_days).
     Trả về kết quả drift + recommendation (no_action / scheduled_retraining / data_preprocessing / investigate).
     """
-    import pandas as pd
+    from datetime import UTC, datetime, timedelta
 
+    import pandas as pd
     from app.services import drift_detection
+    from sqlalchemy import select
 
     # Resolve DB connection and staging table
     database_url = cfg.resolve_database_url()
@@ -303,36 +305,32 @@ def detect_drift(
     cur_window = int(os.environ.get("QLK_INGEST_DRIFT_CURRENT_WINDOW", "7"))
 
     # Feature columns to monitor (inventory domain)
-    feature_cols = [
-        "quantity", "unit_price", "total_amount",
-        "stock_on_hand", "min_stock", "max_stock",
-    ]
+    feature_cols = ["cost_price", "selling_price", "min_qty", "min_stock", "max_qty"]
+    table = staging.staging_metadata(table_name).tables[table_name]
+    now = datetime.now(UTC)
+    ref_start = now - timedelta(days=ref_days_back)
+    ref_end = ref_start + timedelta(days=ref_window)
+    cur_start = now - timedelta(days=cur_days_back)
+    cur_end = cur_start + timedelta(days=cur_window)
 
-    import sqlalchemy as sa
-    from sqlalchemy import text
+    def load_features(conn: Any, start: datetime, end: datetime) -> pd.DataFrame:
+        payloads = conn.execute(
+            select(table.c.payload).where(
+                table.c.dataset == "inventory",
+                table.c.ingested_at >= start,
+                table.c.ingested_at < end,
+            )
+        ).scalars()
+        frame = pd.DataFrame(json.loads(payload) for payload in payloads)
+        for feature in feature_cols:
+            frame[feature] = pd.to_numeric(frame.get(feature), errors="coerce")
+        return frame.dropna(subset=feature_cols)
 
     engine = staging.create_staging_engine(database_url)
     try:
         with engine.connect() as conn:
-            # Reference window
-            ref_query = text(f"""
-                SELECT {", ".join(feature_cols)}
-                FROM {table_name}
-                WHERE ingested_at >= CURRENT_DATE - :ref_days_back - :ref_window
-                  AND ingested_at < CURRENT_DATE - :ref_days_back
-                  AND dataset = :dataset
-            """)
-            ref_df = pd.read_sql(ref_query, conn, params={"ref_days_back": ref_days_back, "ref_window": ref_window, "dataset": "inventory"})
-
-            # Current window
-            cur_query = text(f"""
-                SELECT {", ".join(feature_cols)}
-                FROM {table_name}
-                WHERE ingested_at >= CURRENT_DATE - :cur_days_back - :cur_window
-                  AND ingested_at < CURRENT_DATE - :cur_days_back
-                  AND dataset = :dataset
-            """)
-            cur_df = pd.read_sql(cur_query, conn, params={"cur_days_back": cur_days_back, "cur_window": cur_window, "dataset": "inventory"})
+            ref_df = load_features(conn, ref_start, ref_end)
+            cur_df = load_features(conn, cur_start, cur_end)
     finally:
         engine.dispose()
 
