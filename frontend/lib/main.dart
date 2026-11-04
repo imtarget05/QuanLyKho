@@ -186,7 +186,13 @@ class _AuthGateState extends State<_AuthGate> {
       }
       return LandingScreen(
         onEnter: () => setState(() => _showLogin = true),
-        onDemo: () => setState(() => _showLogin = true),
+        onDemo: () => setState(() {
+          if (const bool.fromEnvironment('OFFLINE_DEMO', defaultValue: false)) {
+            _showDemo = true;
+          } else {
+            _showLogin = true;
+          }
+        }),
       );
     }
     return _LiveCommerceGate(
@@ -318,7 +324,8 @@ class TeaInventoryApp extends StatelessWidget {
         density: uiSettings.density,
       ),
       themeMode: uiSettings.mode,
-      builder: (context, child) => SessionBridge(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) =>
+          SessionBridge(child: child ?? const SizedBox.shrink()),
       home: const _AuthGate(),
     );
   }
