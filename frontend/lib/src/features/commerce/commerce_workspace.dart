@@ -408,6 +408,18 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace>
             Expanded(
               child: Column(
                 children: [
+                  if (widget.api == null)
+                    Container(
+                      key: const Key('commerce-demo-banner'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: const Color(0xFFFFF3CD),
+                      child: const Text(
+                        'Dữ liệu mô phỏng trên thiết bị này; không kết nối API hoặc cơ sở dữ liệu thật.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF6B4F00), fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   if (auth?.adminRolePromoted == true || _isAdminPromotionPending)
                     AdminPromotionBanner(
                       onRefresh: () async {

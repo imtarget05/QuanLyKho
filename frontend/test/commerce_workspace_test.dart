@@ -15,6 +15,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(store: store),
     ));
+    expect(find.byKey(const Key('commerce-demo-banner')), findsOneWidget);
+    expect(find.textContaining('Dữ liệu mô phỏng trên thiết bị này'), findsOneWidget);
 
     await tester.tap(find.text('Bán hàng').first);
     await tester.pumpAndSettle();
