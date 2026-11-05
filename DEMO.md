@@ -1,101 +1,34 @@
-# QuanLyKho — Interview Demo Script (5–10 phút, chạy hoàn toàn local)
+# QuanLyKho: 5–10 minute backend interview demo
 
-Mục đích: minh họa hệ thống tồn kho & quỹ mô phỏng với maker-checker 4 mắt, dual-entry ledger, audit trail, không cần production deploy.
+This is a local simulation of ingredient inventory with separate maker and checker roles. It uses a disposable PostgreSQL database and the real FastAPI routes. No customer data, bank connection, production service, or external AI provider is involved.
 
-## Yêu cầu trước khi demo
+## Run the demo
 
-- Docker & docker compose (để chạy PostgreSQL + API)
-- Python 3.11+, poetry đã cài (`poetry install --with dev`)
-- Flutter SDK (tuỳ chọn, để chạy frontend test)
+Prerequisites: PostgreSQL CLI tools (`initdb`, `pg_ctl`, `createdb`), Python 3.11 and the project environment created with `cd backend && poetry install --with dev`.
 
-## Bước 1: Khởi động stack local
+From the repository root:
 
 ```bash
-cd /Users/mainguyenbinhtan/Downloads/QuanLyKho
-
-docker compose up -d  # API :8000, PostgreSQL :5432
+bash scripts/demo_ai_checker.sh
 ```
 
-Hoặc chạy test với database tách biệt (khuyên dùng):
+The script creates a temporary `bankops_test` database under `/tmp`, applies every Alembic migration, explicitly seeds demo identities and inventory, runs `tests/test_portfolio_ai_checker_demo.py`, and removes that database when it exits. The test guard refuses to run mutating tests against a database whose name lacks `_test`. The script does not touch the developer's normal database.
 
-```bash
-make test-backend
-```
+Observed on 2026-11-05: migration reached `034_general_ledger_coa`, demo seeding completed, and the focused test returned `1 passed`. Re-run on the commit you present in an interview; this result does not certify later changes.
 
-## Bước 2: Tạo dữ liệu demo qua API
+## What to show and explain
 
-```bash
-# Health check
-curl http://localhost:8000/health
+1. Maker creates and submits an ingredient receipt. No stock movement is posted yet.
+2. The checker requests an advisory assessment. The response identifies `heuristic_fallback` and `simulation=true`; it does not approve stock.
+3. Maker self-approval returns 403. A separate checker approves; exactly one stock movement appears.
+4. Repeating approval with the same idempotency key returns the stored result. A different key after final state returns 409.
+5. Checker rejects another receipt; no stock movement appears. Auditor can see the approval and rejection events with request IDs.
 
-# Tạo item kho (inventory)
-curl -s -X POST http://localhost:8000/api/inventory/items \
-  -H "Content-Type: application/json" \
-  -d '{"sku": "TEA-001", "name": "Trà xanhMatcha", "unit": "kg", "cost_price": 120000, "selling_price": 200000, "min_stock": 10}'
+The assertions are in [the demo test](backend/tests/test_portfolio_ai_checker_demo.py). FEFO issue and concurrent no-negative-stock cases are separately covered by [the outbound tests](backend/tests/test_phase2b_fefo_outbound.py). The API base path is `/api/v1`; use the test as the source for exact request shapes.
 
-# Xem catalog
-curl http://localhost:8000/api/inventory/catalog
-```
+## Portfolio claims supported by this demo
 
-## Bước 3: Workflow maker-checker (4 mắt)
+- Python/FastAPI API design, PostgreSQL schema migrations, inventory transactions, maker/checker RBAC, idempotency and audit trail.
+- A deterministic advisory AI fallback, clearly separated from the authorization decision.
 
-```bash
-# Maker tạo phiếu kho (submit -> PENDING_REVIEW)
-curl -s -X POST http://localhost:8000/api/inventory/requests \
-  -H "Content-Type: application/json" \
-  -d '{"item_sku": "TEA-001", "quantity": 50, "type": "INBOUND"}'
-
-# Checker duyệt (phải là người khác với maker)
-curl -s -X POST http://localhost:8000/api/inventory/requests/{request_id}/approve \
-  -H "Content-Type: application/json" \
-  -d '{"action": "approve", "reason": "Demo approval"}'
-
-# Xem sổ cái kép (dual-entry ledger)
-curl http://localhost:8000/api/reports/ledger
-```
-
-## Bước 4: Health check
-
-```bash
-curl http://localhost:8000/health
-```
-
-## Bước 5: Chạy toàn bộ test suite
-
-```bash
-cd backend
-
-# Ruff (0 errors mong đợi)
-poetry run ruff check backend/ ai/
-
-# Pytest (975 passed, 8 skipped, 1 xfailed mong đợi)
-poetry run python -m pytest tests/ -q
-```
-
-## Bước 6: Flutter frontend test (tuỳ chọn)
-
-```bash
-cd frontend
-flutter test --no-pub
-# Kết quả mong đợi: 350/350 passed
-```
-
-## Các điểm nhấn để trình bày phỏng vấn
-
-| Điểm | Nơi chứng minh |
-|---|---|
-| Maker-checker 4 mắt (phải là người khác) | `backend/app/api/routes/inventory.py`, `backend/app/services/approval_controls.py` |
-| Dual-entry ledger (sổ cái kép) | `backend/app/services/general_ledger.py`, `backend/app/models/ledger.py` |
-| Audit trail với SHA-256 stamp | `backend/app/api/routes/inventory.py` (audit stamp hash) |
-| Idempotency (chống double-submit) | `backend/app/api/middleware/idempotency.py` |
-| Alembic migrations (34 versions) | `backend/alembic/versions/` |
-| Flutter mobile/web frontend | `frontend/lib/src/`, `frontend/test/` |
-| Keyset pagination (inventory balances) | `backend/app/api/pagination.py` |
-
-## Giới hạn trung thực (không claim)
-
-- Quỹ, journal, đối soát là **financial-operations simulation**, không phải core-banking.
-- Không kết nối ngân hàng, không sử dụng dữ liệu khách hàng thật, không xử lý tiền thật.
-- Local test xanh (975 passed) nhưng chưa có bằng chứng production deploy.
-- Cloudflare Worker giữ tạm để tương thích, không phải đích deploy production.
-- Một số historical TestClient flow có vấn đề event-loop, giữ nguyên thay vì che giấu.
+The demo does not prove Java experience, a live banking integration, production cloud deployment, mobile offline behavior, or a measured query optimization. For those claims, point to separate current evidence or leave them off the CV.
