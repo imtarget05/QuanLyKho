@@ -41,4 +41,5 @@ export DEMO_MODE=true
 
 cd "$repo_dir/backend"
 "$python_bin" -m alembic upgrade head
-"$python_bin" -m pytest tests/test_portfolio_ai_checker_demo.py -q --disable-warnings
+"$python_bin" -m app.seed
+"$python_bin" -m pytest tests/test_portfolio_ai_checker_demo.py -v --disable-warnings
