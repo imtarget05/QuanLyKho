@@ -176,6 +176,7 @@ jobs:
         run: echo "Docker build successful"
 
   sonar:
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     name: SonarCloud scan
     runs-on: ubuntu-latest
     needs: [lint, test, frontend-web, worker-typecheck]
