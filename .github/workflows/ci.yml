@@ -112,7 +112,13 @@ jobs:
       - name: Run tests
         run: |
           cd backend
-          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" pytest tests/ -v
+          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" pytest tests/ -v --cov=app --cov-report=xml:coverage.xml
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: error
 
   frontend-web:
     runs-on: ubuntu-latest
@@ -194,6 +200,12 @@ jobs:
             echo "::error::SONAR_TOKEN is unset or empty. Recreate and configure the GitHub secret before running SonarCloud."
             exit 1
           fi
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+      - name: Require coverage report
+        run: test -s coverage.xml
       - name: SonarCloud scan
         run: |
           set -euxo pipefail
