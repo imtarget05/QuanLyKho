@@ -43,8 +43,13 @@ def test_chain_gate_passes_and_rollback_inference_matches(tmp_path, monkeypatch)
 
     for slope in (2.0, 3.0):
         with mlflow.start_run() as run:
-            X = np.array([[1], [2], [3]])
-            y = np.array([slope, 2 * slope, 3 * slope])
+            # S11 trains the same three inputs used by the serving endpoint:
+            # month sine, month cosine, and a scaled trend.
+            X = np.array(
+                [[0, 1, 0], [1, 0, 0], [0, -1, 0], [-1, 0, 0], [0, 0, 1]],
+                dtype=float,
+            )
+            y = slope * X[:, 0] + slope * X[:, 1] + 2 * X[:, 2]
             mlflow.sklearn.log_model(LinearRegression().fit(X, y), "model")
             mlflow.register_model(f"runs:/{run.info.run_id}/model", "DemandForecastModel")
 
@@ -58,8 +63,9 @@ def test_chain_gate_passes_and_rollback_inference_matches(tmp_path, monkeypatch)
     assert result["production_version"] == 2
     assert result["rollback_version"] == 1
     assert str(result["rollback_inference_version"]) == "1"
-    assert isinstance(result["prediction"]["predicted_demand"], float)
-    assert isinstance(result["drift"]["psi"], float)
+    assert np.isclose(result["prediction"]["predicted_demand"], -3.0)
+    assert np.isclose(result["rollback_prediction"]["predicted_demand"], -2.0)
+    assert np.isclose(result["drift"]["psi"], 0.5)
 
 
 def test_chain_gate_fails_closed_without_model(tmp_path):

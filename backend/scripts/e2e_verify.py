@@ -14,6 +14,7 @@ rollback → rollback inference (``verify_chain``). Setting
 from __future__ import annotations
 
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -82,10 +83,12 @@ def verify_chain(tracking_uri: str, model_name: str, predict_payload: dict) -> d
     )
     production_version = int(latest.version)
 
-    # Step 2: inference with the Production model.
-    # The models under test were trained on a single numeric feature, so we
-    # predict with a 1-D array matching that shape.
-    predict_features = np.array([[1.0]])
+    # Step 2: use the same feature contract as POST /predict. The S11 training
+    # stage fits month sine, month cosine, and scaled trend in that order.
+    month = float(predict_payload["month"])
+    predict_features = np.array(
+        [[math.sin(2 * math.pi * month / 12), math.cos(2 * math.pi * month / 12), 0.0]]
+    )
     model_uri = f"models:/{model_name}/{production_version}"
     model = mlflow.pyfunc.load_model(model_uri)
     prediction_value = float(model.predict(predict_features)[0])
