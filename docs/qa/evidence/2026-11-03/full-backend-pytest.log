@@ -1,0 +1,171 @@
+ Network quanlykho-test_default Creating
+ Network quanlykho-test_default Created
+ Container quanlykho-test-postgres-test-1 Creating
+ Container quanlykho-test-postgres-test-1 Created
+ Container quanlykho-test-postgres-test-1 Starting
+ Container quanlykho-test-postgres-test-1 Started
+ Container quanlykho-test-postgres-test-1 Waiting
+ Container quanlykho-test-postgres-test-1 Healthy
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 001_initial, Initial migration - all tables.
+INFO  [alembic.runtime.migration] Running upgrade 001_initial -> 002_idempotency_and_balances, Add idempotency_key to cash_requests and cash_balances timestamps.
+INFO  [alembic.runtime.migration] Running upgrade 002_idempotency_and_balances -> 003_integrations_reconciliation, Create integration hub + reconciliation tables (docs/04).
+INFO  [alembic.runtime.migration] Running upgrade 003_integrations_reconciliation -> 004_timestamptz_cleanup, Convert remaining VARCHAR datetime columns to timestamptz (docs/04).
+INFO  [alembic.runtime.migration] Running upgrade 004_timestamptz_cleanup -> 005_integration_fields, Add connection status tracking and run phase/finish fields (docs/09).
+INFO  [alembic.runtime.migration] Running upgrade 005_integration_fields -> 006_user_pin_hash, Add pin_hash to iam_users for supervisor PIN management.
+INFO  [alembic.runtime.migration] Running upgrade 006_user_pin_hash -> 007_user_profile_columns, Add email, phone_number, and branch to iam_users for profile persistence.
+INFO  [alembic.runtime.migration] Running upgrade 007_user_profile_columns -> 008_stock_levels_and_stocktakes, Add inv_stock_levels, inv_stocktakes, and inv_stocktake_lines.
+INFO  [alembic.runtime.migration] Running upgrade 008_stock_levels_and_stocktakes -> 009_reserved_inv_asset_logs, Add reserved_quantity, inv_asset_logs, and return_reason.
+INFO  [alembic.runtime.migration] Running upgrade 009_reserved_inv_asset_logs -> 010_stocktake_updated_at, Add the timestamp inherited by the canonical Stocktake mapping.
+INFO  [alembic.runtime.migration] Running upgrade 010_stocktake_updated_at -> 011_inventory_adjustment_dir, Make inventory adjustment direction explicit while keeping line quantities positive.
+INFO  [alembic.runtime.migration] Running upgrade 011_inventory_adjustment_dir -> 012_job_leases, Persist worker leases and retry scheduling for durable background jobs.
+INFO  [alembic.runtime.migration] Running upgrade 012_job_leases -> 013_iam_scopes_and_branches, Add organizational branches, IAM scope grants, user provisioning, and ETL capabilities.
+INFO  [alembic.runtime.migration] Running upgrade 013_iam_scopes_and_branches -> 014_etl_pipeline_models, Add ETL pipeline 4-layer tables: connections, pipelines, mapping versions, runs, run rows.
+INFO  [alembic.runtime.migration] Running upgrade 014_etl_pipeline_models -> 015_tea_ingredient_catalog, Add tea-shop ingredient catalog attributes.
+INFO  [alembic.runtime.migration] Running upgrade 015_tea_ingredient_catalog -> 016_shift_stocktake_fields, Add shift-count fields for tea-shop stocktaking.
+INFO  [alembic.runtime.migration] Running upgrade 016_shift_stocktake_fields -> 017_tea_receipt_lot_expiry, Tea receipt lot/expiry + single-open shift guard.
+INFO  [alembic.runtime.migration] Running upgrade 017_tea_receipt_lot_expiry -> 018_tea_catalog_rebuild, Grant tea-shop managers checker access without touching inventory data.
+INFO  [alembic.runtime.migration] Running upgrade 018_tea_catalog_rebuild -> 019_user_avatar_and_root_iam, Add a safe profile avatar field and the root IAM role/capabilities.
+INFO  [alembic.runtime.migration] Running upgrade 019_user_avatar_and_root_iam -> 020_sync_requests, Add staged source synchronization requests.
+INFO  [alembic.runtime.migration] Running upgrade 020_sync_requests -> 021_receipt_invoice_and_lots, Receipt multi-line invoice, sub_kind, and lot balances tracking.
+INFO  [alembic.runtime.migration] Running upgrade 021_receipt_invoice_and_lots -> 022_movement_cost_and_sub_kind, Movement sub_kind, unit_cost, cost_amount, and inv_lot_movements table.
+INFO  [alembic.runtime.migration] Running upgrade 022_movement_cost_and_sub_kind -> 024_add_branch_id_to_cashbox, Add branch_id to cash_boxes for branch-scoped cash isolation.
+INFO  [alembic.runtime.migration] Running upgrade 024_add_branch_id_to_cashbox -> 025_expense_and_supplier, Create suppliers and expenses tables for Phase M data engineering.
+INFO  [alembic.runtime.migration] Running upgrade 025_expense_and_supplier -> 026_schema_alignment, Align the migrated schema with the ORM schema (Alembic becomes the source of truth).
+INFO  [alembic.runtime.migration] Running upgrade 026_schema_alignment -> 027_idempotency_keys, Create the durable `idempotency_keys` table (R2).
+INFO  [alembic.runtime.migration] Running upgrade 027_idempotency_keys -> 028_reconcile_scope, Add authorization-scope columns to reconciliation_exceptions (B2 follow-up).
+INFO  [alembic.runtime.migration] Running upgrade 028_reconcile_scope -> 029_stocktake_version, Add optimistic version for offline stocktake replay.
+INFO  [alembic.runtime.migration] Running upgrade 029_stocktake_version -> 030_admin_inventory_create, Allow an inventory admin to create requests, matching the tea-shop PRD.
+INFO  [alembic.runtime.migration] Running upgrade 030_admin_inventory_create -> 031_commerce_documents, Add customer, commercial document and payment ledgers.
+INFO  [alembic.runtime.migration] Running upgrade 031_commerce_documents -> 032_device_registrations, Persist browser and mobile push notification registrations.
+INFO  [alembic.runtime.migration] Running upgrade 032_device_registrations -> 033_inventory_ledger, Inventory ledger sub-journals for stock movement postings (P0-3).
+INFO  [alembic.runtime.migration] Running upgrade 033_inventory_ledger -> 034_general_ledger_coa, Add the consolidated general ledger and seed the chart of accounts.
+Seeded 8 role(s)
+Seeded 16 capabilit(ies)
+Seeded 39 role-capability mapping(s)
+Seeded 10 users
+Locations upserted (+4 mới)
+Items upserted (+30 mới)
+Seeded 0 assets
+Seeded 33 initial balances
+Seeded 120 safety stock levels
+Seeded 3 cashboxes
+Demo seeding complete!
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+........................................................................ [  7%]
+........................................................................ [ 15%]
+..................................................................x..... [ 22%]
+...s.................................................................... [ 30%]
+........................................................................ [ 37%]
+........................................................................ [ 45%]
+........................................................................ [ 52%]
+........................................................................ [ 60%]
+.............................sssss...................................... [ 67%]
+........................................................................ [ 75%]
+.........................s.............................................. [ 82%]
+........................................................................ [ 90%]
+........................................................................ [ 98%]
+...................                                                      [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/passlib/utils/__init__.py:854
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+.venv/lib/python3.11/site-packages/starlette/testclient.py:37
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+.venv/lib/python3.11/site-packages/mlflow/utils/pydantic_utils.py:33
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/utils/pydantic_utils.py:33: PydanticDeprecatedSince212: Using `@model_validator` with mode='after' on a classmethod is deprecated. Instead, use an instance method. See the documentation at https://pydantic.dev/docs/validation/2.14/concepts/validators/#model-after-validator. Deprecated in Pydantic V2.12 to be removed in V3.0.
+    return pydantic_model_validator(mode=mode)(func)
+
+.venv/lib/python3.11/site-packages/mlflow/gateway/config.py:454
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/gateway/config.py:454: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class Route(ConfigModel):
+
+.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/dependencies.py:4
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/dependencies.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import (
+
+tests/test_admin_provision_specific_user.py::TestAdminProvisionSpecificUser::test_admin_invites_new_admin_with_specific_email
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/opentelemetry/context/__init__.py:119: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x12214c040>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+    return Context(new_values)
+
+tests/test_admin_provision_specific_user.py::TestAdminProvisionSpecificUser::test_admin_invites_new_admin_with_specific_email
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/opentelemetry/context/__init__.py:119: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x12214ce50>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+    return Context(new_values)
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:162: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    stop: Optional[list[str]] = Field(None, min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:216: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    messages: list[ChatMessage] = Field(..., min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:217: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    tools: Optional[list[ChatTool]] = Field(None, min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_promote_demand_model_promotes_when_gate_passes
+tests/test_inference_api.py::TestHealthCheck::test_health_endpoint
+tests/test_inference_model_lifecycle.py::test_train_register_promote_then_predict
+tests/test_ml_registry.py::TestPromotionGate::test_promote_version_3_plus
+tests/test_ml_registry.py::TestRollback::test_rollback_to_previous_version
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/app/services/ml_registry.py:103: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(model_name, str(from_version), stage=to_stage)
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:78: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:108: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:113: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_ml_registry.py::TestRollback::test_rollback_to_previous_version
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/app/services/ml_registry.py:237: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(model_name, str(target_version), stage="Production")/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/_pytest/unraisableexception.py:33: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x12a0154e0>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+  gc.collect()
+ERROR [sqlalchemy.pool.impl.NullPool] Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x12a0154e0>>
+Traceback (most recent call last):
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1131, in do_terminate
+    dbapi_connection.terminate()
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/sqlalchemy/connectors/asyncio.py", line 415, in terminate
+    self._terminate_force_close()
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 916, in _terminate_force_close
+    self._connection.terminate()
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 1478, in terminate
+    self._abort()
+  File "/Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/asyncpg/connection.py", line 1505, in _abort
+    self._protocol.abort()
+  File "asyncpg/protocol/protocol.pyx", line 607, in asyncpg.protocol.protocol.BaseProtocol.abort
+  File "/Users/mainguyenbinhtan/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/asyncio/selector_events.py", line 825, in abort
+    self._force_close(None)
+  File "/Users/mainguyenbinhtan/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/asyncio/selector_events.py", line 895, in _force_close
+    self._loop.call_soon(self._call_connection_lost, exc)
+  File "/Users/mainguyenbinhtan/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/asyncio/base_events.py", line 762, in call_soon
+    self._check_closed()
+  File "/Users/mainguyenbinhtan/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/asyncio/base_events.py", line 520, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+ERROR [sqlalchemy.pool.impl.NullPool] The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x12a0154e0>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+
+
+tests/test_security_wave2_identity.py::test_delete_inventory_draft_request_only_by_owner
+  sys:1: SAWarning: DELETE statement on table 'inv_request_lines' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the mapper configuration to prevent this warning.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+947 passed, 8 skipped, 1 xfailed, 24 warnings in 1096.06s (0:18:16)

@@ -160,9 +160,9 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Báo cáo kinh doanh',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: _slate900,
@@ -564,8 +564,9 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
                       reservedSize: 24,
                       getTitlesWidget: (v, _) {
                         final i = v.toInt();
-                        if (i < 0 || i >= buckets.length)
+                        if (i < 0 || i >= buckets.length) {
                           return const SizedBox.shrink();
+                        }
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
@@ -750,8 +751,9 @@ class _CommerceReportsPageState extends State<CommerceReportsPage> {
                       reservedSize: 24,
                       getTitlesWidget: (v, _) {
                         final i = v.toInt();
-                        if (i < 0 || i >= buckets.length)
+                        if (i < 0 || i >= buckets.length) {
                           return const SizedBox.shrink();
+                        }
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(

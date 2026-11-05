@@ -28,9 +28,17 @@ void main() {
       await tester.pumpWidget(
         RepositoryScope(
           repository: repo,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: ApprovalsScreen()),
+          child: SessionScope(
+            user: const AppUser(
+              id: 'risk-checker',
+              username: 'risk_checker',
+              displayName: 'Risk Checker',
+              roles: ['admin'],
+            ),
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: ApprovalsScreen()),
+            ),
           ),
         ),
       );
@@ -76,9 +84,17 @@ void main() {
       await tester.pumpWidget(
         RepositoryScope(
           repository: repo,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: ApprovalsScreen()),
+          child: SessionScope(
+            user: const AppUser(
+              id: 'risk-checker',
+              username: 'risk_checker',
+              displayName: 'Risk Checker',
+              roles: ['admin'],
+            ),
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: ApprovalsScreen()),
+            ),
           ),
         ),
       );
@@ -113,5 +129,4 @@ void main() {
     },
   );
 }
-
 

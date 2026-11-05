@@ -39,7 +39,7 @@ class RoleVisibility {
     'cash_sim_operator',
   };
 
-  /// Roles lowercase của user; rỗng = chưa rõ (test/dev) -> hiện tất cả.
+  /// Roles lowercase của user; rỗng = chưa xác thực hoặc chưa rõ quyền.
   static Set<String> rolesOf(AppUser? user) {
     if (user == null) return const {};
     return user.roles.map((e) => e.toLowerCase()).toSet();

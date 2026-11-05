@@ -507,10 +507,19 @@ async def refresh_tokens(
     }
 
 
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
+
+
 @router.post("/logout")
-async def logout(token: str = Depends(oauth2_scheme)):
-    """Logout: revoke access token hiện tại (denylist tới khi token hết hạn)."""
+async def logout(
+    body: LogoutRequest,
+    token: str = Depends(oauth2_scheme),
+):
+    """Logout: revoke access token hiện tại + refresh token (denylist tới khi hết hạn)."""
     revoke_token(token)
+    if body.refresh_token:
+        revoke_token(body.refresh_token)
     return {"message": "Logged out successfully"}
 
 

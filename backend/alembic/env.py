@@ -19,6 +19,7 @@ import app.models.expense  # noqa: F401
 import app.models.iam  # noqa: F401
 import app.models.integration  # noqa: F401
 import app.models.inventory  # noqa: F401
+import app.models.ledger  # noqa: F401
 import app.models.notification  # noqa: F401
 import app.models.reconciliation  # noqa: F401
 from app.config import settings

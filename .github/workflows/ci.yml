@@ -84,9 +84,11 @@ jobs:
       - name: Record the exact commit under test
         run: |
           SHA="$(git rev-parse HEAD)"
-          echo "### Tested commit" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "commit=${SHA}" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Tested commit"
+            echo "\`${SHA}\`"
+            echo "commit=${SHA}"
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -110,7 +112,13 @@ jobs:
       - name: Run tests
         run: |
           cd backend
-          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" pytest tests/ -v
+          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" pytest tests/ -v --cov=app --cov-report=xml:coverage.xml
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: error
 
   frontend-web:
     runs-on: ubuntu-latest
@@ -166,3 +174,56 @@ jobs:
         run: docker compose config
       - name: Verify build
         run: echo "Docker build successful"
+
+  sonar:
+    name: SonarCloud scan
+    runs-on: ubuntu-latest
+    needs: [lint, test, frontend-web, worker-typecheck]
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Java 21 for SonarScanner
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Validate SonarCloud token
+        run: |
+          if [ -z "${SONAR_TOKEN:-}" ]; then
+            echo "::error::SONAR_TOKEN is unset or empty. Recreate and configure the GitHub secret before running SonarCloud."
+            exit 1
+          fi
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+      - name: Require coverage report
+        run: test -s coverage.xml
+      - name: SonarCloud scan
+        run: |
+          set -euxo pipefail
+          curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip \
+            -o sonar-scanner.zip
+          unzip -q sonar-scanner.zip
+          sed -i 's/^use_embedded_jre=true/use_embedded_jre=false/' "$PWD/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner"
+          echo "JAVA_HOME=${JAVA_HOME}"
+          export PATH="${JAVA_HOME}/bin:$PWD/sonar-scanner-5.0.1.3006-linux/bin:${PATH}"
+          java -version
+          "$PWD/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner" \
+            -Dsonar.projectKey=imtarget05_BankOps \
+            -Dsonar.organization=imtarget05 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login="$SONAR_TOKEN" \
+            -Dsonar.automaticAnalysis=false \
+            -Dsonar.python.coverage.reportPaths=coverage.xml \
+            -Dsonar.python.xunit.reportPaths=test-results.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

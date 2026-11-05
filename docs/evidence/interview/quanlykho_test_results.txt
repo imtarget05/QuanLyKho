@@ -1,0 +1,89 @@
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 21%]
+..x........s............................................................ [ 29%]
+........................................................................ [ 36%]
+........................................................................ [ 43%]
+........................................................................ [ 51%]
+........................................................................ [ 58%]
+........................................sssss........................... [ 65%]
+........................................................................ [ 73%]
+..............................................s......................... [ 80%]
+........................................................................ [ 87%]
+........................................................................ [ 95%]
+...............................................                          [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/passlib/utils/__init__.py:854
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+.venv/lib/python3.11/site-packages/starlette/testclient.py:37
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+.venv/lib/python3.11/site-packages/mlflow/utils/pydantic_utils.py:33
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/utils/pydantic_utils.py:33: PydanticDeprecatedSince212: Using `@model_validator` with mode='after' on a classmethod is deprecated. Instead, use an instance method. See the documentation at https://pydantic.dev/docs/validation/2.14/concepts/validators/#model-after-validator. Deprecated in Pydantic V2.12 to be removed in V3.0.
+    return pydantic_model_validator(mode=mode)(func)
+
+.venv/lib/python3.11/site-packages/mlflow/gateway/config.py:454
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/gateway/config.py:454: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class Route(ConfigModel):
+
+.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/dependencies.py:4
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/opentelemetry/instrumentation/dependencies.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import (
+
+tests/test_admin_provision_specific_user.py::TestAdminProvisionSpecificUser::test_admin_invites_new_admin_with_specific_email
+  sys:1: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x11fccbb50>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+
+tests/test_admin_role_email_notification.py::TestAdminRoleEmailNotification::test_database_resilience_when_email_fails
+  sys:1: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x11fb44040>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:162: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    stop: Optional[list[str]] = Field(None, min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:216: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    messages: list[ChatMessage] = Field(..., min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_train_demand_model_logs_to_mlflow
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/.venv/lib/python3.11/site-packages/mlflow/types/chat.py:217: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    tools: Optional[list[ChatTool]] = Field(None, min_items=1)
+
+tests/test_airflow_ingest_tasks.py::test_promote_demand_model_promotes_when_gate_passes
+tests/test_inference_api.py::TestHealthCheck::test_health_endpoint
+tests/test_inference_model_lifecycle.py::test_train_register_promote_then_predict
+tests/test_ml_registry.py::TestPromotionGate::test_promote_version_3_plus
+tests/test_ml_registry.py::TestRollback::test_rollback_to_previous_version
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/app/services/ml_registry.py:103: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(model_name, str(from_version), stage=to_stage)
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:78: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:108: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_e2e_verify.py::test_chain_gate_passes_and_rollback_inference_matches
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/scripts/e2e_verify.py:113: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(
+
+tests/test_ml_registry.py::TestRollback::test_rollback_to_previous_version
+  /Users/mainguyenbinhtan/Downloads/QuanLyKho/backend/app/services/ml_registry.py:237: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(model_name, str(target_version), stage="Production")
+
+tests/test_security_wave2_identity.py::test_delete_inventory_draft_request_only_by_owner
+  sys:1: SAWarning: DELETE statement on table 'inv_request_lines' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the mapper configuration to prevent this warning.
+
+tests/test_security_wave2_identity.py::test_change_password_revokes_existing_sessions
+  sys:1: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x127e7eb60>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+975 passed, 8 skipped, 1 xfailed, 25 warnings in 512.61s (0:08:32)

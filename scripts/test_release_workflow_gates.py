@@ -165,17 +165,17 @@ class ReleaseWorkflowGateTests(unittest.TestCase):
         self.assertNotIn("wrangler deploy", source)
         self.assertNotIn("kubectl apply", source)
 
-    def test_cloudflare_assets_use_the_azure_edge(self) -> None:
+    def test_cloudflare_assets_use_the_canonical_fastapi_backend(self) -> None:
         workflow = yaml.load(
             (WORKFLOWS / "deploy-pages.yml").read_text(), Loader=yaml.BaseLoader
         )
-        edge_url = "https://portfolio-api-edge.tanmainguyenbinh.workers.dev/quanlykho"
-        self.assertEqual(workflow["env"]["API_BASE_URL"], edge_url)
+        api_url = "https://imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run/api/v1"
+        self.assertEqual(workflow["env"]["API_BASE_URL"], api_url)
 
         auth_service = (
             ROOT / "frontend/lib/src/features/auth/auth_service.dart"
         ).read_text()
-        self.assertIn(f"'{edge_url}'", auth_service)
+        self.assertIn(f"'{api_url}'", auth_service)
 
     def test_cloudflare_assets_use_quanlykho_name(self) -> None:
         title = "Kho Trà Sữa · QuanLyKho"

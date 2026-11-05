@@ -41,7 +41,7 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 
 **Navigation model hiện tại:** `RoleVisibility.visibleTabs()` trả list index; `hiddenPilotTabs={5}`; auditor-only ẩn tab 3/4. `_navRail` trong `app_shell.dart` hiển thị sidebar rộng 256 px trên màn hình wide, rail 88 px ở màn hình medium, có các section header tĩnh; màn hình compact dùng bottom bar + More sheet. Đây là nhóm mục phẳng, chưa phải menu cha/con có thể thu gọn. Chưa thấy breadcrumb được gắn vào app shell hoặc router duy trì URL theo tab. Landing công khai có trong `_AuthGate`, không phải route URL riêng.
 
-**Auth/RBAC client:** `RoleVisibility` là allowlist fail-open cho role lạ; backend là nguồn chuẩn. Capabilities: `iam:admin`, `etl:admin/design/run`, `cash:post_adjustment`. Vai trò seed: admin/staff/approver/auditor (backend) vs maker/checker/auditor (HTTP fallback).
+**Auth/RBAC client:** Backend là nguồn thi hành quyền cuối cùng. UI chỉ hiển thị thao tác nhạy cảm khi có user và role/capability phù hợp; thiếu user hoặc role thì các thao tác tạo, duyệt, quản lý danh mục và điều chỉnh quỹ bị ẩn. Role lạ vẫn giữ điều hướng tương thích, không được cấp quyền thao tác. Capabilities: `iam:admin`, `etl:admin/design/run`, `cash:post_adjustment`. Vai trò seed: admin/staff/approver/auditor (backend) vs maker/checker/auditor (HTTP fallback).
 ## 3. Current-state matrix — Backend routes (không đổi)
 
 | Route module | File | Endpoints chính | Module redesign tương ứng | Ghi chú |
@@ -158,4 +158,3 @@ Nguồn: `frontend/lib/src/features/**`, `frontend/lib/src/app/app_shell.dart`, 
 ## 8. Chỉ dẫn cho lượt triển khai kế tiếp
 
 Đọc `AGENTS.md`, tài liệu này, `docs/PLAN_UI_REDESIGN_VKHO_INSPIRED.md`, PRD/SRS/decisions/roadmap/architecture/database/workflows/API/QA/acceptance mới nhất. Kiểm tra `git status` và giữ nguyên thay đổi có sẵn. Audit lại frontend routes/screens/components, backend routes/schemas/services/models/migrations, auth/RBAC, tests và UI acceptance evidence trước khi sửa. Lập ma trận có đường dẫn/bằng chứng, xác định gaps, đối chiếu mâu thuẫn với MVP ca trà sữa. Không giả định tính năng đã tồn tại từ tên trường; không thêm module ngoài phạm vi đã được chấp thuận. Sau audit, đề xuất lát cắt đầu tiên nhỏ, giữ API/kiến trúc đang chạy, kèm acceptance và rủi ro trước khi triển khai. Khi triển khai được yêu cầu, sửa theo convention repo, chỉ thêm/sửa test phù hợp thay đổi và báo cáo chính xác phần đã kiểm chứng cùng phần còn thiếu bằng chứng. Dùng vkho.vn làm cảm hứng về cấu trúc thông tin; thiết kế nhận diện, nội dung và hình ảnh riêng cho QuanLyKho.
-

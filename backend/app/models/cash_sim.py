@@ -14,11 +14,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base, TimestampMixin
 
 # Account codes docs/04: SIM_CASH:{cashbox_id} và SIM_OFFSET:DEMO.
+SIM_CASH_PREFIX = "SIM_CASH:"
 SIM_OFFSET_ACCOUNT = "SIM_OFFSET:DEMO"
 
 
 def sim_cash_account(cashbox_id) -> str:
-    return f"SIM_CASH:{cashbox_id}"
+    return f"{SIM_CASH_PREFIX}{cashbox_id}"
 
 
 class CashBox(Base, TimestampMixin):

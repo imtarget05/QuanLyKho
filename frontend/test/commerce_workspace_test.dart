@@ -15,6 +15,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(store: store),
     ));
+    expect(find.byKey(const Key('commerce-demo-banner')), findsOneWidget);
+    expect(find.textContaining('Dữ liệu mô phỏng trên thiết bị này'), findsOneWidget);
 
     await tester.tap(find.text('Bán hàng').first);
     await tester.pumpAndSettle();
@@ -123,7 +125,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(
         store: store,
-        capabilities: {'inventory:view_balances'},
+        capabilities: const {'inventory:view_balances'},
       ),
     ));
 
@@ -155,7 +157,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: CommerceWorkspace(
         store: store,
-        capabilities: {'inventory:approve_request'},
+        capabilities: const {'inventory:approve_request'},
       ),
     ));
     expect(find.text('Duyệt phiếu'), findsOneWidget);

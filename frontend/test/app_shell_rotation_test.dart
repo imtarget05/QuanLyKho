@@ -1,6 +1,7 @@
 import "package:kho_tra_sua/src/app/app_shell.dart";
 import "package:kho_tra_sua/src/core/theme/app_theme.dart";
 import "package:kho_tra_sua/src/core/widgets/store_logo.dart";
+import "package:kho_tra_sua/src/data/models/dtos.dart";
 import "package:kho_tra_sua/src/data/repositories/fake_repository.dart";
 import "package:kho_tra_sua/src/features/auth/auth_service.dart";
 import "package:flutter/material.dart";
@@ -8,6 +9,13 @@ import "package:flutter_test/flutter_test.dart";
 import "package:provider/provider.dart";
 
 void main() {
+  const adminUser = AppUser(
+    id: 'rotation-admin',
+    username: 'rotation_admin',
+    displayName: 'Rotation Admin',
+    roles: ['admin'],
+  );
+
   testWidgets(
       "AppShell preserves screen state and does not reload when rotating screen",
       (WidgetTester tester) async {
@@ -23,7 +31,10 @@ void main() {
         create: (_) => AuthService(baseUrl: 'http://localhost:8000'),
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: AppShell(repository: fakeRepo),
+          home: SessionScope(
+            user: adminUser,
+            child: AppShell(repository: fakeRepo),
+          ),
         ),
       ),
     );

@@ -295,7 +295,7 @@ class _HeroIllustrationState extends State<_HeroIllustration> {
                     Icon(Icons.circle, color: Color(0xFF34D399), size: 7),
                     SizedBox(width: 5),
                     Text(
-                      'Live ERP System',
+                      'Số liệu minh họa',
                       style: TextStyle(
                         color: Color(0xFF86EFAC),
                         fontSize: 10.5,
@@ -591,52 +591,63 @@ class _TrustMetricsStrip extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1150),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmall = constraints.maxWidth < 620;
-              return Wrap(
-                alignment: WrapAlignment.spaceAround,
-                runAlignment: WrapAlignment.center,
-                spacing: 20,
-                runSpacing: 18,
-                children: [
-                  _metricTile(
-                    value: 99.8,
-                    suffix: '%',
-                    decimalDigits: 1,
-                    title: 'Khớp kiểm kê kho',
-                    desc: 'Đối soát số liệu thực tế',
-                    color: const Color(0xFF34D399),
-                    isSmall: isSmall,
-                  ),
-                  _metricTile(
-                    value: 3,
-                    prefix: '< ',
-                    suffix: 'giây',
-                    title: 'Tốc độ xuất phiếu',
-                    desc: 'Hóa đơn A4 & mã VietQR',
-                    color: const Color(0xFF60A5FA),
-                    isSmall: isSmall,
-                  ),
-                  _metricTile(
-                    value: 100,
-                    suffix: '%',
-                    title: 'Bù trừ tự động',
-                    desc: 'Dòng tiền & công nợ',
-                    color: const Color(0xFFA78BFA),
-                    isSmall: isSmall,
-                  ),
-                  _metricTile(
-                    value: 0,
-                    suffix: 'đ',
-                    title: 'Chi phí phát sinh',
-                    desc: 'Sở hữu dữ liệu trọn đời',
-                    color: const Color(0xFFFBBF24),
-                    isSmall: isSmall,
-                  ),
-                ],
-              );
-            },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Các chỉ số sau là ví dụ mô phỏng, chưa phải kết quả vận hành được đo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFFDDD6FE), fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmall = constraints.maxWidth < 620;
+                  return Wrap(
+                    alignment: WrapAlignment.spaceAround,
+                    runAlignment: WrapAlignment.center,
+                    spacing: 20,
+                    runSpacing: 18,
+                    children: [
+                      _metricTile(
+                        value: 99.8,
+                        suffix: '%',
+                        decimalDigits: 1,
+                        title: 'Khớp kiểm kê kho',
+                        desc: 'Đối soát số liệu thực tế',
+                        color: const Color(0xFF34D399),
+                        isSmall: isSmall,
+                      ),
+                      _metricTile(
+                        value: 3,
+                        prefix: '< ',
+                        suffix: 'giây',
+                        title: 'Tốc độ xuất phiếu',
+                        desc: 'Hóa đơn A4 & mã VietQR',
+                        color: const Color(0xFF60A5FA),
+                        isSmall: isSmall,
+                      ),
+                      _metricTile(
+                        value: 100,
+                        suffix: '%',
+                        title: 'Bù trừ tự động',
+                        desc: 'Dòng tiền & công nợ',
+                        color: const Color(0xFFA78BFA),
+                        isSmall: isSmall,
+                      ),
+                      _metricTile(
+                        value: 0,
+                        suffix: 'đ',
+                        title: 'Chi phí phát sinh',
+                        desc: 'Sở hữu dữ liệu trọn đời',
+                        color: const Color(0xFFFBBF24),
+                        isSmall: isSmall,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -703,25 +714,15 @@ class _FeaturesSection extends StatelessWidget {
   final bool isCompact;
 
   static const _features = <_Feature>[
-    _Feature(
-        Icons.dashboard_rounded,
-        'Tổng quan vận hành',
+    _Feature(Icons.dashboard_rounded, 'Tổng quan vận hành',
         '8 thẻ KPI tài chính, doanh thu, lợi nhuận, biểu đồ xu hướng và cơ cấu giá trị tồn kho theo thời gian thực.'),
-    _Feature(
-        Icons.shopping_cart_rounded,
-        'Quản lý Bán hàng & Báo giá',
+    _Feature(Icons.shopping_cart_rounded, 'Quản lý Bán hàng & Báo giá',
         'Lập đơn bán, tạo báo giá, 1-click chuyển đổi thành đơn hàng và in hóa đơn A4 đính kèm mã QR VietQR thanh toán.'),
-    _Feature(
-        Icons.local_shipping_rounded,
-        'Quản lý Mua hàng & NCC',
+    _Feature(Icons.local_shipping_rounded, 'Quản lý Mua hàng & NCC',
         'Theo dõi nhà cung cấp, lập phiếu mua hàng, tự tính VAT, chiết khấu, chi phí vận chuyển và in phiếu A4 có chữ ký 4 bên.'),
-    _Feature(
-        Icons.inventory_2_rounded,
-        'Quản lý Kho & Danh mục',
+    _Feature(Icons.inventory_2_rounded, 'Quản lý Kho & Danh mục',
         'Phân nhóm hàng hóa, theo dõi tồn hiện tại, định mức tồn tối thiểu, giá trị tồn và badge cảnh báo Hết hàng / Vượt tồn.'),
-    _Feature(
-        Icons.fact_check_rounded,
-        'Kiểm kê kho tự động',
+    _Feature(Icons.fact_check_rounded, 'Kiểm kê kho tự động',
         'Lập phiếu kiểm kê, đối chiếu số liệu hệ thống vs thực tế, tự tính chênh lệch tăng/giảm và tự động bù trừ tồn kho.'),
     _Feature(
         Icons.account_balance_wallet_rounded,

@@ -73,6 +73,11 @@ void main() {
       expect(find.byKey(const Key('landing-enter-btn')), findsOneWidget);
       expect(find.byKey(const Key('landing-demo-btn')), findsOneWidget);
       expect(find.byKey(const Key('landing-footer-enter-btn')), findsOneWidget);
+      expect(find.text('Số liệu minh họa'), findsOneWidget);
+      expect(
+        find.textContaining('chưa phải kết quả vận hành được đo'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const Key('landing-demo-btn')));
       await tester.pumpAndSettle();

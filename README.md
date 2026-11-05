@@ -1,5 +1,7 @@
 # Kho Trà Sữa — Hệ Thống Vận Hành Tồn Kho & Quỹ Mô Phỏng
 
+> **Interview release:** [five-minute demo, evidence, and production boundaries](docs/INTERVIEW_RELEASE.md) · [portfolio pack](../PORTFOLIO_INTERVIEW.md)
+
 [![CI](https://github.com/imtarget05/QuanLyKho/actions/workflows/ci.yml/badge.svg)](https://github.com/imtarget05/QuanLyKho/actions/workflows/ci.yml)
 [![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?logo=flutter)](https://flutter.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
@@ -167,3 +169,37 @@ Kho-Trà-Sữa/
 
 (Trivial smoke-test commit to trigger `ci.yml` CI on push to main.)
 
+---
+
+## 🎤 Interview Release (2 phút)
+
+Mục đích: portfolio có bằng chứng, dễ demo, trung thực — không mở rộng tính năng mới.
+
+### 1. Bài toán kinh doanh
+Hệ thống vận hành tồn kho & quỹ mô phỏng cho kho nguyên liệu trà sữa, yêu cầu maker-checker 4 mắt trước khi ghi sổ. Không phải core-banking, không kết nối ngân hàng, không xử lý tiền thật.
+
+### 2. Kiến trúc chính
+FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL 16 + Flutter mobile/web. Dual-entry sub-ledger, keyset pagination, SSE real-time notification, outbox pattern.
+
+### 3. Bạn trực tiếp implement gì?
+- P0 B01–B09: inventory catalog/balances, request/approval/post, asset serial, cashbox+journal, audit/outbox/activity+SSE
+- P1 B10–B15: Sheets integration, reconciliation jobs, cross-platform E2E, backup/restore, demo deploy
+- Idempotency middleware, dual-control security, audit stamp SHA-256
+
+### 4. Có test/evidence nào?
+- `poetry run ruff check backend/ ai/` → **0 errors**
+- `poetry run python -m pytest tests/ -q` → **975 passed, 8 skipped, 1 xfailed** (trên PostgreSQL test DB)
+- `cd frontend && flutter test --no-pub` → **350/350 passed**
+- Alembic: **34 migrations**
+- Chi tiết: `DEMO.md`, `docs/PORTFOLIO_AUDIT_2026-10-21.md`
+
+### 5. Trade-off và giới hạn
+- Modular monolith (không microservices): đúng cho maker-checker cần 1 PostgreSQL transaction + 1 business authority.
+- Quỹ/journal là financial simulation, không phải core-banking.
+- Cloudflare Worker giữ tạm để tương thích, không phải đích production.
+
+### 6. Nếu production thật thì còn thiếu gì?
+- Production deploy evidence (chưa có live deployment).
+- Encrypted PostgreSQL at scale (hiện tại là local dev DB).
+- Real bank connection (không kết nối ngân hàng trong scope demo).
+- Formal SLO/RPO documentation.

@@ -202,6 +202,44 @@ def test_load_staging_is_idempotent(staging_table) -> None:
     assert qlk_staging.count_rows(staging_table, TEST_TABLE, "inventory") == 30
 
 
+def test_detect_drift_reads_staging_payload_without_invented_columns(staging_table) -> None:
+    """A fresh ingest has no historical reference window, but the DAG must run."""
+    qlk_tasks.load_staging("inventory")
+
+    result = qlk_tasks.detect_drift()
+
+    assert result == {
+        "drifted": False,
+        "reason": "insufficient_data",
+        "reference_rows": 0,
+        "current_rows": 30,
+    }
+
+
+def test_detect_drift_uses_both_time_windows(staging_table) -> None:
+    """Rows from both windows produce an actual distribution comparison."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    qlk_tasks.load_staging("inventory")
+    table = qlk_staging.staging_metadata(TEST_TABLE).tables[TEST_TABLE]
+    with staging_table.begin() as conn:
+        conn.execute(
+            update(table)
+            .where(table.c.row_number <= 15)
+            .values(ingested_at=datetime.now(UTC) - timedelta(days=20))
+        )
+
+    result = qlk_tasks.detect_drift()
+
+    assert result["reference_rows"] == 15
+    assert result["current_rows"] == 15
+    assert result["recommendation"] in {
+        "no_action", "scheduled_retraining", "data_preprocessing", "investigate"
+    }
+
+
 def test_load_staging_writes_expense_and_supplier(staging_table) -> None:
     """Các dataset còn lại cũng nạp được vào bảng staging."""
     expense = qlk_tasks.load_staging("expense")

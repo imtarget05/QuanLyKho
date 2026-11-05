@@ -125,7 +125,7 @@ void main() {
     );
 
     testWidgets(
-      'Unauthenticated / null user defaults to canApprove = true for backward test compatibility',
+      'Unauthenticated / null user cannot see approval actions',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(1400, 900);
         tester.view.devicePixelRatio = 1.0;
@@ -136,10 +136,13 @@ void main() {
         await tester.pumpWidget(buildApprovalsWidget(repo: repo, user: null));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('btn-approve-sr-0002')), findsOneWidget);
-        expect(find.byKey(const Key('btn-reject-sr-0002')), findsOneWidget);
-        expect(find.byKey(const Key('approval-select-all')), findsOneWidget);
-        expect(find.byKey(const Key('approvals-readonly-banner')), findsNothing);
+        expect(find.byKey(const Key('btn-approve-sr-0002')), findsNothing);
+        expect(find.byKey(const Key('btn-reject-sr-0002')), findsNothing);
+        expect(find.byKey(const Key('approval-select-all')), findsNothing);
+        expect(
+          find.byKey(const Key('approval-readonly-tag-sr-0002')),
+          findsOneWidget,
+        );
       },
     );
   });

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -151,8 +150,8 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace>
       builder: (dialogCtx) => AlertDialog(
         key: const Key('session-revoked-dialog'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.security_update_warning_rounded,
                 color: Color(0xFFD97706), size: 28),
             SizedBox(width: 10),
@@ -409,6 +408,18 @@ class _CommerceWorkspaceState extends State<CommerceWorkspace>
             Expanded(
               child: Column(
                 children: [
+                  if (widget.api == null)
+                    Container(
+                      key: const Key('commerce-demo-banner'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: const Color(0xFFFFF3CD),
+                      child: const Text(
+                        'Dữ liệu mô phỏng trên thiết bị này; không kết nối API hoặc cơ sở dữ liệu thật.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF6B4F00), fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   if (auth?.adminRolePromoted == true || _isAdminPromotionPending)
                     AdminPromotionBanner(
                       onRefresh: () async {
@@ -723,13 +734,13 @@ class _WorkspaceSidebar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 22, 16, 22),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 22, 16, 22),
               child: Row(
                 children: [
-                  const StoreLogo(size: 34),
-                  const SizedBox(width: 11),
-                  const Expanded(
+                  StoreLogo(size: 34),
+                  SizedBox(width: 11),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1414,10 +1425,10 @@ class _OverviewPage extends StatelessWidget {
           childAspectRatio: width < 650 ? 2.2 : (width < 1100 ? 1.85 : 2.2),
           children: cards),
       const SizedBox(height: 22),
-      Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 8),
+      const Padding(
+        padding: EdgeInsets.only(top: 4, bottom: 8),
         child: Row(
-          children: const [
+          children: [
             Icon(Icons.dashboard_customize_outlined,
                 size: 18, color: Color(0xFF475569)),
             SizedBox(width: 8),
@@ -1543,7 +1554,7 @@ class _OverviewInsights extends StatelessWidget {
               : constraints.maxWidth >= 620
                   ? 2
                   : 1;
-      final spacing = 14.0;
+      const spacing = 14.0;
       final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
       return Wrap(spacing: spacing, runSpacing: spacing, children: [
         if (canViewOwnerData)
@@ -1867,9 +1878,8 @@ class _MetricCard extends StatelessWidget {
     this.numericValue,
     this.isCurrency = false,
     this.suffix = '',
-    this.decimalDigits = 0,
     this.trendBadge,
-  });
+  }) : decimalDigits = 0;
   final String label;
   final String value;
   final IconData icon;
@@ -2053,10 +2063,12 @@ class _OrderListPageState extends State<_OrderListPage> {
       } else {
         widget.store.convertQuote(quote.id);
       }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã chuyển ${quote.code} thành đơn bán.')),
       );
     } catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$error'),
@@ -2305,7 +2317,7 @@ class _OrderListPageState extends State<_OrderListPage> {
                     : sale
                         ? 'Chưa có đơn bán. Tạo đơn bán đầu tiên để bắt đầu.'
                         : 'Chưa có phiếu mua. Tạo phiếu mua đầu tiên để nhập hàng.';
-    final searchField = (double? width) => SizedBox(
+    SizedBox searchField(double? width) => SizedBox(
           width: width,
           height: 38,
           child: TextField(
@@ -2481,10 +2493,10 @@ class _OrderListPageState extends State<_OrderListPage> {
               ),
             if (!hasRows)
               Padding(
-                  padding: EdgeInsets.all(28),
+                  padding: const EdgeInsets.all(28),
                   child: Center(
                       child: Text(emptyMessage,
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: Color(0xFF7F857D), fontSize: 12)))),
           ])),
     ]);
@@ -3416,17 +3428,17 @@ class _StocktakeHistoryPage extends StatelessWidget {
                         color: Color(0xFF737971),
                         fontWeight: FontWeight.w700),
                     columns: [
-                      DataColumn(label: Text('MÃ PHIẾU')),
-                      DataColumn(label: Text('NGÀY KIỂM')),
-                      DataColumn(label: Text('NGƯỜI KIỂM')),
-                      DataColumn(label: Text('SỐ MẶT HÀNG'), numeric: true),
-                      DataColumn(label: Text('TĂNG'), numeric: true),
-                      DataColumn(label: Text('GIẢM'), numeric: true),
+                      const DataColumn(label: Text('MÃ PHIẾU')),
+                      const DataColumn(label: Text('NGÀY KIỂM')),
+                      const DataColumn(label: Text('NGƯỜI KIỂM')),
+                      const DataColumn(label: Text('SỐ MẶT HÀNG'), numeric: true),
+                      const DataColumn(label: Text('TĂNG'), numeric: true),
+                      const DataColumn(label: Text('GIẢM'), numeric: true),
                       if (canViewOwnerData)
-                        DataColumn(
+                        const DataColumn(
                             label: Text('CHÊNH LỆCH (Đ)'), numeric: true),
-                      DataColumn(label: Text('TRẠNG THÁI')),
-                      DataColumn(label: Text('THAO TÁC')),
+                      const DataColumn(label: Text('TRẠNG THÁI')),
+                      const DataColumn(label: Text('THAO TÁC')),
                     ],
                     rows: tickets.map((t) {
                       int diff = 0;
@@ -3612,7 +3624,7 @@ class _InventoryHistoryPageState extends State<_InventoryHistoryPage> {
 
   @override
   Widget build(BuildContext context) => _PageFrame(children: [
-        _PageHeading('Lịch sử kho',
+        const _PageHeading('Lịch sử kho',
             'Theo dõi biến động tồn và kết quả kiểm kê đã chốt.'),
         Align(
           alignment: Alignment.centerLeft,
@@ -3795,17 +3807,17 @@ class _ProductTable extends StatelessWidget {
               color: Color(0xFF737971),
               fontWeight: FontWeight.w700),
           columns: [
-            DataColumn(label: Text('ẢNH')),
-            DataColumn(label: Text('MÃ SP')),
-            DataColumn(label: Text('TÊN SẢN PHẨM')),
-            DataColumn(label: Text('NHÓM')),
-            DataColumn(label: Text('TỒN HIỆN TẠI')),
-            DataColumn(label: Text('TỒN TỐI THIỂU')),
+            const DataColumn(label: Text('ẢNH')),
+            const DataColumn(label: Text('MÃ SP')),
+            const DataColumn(label: Text('TÊN SẢN PHẨM')),
+            const DataColumn(label: Text('NHÓM')),
+            const DataColumn(label: Text('TỒN HIỆN TẠI')),
+            const DataColumn(label: Text('TỒN TỐI THIỂU')),
             if (showFinancialDetails) ...[
-              DataColumn(label: Text('GIÁ TRỊ TỒN')),
-              DataColumn(label: Text('GIÁ VỐN')),
+              const DataColumn(label: Text('GIÁ TRỊ TỒN')),
+              const DataColumn(label: Text('GIÁ VỐN')),
             ],
-            DataColumn(label: Text('TRẠNG THÁI')),
+            const DataColumn(label: Text('TRẠNG THÁI')),
           ],
           rows: products
               .map((p) => DataRow(cells: [
@@ -4456,6 +4468,7 @@ class _ApprovalPageState extends State<_ApprovalPage> {
       ),
     );
     reason.dispose();
+    if (!mounted) return;
     if (value == null) return;
     if (value.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4531,7 +4544,7 @@ class _ApprovalPageState extends State<_ApprovalPage> {
 
   @override
   Widget build(BuildContext context) => _PageFrame(children: [
-        _PageHeading('Phê duyệt phiếu',
+        const _PageHeading('Phê duyệt phiếu',
             'Duyệt đơn bán, phiếu nhập và kiểm kê theo phân quyền maker–checker.'),
         const Padding(
           padding: EdgeInsets.only(bottom: 8),
@@ -4588,11 +4601,13 @@ class _ApprovalPageState extends State<_ApprovalPage> {
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError)
+              if (snapshot.hasError) {
                 return _EmptyCard('Không tải được: ${snapshot.error}');
+              }
               final requests = snapshot.data ?? const [];
-              if (requests.isEmpty)
+              if (requests.isEmpty) {
                 return const _EmptyCard('Không có phiếu chờ duyệt.');
+              }
               return Column(children: [
                 for (final request in requests)
                   _approvalCard(
@@ -5210,9 +5225,11 @@ Future<void> _showCreateOrder(
                                         idempotencyKey: partyRequestKey,
                                       );
                                 if (api != null) await onRefresh?.call();
+                                if (!context.mounted) return;
                                 parties.add(party);
                                 setState(() => selectedParty = party.name);
                               } catch (error) {
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('$error')));
                               }
@@ -5817,8 +5834,10 @@ Future<void> _showCreateOrder(
                               note: note.text,
                               dueDate: parsedDueDate);
                         }
+                        if (!context.mounted || !dialogContext.mounted) return;
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        messenger.showSnackBar(SnackBar(
                             content: Text(quote
                                 ? 'Đã tạo báo giá, chưa thay đổi tồn kho.'
                                 : sale
@@ -5829,6 +5848,7 @@ Future<void> _showCreateOrder(
                                         ? 'Đã gửi phiếu nhập chờ duyệt kho.'
                                         : 'Phiếu nhập đang chờ duyệt trong phiên demo.')));
                       } catch (error) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text('$error'),
                             backgroundColor: const Color(0xFFB34B43)));
@@ -5974,8 +5994,10 @@ Future<void> _showPayment(
                                   order.id, int.parse(amount.text),
                                   method: method, reference: reference.text);
                             }
+                            if (!context.mounted || !dialogContext.mounted) return;
+                            final messenger = ScaffoldMessenger.of(context);
                             Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text(api == null
                                     ? context.tr('debt_snack_ram')
@@ -5983,6 +6005,7 @@ Future<void> _showPayment(
                               ),
                             );
                           } catch (error) {
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('$error')));
                           }
@@ -6541,9 +6564,9 @@ Future<Uint8List> _buildOrderPdf(CommerceOrder order, {bool isK80 = false}) asyn
           pw.SizedBox(height: 14),
           pw.Container(
             padding: const pw.EdgeInsets.all(10),
-            decoration: pw.BoxDecoration(
+            decoration: const pw.BoxDecoration(
               color: PdfColors.grey100,
-              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
             ),
             child: pw.Row(
               children: [

@@ -3,18 +3,34 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('web release compares the running build with an uncached version marker', () {
+  test('web release compares the running build with an uncached version marker',
+      () {
     final index = File('web/index.html').readAsStringSync();
-    final pagesHeaders = File('web/_headers').readAsStringSync();
+    final webHeaders = File('web/_headers').readAsStringSync();
+    final deployedHeaders =
+        File('../infra/cloudflare-pages/_headers').readAsStringSync();
 
     expect(index, contains('name="app-build-number"'));
     expect(index, contains("window.appCurrentBuild"));
-    expect(index, contains("fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' })"));
-    expect(pagesHeaders, contains('/version.json'));
-    expect(pagesHeaders, contains('Cache-Control: no-cache, no-store, must-revalidate'));
+    expect(
+        index,
+        contains(
+            "fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' })"));
+    for (final headers in [webHeaders, deployedHeaders]) {
+      expect(headers, contains('/version.json'));
+      expect(headers,
+          contains('Cache-Control: no-cache, no-store, must-revalidate'));
+      expect(headers,
+          contains('/assets/*\n  Cache-Control: no-cache, must-revalidate'));
+      expect(headers,
+          contains('/canvaskit/*\n  Cache-Control: no-cache, must-revalidate'));
+      expect(headers, isNot(contains('max-age=31536000, immutable')));
+    }
   });
 
-  test('Nginx revalidates the app shell and only makes fingerprinted files immutable', () {
+  test(
+      'Nginx revalidates the app shell and only makes fingerprinted files immutable',
+      () {
     final nginx = File('nginx.conf').readAsStringSync();
 
     for (final entrypoint in [
@@ -37,13 +53,19 @@ void main() {
     expect(immutableRule.group(1), contains('immutable'));
   });
 
-  test('Cloudflare and Docker builds embed the matching release identifier', () {
+  test('Cloudflare and Docker builds embed the matching release identifier',
+      () {
     final pagesWorkflow =
         File('../.github/workflows/deploy-pages.yml').readAsStringSync();
     final dockerfile = File('Dockerfile').readAsStringSync();
 
     expect(pagesWorkflow, contains('__APP_BUILD_NUMBER__'));
     expect(dockerfile, contains('APP_BUILD_NUMBER'));
+    expect(
+      pagesWorkflow,
+      contains(
+          'cp infra/cloudflare-pages/_headers frontend/build/worker-assets/_headers'),
+    );
   });
 
   test('app update cleanup does not delete user-owned offline data', () {

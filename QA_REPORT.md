@@ -1,5 +1,7 @@
 # BankOps — Báo cáo đối soát độc lập (Vòng 1 + 2 + 3)
 
+> **Kho Trà Sữa, checkout 2026-11-03:** xem [verification checkpoint](docs/qa/2026-11-03-verification-checkpoint.md) và [ma trận 21 ID MVP](docs/acceptance/2026-10-26-milk-tea-baseline.md). Các số test và cloud bên dưới là ảnh chụp lịch sử của BankOps/phiên bản cũ; không dùng để đóng nghiệm thu Kho Trà Sữa hiện tại.
+
 **Vai trò:** QA reviewer độc lập — chỉ viết test, **không sửa tệp tính năng**.
 **Phạm vi:** B01–B15 (`docs/13-backlog.md`), ca bắt buộc A1–A4 / I1–I3 / C1–C3 / R1 / G1–G2 / E1 / S1 (`docs/10-qa.md`), hợp đồng `docs/04`, `docs/06`, `docs/08`.
 **Snapshot cuối:** 15/10/2026 · **Live re-verify**: API Modal + Pages + Neon healthy —
@@ -610,6 +612,40 @@ cũng vậy (cột `err_msg`, `raw_data` do người dùng kiểm soát).
 | `flutter analyze` | **No issues found!** |
 | `scripts/check_no_secrets.py` | **passed** |
 
+## 12. Đối soát lại working tree — 03/11/2026
+
+Phần Vòng 1–11 ở trên là historical evidence và không được dùng để mô tả
+working tree hiện tại. Recheck mới nhất cho snapshot hiện tại ghi nhận:
+
+| Cổng | Kết quả hiện tại | Diễn giải |
+|---|---|---|
+| Backend focused contract tests | **69 passed, 1 skipped, 1 xfailed** | Chỉ bao phủ hai nhóm test được chọn, không thay thế full suite. |
+| Ruff | **All checks passed** | Chạy `ruff check backend/ ai/`. |
+| Flutter tests | **355 passed** | Đây là full suite hiện tại; claim `80/80` bên trên chỉ thuộc snapshot cũ. |
+| Flutter analyze | **90 info issues** | Không có kết luận “No issues found”; cần phân loại/sửa info trước khi coi analyze sạch. |
+| Backend full pytest | **TIMEOUT sau 1200s** | Chưa được tính là pass; cần chạy bằng isolation/fixture chuẩn và phân loại nguyên nhân timeout. |
+
+### Environment recheck
+
+- The repository `.venv`/`backend/.venv` Python links are not runnable on this
+  host because their managed Python stdlib path is sandbox-inaccessible.
+- A temporary system-site-packages venv restored `openpyxl` and `reportlab`,
+  but the host Python 3.15 runtime is not a supported verification baseline:
+  application import then failed with `Metaclasses with custom tp_new are not
+  supported`.
+- The locked dependency export also attempts source builds for `asyncpg` and
+  `pyarrow` on the available interpreters. Docker validation was unavailable
+  because access to `/var/run/docker.sock` is denied by the sandbox.
+
+These are environment blockers, not passing product evidence. Re-run the
+backend suite with Python 3.11 and Docker/PostgreSQL access before changing
+the readiness score.
+
+**Current readiness:** Không claim backend `932 passed`, Flutter `80/80`,
+`flutter analyze` sạch hoặc production live health từ historical report. Điểm
+readiness hiện tại giữ ở **5/10** cho tới khi full backend suite, CI/cloud
+evidence và các contract còn mở được xác minh lại trên cùng release SHA.
+
 Skip (cả hai ở `test_b01_foundation.py`): `:225` mypy chưa cài (dev dependency) · `:359` seed đọc `sample-data`.
 
 ### Kết luận vòng 11
@@ -617,3 +653,54 @@ Skip (cả hai ở `test_b01_foundation.py`): `:225` mypy chưa cài (dev depend
 Chuỗi production **verified end-to-end bằng bằng chứng sống** — không chỉ ghi chép. Một lỗ thực đã được bịt (CSV
 injection) kèm test hồi quy cả hai phía. **Không cổng nào đỏ.** Còn mở có chủ đích: watermark demo + loading/error/empty
 states (cần đăng nhập UI trực quan) và AI "with data → citation" (provider đang `disabled`).
+
+---
+
+## 13. Kiểm tra lại lần mới nhất (03/11/2026 — phiên hiện tại)
+
+Mục tiêu: gỡ blocker môi trường để xác minh lại QuanLyKho, **không ghi nhận pass giả**, giữ readiness không tăng điểm cho tới khi full backend suite có evidence tái lập.
+
+### 13.1 Môi trường — ĐÃ KHÔNG LẠI LÀ BLOCKER (sửa nhận định cũ)
+
+Tại phiên trước, section 12 ghi nhận 4 blocker môi trường. Kiểm tra lại cho thấy chúng đã không còn đúng hoặc đã được vượt qua trong phiên này:
+
+| Blocker cũ (section 12) | Trạng thái hiện tại | Ghi chú |
+|---|---|---|
+| `.venv`/`backend/.venv` Python links sandbox-inaccessible | **Đã vượt qua** | `backend/.venv` chạy Python 3.11.15, đủ toàn bộ runtime (openpyxl 3.1.5, asyncpg, fastapi, bcrypt 4.0.1, ruff, pytest), `app.main` import OK. Dùng trực tiếp, không cần tạo venv mới. |
+| Python 3.15 không hỗ trợ (metaclass) | **Đã vượt qua** | Dùng Python 3.11.15 (`~/.local/bin/python3.11`, khớp `pyproject.toml requires-python`). Python 3.15 không dùng làm baseline verify. |
+| `asyncpg`/`pyarrow` build từ nguồn | **Không phát sinh** | Các wheel đã có sẵn; `pip list` xác nhận đầy đủ dependency runtime. |
+| `/var/run/docker.sock` bị sandbox chặn | **Không phát sinh** | Docker Desktop 29.6.1 đang chạy, socket truy cập được. |
+
+Cơ sở dữ liệu cô lập dùng cho kiểm thử:
+- PostgreSQL 16 (Homebrew) khởi chạy riêng tại `127.0.0.1:5433`, database `bankops_test`, user `bankops` (mật khẩu `bankops`).
+- Đã `alembic upgrade head` (đến revision 034) và `app.seed` trên `bankops_test`.
+- **Quy tắc:** mutating tests chỉ chạy trên `bankops_test` (tên chứa `_test`), không chạm DB `bankops` (dev). Conftest `pytest_sessionstart` cấm mutate DB không có `_test`.
+
+### 13.2 Kết quả kiểm chứng (raw evidence)
+
+| Cổng | Lệnh | Kết quả xác minh lần này | Ghi chú |
+|---|---|---|---|
+| Ruff lint | `backend/.venv/bin/python -m ruff check backend/app backend/tests` | **17 lỗi** (10×F811, 4×F401, 3×I001; 7 fixable qua `--fix`) | Sửa nhận định cũ "All checks passed". Không phải blocker full suite nhưng cần xử lý để không phát sinh mới. |
+| Backend focused (foundation) | `pytest tests/test_b01_foundation.py` | **24 passed, 1 skipped, 1 xfailed** (2.71s) | Chạy trên `bankops_test`, `APP_ENV=test`, `DEMO_MODE=true`. |
+| Backend contract | `pytest tests/test_contract_vs_docs.py tests/test_dev_contracts.py` | **49 passed** (7.68s) | Sau khi đã migrate + seed `bankops_test`. |
+| Flutter test | `flutter test --no-pub` (frontend) | **355 passed**, tất cả xanh | Full suite hiện tại; claim `80/80` thuộc snapshot cũ. |
+| Flutter analyze | `flutter analyze` (frontend) | **No issues found!** (3.4s) | Sửa nhận định cũ "90 info issues"; analyze đã sạch. |
+
+### 13.3 Blocker thực: backend full pytest HANG (không phải env)
+
+`pytest tests/` (full suite, 979 items) **bị treo vĩnh viễn tại ca đầu tiên**:
+`tests/test_acceptance_qa.py::TestA1SelfApproval::test_inventory_self_approval_forbidden` — không in kết quả, không-thoát, CPU 0%.
+
+Nguyên nhân đã chẩn đoán:
+- Starlette `TestClient` (dùng qua fixture `client`, session-scoped) chạy ASGI app trong `anyio.run_blocking_portal` → một **event loop riêng (background thread)**.
+- SQLAlchemy async engine (`create_async_engine`) + asyncpg connection/protocol gắn với event loop khác → tại request thứ 2+ chạm DB ném `RuntimeError: ... Future ... attached to a different loop` (chạy script độc lập) hoặc treo event loop ở `select()` không có fd (chạy qua `pytest`).
+- Đã chứng minh **không phải lỗi logic sản phẩm**: gọi trực tiếp hàm route `create_request(...)` với session thật → trả `201`, có `id` (không treo). Login qua `TestClient` request đầu cũng OK (`200`). Vấn đề nằm ở cơ chế TestClient + async SQLAlchemy, không phải code nghiệp vụ.
+
+Kết luận: **full backend suite KHÔNG thể chạy trong môi trường hiện tại** do khớpkhông khớp event loop của TestClient/async SQLAlchemy. Đây là blocker cơ sở kiểm thử, cần sửa cơ sở thiết bị kiểm thử (ví dụ đổi `TestClient` sang `httpx.AsyncClient` + `ASGITransport` chạy cùng loop, hoặc cấu hình engine/loop phù hợp) — **không được coi là pass và không được đụng WIP test của người dùng mà chưa có kế hoạch sửa.**
+
+### 13.4 Readiness hiện tại
+
+- Readiness giữ ở **5/10** (không tăng điểm).
+- Không claim: backend full suite pass, ruff sạch, hay production live health từ báo cáo lịch sử.
+- Chỉ chuyển todo QuanLyKho sang `done` khi: (a) full backend suite chạy xanh trên `bankops_test` có raw log + `--durations`, (b) Flutter verify đã có evidence tái lập (đã làm: analyze sạch + test 355 passed), (c) các contract còn mở được xác minh lại trên cùng release SHA.
+- Mọi giới hạn production ghi rõ `NOT_VERIFIED`, không suy diễn từ local pass.

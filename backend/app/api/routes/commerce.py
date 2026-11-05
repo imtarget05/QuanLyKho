@@ -35,6 +35,7 @@ from app.models.inventory import (
     LotBalance,
 )
 from app.services import idempotency
+from app.services.general_ledger import post_subledger_journal
 
 router = APIRouter(prefix="/commerce")
 _READ_CAPS = ("inventory:view_balances", "inventory:create_request", "admin:user_management")
@@ -678,7 +679,7 @@ async def create_document(
 
     if inventory_request is not None and payload.document_type in ("sale", "purchase"):
         if payload.document_type == "sale":
-            debit_code, credit_code = "111", "632"
+            debit_code, credit_code = "111", "511"
         else:
             debit_code, credit_code = "156", "331"
         journal = InventoryJournal(
@@ -691,25 +692,30 @@ async def create_document(
         db.add(journal)
         await db.flush()  # flush journal trước để có id trong inv_journals
 
-        db.add_all(
-            [
-                InventoryEntry(
-                    id=uuid.uuid4(),
-                    journal_id=journal.id,
-                    account_code=debit_code,
-                    debit=total,
-                    credit=Decimal("0"),
-                ),
-                InventoryEntry(
-                    id=uuid.uuid4(),
-                    journal_id=journal.id,
-                    account_code=credit_code,
-                    debit=Decimal("0"),
-                    credit=total,
-                ),
-            ]
-        )
+        entries = [
+            InventoryEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code=debit_code,
+                debit=total,
+                credit=Decimal("0"),
+            ),
+            InventoryEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code=credit_code,
+                debit=Decimal("0"),
+                credit=total,
+            ),
+        ]
+        db.add_all(entries)
         await db.flush()  # rồi flush entries
+        await post_subledger_journal(
+            db,
+            source_type="inventory",
+            source_journal=journal,
+            entries=entries,
+        )
 
     lines = (await db.execute(select(CommerceDocumentLine).where(CommerceDocumentLine.document_id == document.id))).scalars().all()
     response = _document_out(document, lines)

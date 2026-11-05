@@ -105,7 +105,13 @@ class TestAdversarialUnusualEmails:
         assert bool(res) is False
         assert "không có định dạng hợp lệ" in res.message
 
-    def test_promote_user_with_various_email_formats_in_database(self, client):
+    def test_promote_user_with_various_email_formats_in_database(self, client, monkeypatch):
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "smtp_user", "sender@bankops.vn")
+        monkeypatch.setattr(settings, "smtp_password", "test-only-password")
+        monkeypatch.setattr(settings, "smtp_host", "smtp.bankops.vn")
+        monkeypatch.setattr(settings, "smtp_port", 587)
         admin_auth = _login(client, "demo_admin")
 
         test_matrix = [

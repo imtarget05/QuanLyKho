@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import make_url
 
 """Shared fixtures for BankOps audit tests.
@@ -26,7 +27,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 # A syntactically valid placeholder so `app.config.Settings()` can be built
 # without a real database. Tests never open a connection through this URL.
 os.environ.setdefault(
-    "DATABASE_URL", "postgresql+psycopg2://bankops:bankops@127.0.0.1:5432/bankops"
+    "DATABASE_URL", "postgresql+psycopg2://127.0.0.1:5432/bankops"
 )
 
 # Demo mode là opt-in TƯỜNG MINH (APP_ENV=demo + DEMO_MODE=true). Bộ test chạy
@@ -79,6 +80,13 @@ def _import_or_fail(module: str):
 def app():
     """Import the FastAPI application, failing loudly if it cannot boot."""
     return _import_or_fail("app.main").app
+
+
+@pytest.fixture
+async def async_client(app):
+    """HTTP client against the application without binding a network port."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        yield client
 
 
 @pytest.fixture(scope="session")

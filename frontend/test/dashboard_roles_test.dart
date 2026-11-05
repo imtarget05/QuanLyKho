@@ -9,6 +9,13 @@ import 'package:provider/provider.dart';
 
 /// Dashboard điều hướng + phân quyền hiển thị theo vai trò.
 void main() {
+  const defaultApprover = AppUser(
+    id: 'dashboard-approver',
+    username: 'dashboard_approver',
+    displayName: 'Dashboard Approver',
+    roles: ['admin'],
+  );
+
   Future<void> pumpShell(
     WidgetTester tester, {
     AppUser? user,
@@ -23,7 +30,7 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.light(),
           home: SessionScope(
-            user: user,
+            user: user ?? defaultApprover,
             onSignOut: () async {},
             child: AppShell(repository: repo),
           ),
