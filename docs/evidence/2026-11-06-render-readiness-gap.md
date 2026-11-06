@@ -36,3 +36,11 @@ This change makes the health signal honest. It does not provision Redis or make
 Render login available. The Modal demo API did accept the synthetic account,
 but its deployed revision is from a different source commit and is not
 same-SHA proof for this Render release.
+
+The owner chose to keep Render in production profile. Configure a Redis URL
+with the `rediss://` scheme in the service's Render Environment under the name
+`REDIS_URL`; do not put its value in Git or this report. The Render blueprint
+now declares that variable without a value and uses `/api/v1/health/ready` as
+the health check. After updating the environment, redeploy and verify readiness,
+demo login, a business journey and the deployed source SHA. Until then, the
+Render API remains OPEN.
