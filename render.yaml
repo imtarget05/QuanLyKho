@@ -35,3 +35,5 @@ services:
         value: Ban Quản Trị Hệ Thống
       - key: SMTP_PASSWORD
         sync: false
+      - key: REDIS_URL
+        sync: false
