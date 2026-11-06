@@ -1,6 +1,8 @@
 """Health check endpoints."""
 import asyncio
 import logging
+import os
+import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter
@@ -20,6 +22,15 @@ class HealthResponse(BaseModel):
 
 
 router = APIRouter()
+
+
+@router.get("/version")
+def version_check():
+    """Expose only the deployed Git SHA for release reconciliation."""
+    release_sha = os.environ.get("RENDER_GIT_COMMIT", "")
+    if re.fullmatch(r"[0-9a-f]{40}", release_sha):
+        return {"release_sha": release_sha}
+    return {"release_sha": "unknown"}
 
 
 @router.get("/live")
