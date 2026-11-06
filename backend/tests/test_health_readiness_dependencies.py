@@ -59,3 +59,19 @@ async def test_ready_when_database_and_login_rate_limit_are_available(monkeypatc
     body = await health.readiness_check()
     assert body["status"] == "ready"
     assert body["services"] == {"database": "ready", "login_rate_limit": "ready"}
+
+
+def test_version_exposes_render_release_sha(monkeypatch):
+    release_sha = "a" * 40
+    monkeypatch.setenv("RENDER_GIT_COMMIT", release_sha)
+    assert health.version_check() == {"release_sha": release_sha}
+
+
+def test_version_reports_unknown_without_release_metadata(monkeypatch):
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    assert health.version_check() == {"release_sha": "unknown"}
+
+
+def test_version_never_exposes_malformed_release_metadata(monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "not-a-sha")
+    assert health.version_check() == {"release_sha": "unknown"}
