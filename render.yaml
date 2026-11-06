@@ -5,7 +5,7 @@ services:
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    healthCheckPath: /api/v1/health/live
+    healthCheckPath: /api/v1/health/ready
     envVars:
       - key: APP_ENV
         value: production
@@ -19,6 +19,9 @@ services:
         value: '["https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev"]'
       # Secrets are supplied only in the Render dashboard at Blueprint creation.
       - key: DATABASE_URL
+        sync: false
+      # Production login fails closed without a reachable TLS Redis instance.
+      - key: REDIS_URL
         sync: false
       - key: BANKOPS_SIGNING_KEY
         generateValue: true
