@@ -2,12 +2,10 @@
 FROM python:3.11-slim AS builder
 WORKDIR /app
 
-# Install build dependencies for pyarrow (Arrow C++ library)
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    libarrow-dev \
-    libparquet-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install poetry
@@ -27,8 +25,6 @@ WORKDIR /app
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    libarrow1900 \
-    libparquet1900 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies from builder
