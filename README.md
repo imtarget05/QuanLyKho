@@ -107,6 +107,8 @@ make up-backend
 Chạy script kiểm tra trực tiếp trên cụm Docker API và PostgreSQL thật:
 ```bash
 python3 backend/tests/verify_live_e2e.py
+
+> **10-minute runnable (Python backend only):** `bash scripts/smoke_demo.sh` spins up a disposable PostgreSQL, migrates to head, seeds demo data, and runs the maker-checker inventory journey end-to-end. See `docs/portfolio/journey-evidence.md`.
 ```
 > Đây là kịch bản demo mô phỏng. Chỉ coi kết quả là bằng chứng khi chạy trên commit hiện tại, với database test cô lập; không suy diễn thành chứng nhận triển khai production.
 
@@ -188,7 +190,7 @@ FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL 16 + Flutter mobile/web. Dual-en
 
 ### 4. Có test/evidence nào?
 - `poetry run ruff check backend/ ai/` → **0 errors**
-- `poetry run python -m pytest tests/ -q` → **975 passed, 8 skipped, 1 xfailed** (trên PostgreSQL test DB)
+- `poetry run python -m pytest tests/ -q` → **977 passed, 8 skipped, 1 xfailed** (trên PostgreSQL test DB, isolated `bankops_test`)
 - `cd frontend && flutter test --no-pub` → **350/350 passed**
 - Alembic: **34 migrations**
 - Chi tiết: `DEMO.md`, `docs/PORTFOLIO_AUDIT_2026-10-21.md`
