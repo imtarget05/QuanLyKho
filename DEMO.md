@@ -1,6 +1,6 @@
 # QuanLyKho: 5–10 minute backend interview demo
 
-This is a local simulation of ingredient inventory with separate maker and checker roles. It uses a disposable PostgreSQL database and the real FastAPI routes. No customer data, bank connection, production service, or external AI provider is involved.
+This is a local Python backend simulation of ingredient inventory with separate maker and checker roles. It uses a disposable PostgreSQL database and the real FastAPI routes through pytest's in-process client; it does not start a live service. No customer data, bank connection, production service, or external AI provider is involved.
 
 ## Run the demo
 
@@ -14,7 +14,7 @@ bash scripts/demo_ai_checker.sh
 
 The script creates a temporary `bankops_test` database under `/tmp`, applies every Alembic migration, explicitly seeds demo identities and inventory, runs `tests/test_portfolio_ai_checker_demo.py`, and removes that database when it exits. The test guard refuses to run mutating tests against a database whose name lacks `_test`. The script does not touch the developer's normal database.
 
-Observed on 2026-11-05: migration reached `034_general_ledger_coa`, demo seeding completed, and the focused test returned `1 passed`. Re-run on the commit you present in an interview; this result does not certify later changes.
+The focused suite contains two integration tests. Re-run the command on the exact commit you present; historical test totals do not certify later changes.
 
 ## What to show and explain
 
@@ -23,6 +23,7 @@ Observed on 2026-11-05: migration reached `034_general_ledger_coa`, demo seeding
 3. Maker self-approval returns 403. A separate checker approves; exactly one stock movement appears.
 4. Repeating approval with the same idempotency key returns the stored result. A different key after final state returns 409.
 5. Checker rejects another receipt; no stock movement appears. Auditor can see the approval and rejection events with request IDs.
+6. A second test verifies receipt and issue movements, balance changes, linked approval audit events, and rollback of request state, balance, movement, and audit when posting fails.
 
 The assertions are in [the demo test](backend/tests/test_portfolio_ai_checker_demo.py). FEFO issue and concurrent no-negative-stock cases are separately covered by [the outbound tests](backend/tests/test_phase2b_fefo_outbound.py). The API base path is `/api/v1`; use the test as the source for exact request shapes.
 

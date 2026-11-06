@@ -110,6 +110,12 @@ python3 backend/tests/verify_live_e2e.py
 ```
 > Đây là kịch bản demo mô phỏng. Chỉ coi kết quả là bằng chứng khi chạy trên commit hiện tại, với database test cô lập; không suy diễn thành chứng nhận triển khai production.
 
+Để chạy journey backend tập trung trên PostgreSQL tạm, không dùng database dev:
+```bash
+bash scripts/demo_ai_checker.sh
+```
+Lệnh này chạy Alembic, seed dữ liệu synthetic và kiểm tra maker-checker qua FastAPI. Xem [hướng dẫn demo](DEMO.md) để biết các assertion và giới hạn.
+
 ### 5.2. Chạy Toàn Bộ Test Suite Backend & Frontend (1-Click)
 ```bash
 # Kiểm tra toàn bộ linter, typecheck và tests của cả Backend + Frontend + Worker legacy
@@ -187,11 +193,13 @@ FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL 16 + Flutter mobile/web. Dual-en
 - Idempotency middleware, dual-control security, audit stamp SHA-256
 
 ### 4. Có test/evidence nào?
-- `poetry run ruff check backend/ ai/` → **0 errors**
-- `poetry run python -m pytest tests/ -q` → **975 passed, 8 skipped, 1 xfailed** (trên PostgreSQL test DB)
-- `cd frontend && flutter test --no-pub` → **350/350 passed**
+- `cd backend && poetry run ruff check . ../ai` → lint backend và AI
+- `make test-backend` → backend suite trên PostgreSQL test cô lập
+- `bash scripts/demo_ai_checker.sh` → journey maker-checker trên PostgreSQL tạm; xem [DEMO.md](DEMO.md)
+- `cd frontend && flutter test --no-pub` → Flutter tests
 - Alembic: **34 migrations**
-- Chi tiết: `DEMO.md`, `docs/PORTFOLIO_AUDIT_2026-10-21.md`
+- Số liệu kiểm thử cần lấy từ CI/chạy tại commit đang trình bày; các con số lịch sử không chứng minh trạng thái hiện tại.
+- Chi tiết: [DEMO.md](DEMO.md), [portfolio audit](docs/PORTFOLIO_AUDIT_2026-10-21.md)
 
 ### 5. Trade-off và giới hạn
 - Modular monolith (không microservices): đúng cho maker-checker cần 1 PostgreSQL transaction + 1 business authority.
