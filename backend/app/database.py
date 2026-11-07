@@ -35,11 +35,7 @@ def _normalize_async_database_url(url: str) -> str:
         query_pairs.append((key, value))
     query = urlencode(query_pairs, doseq=True)
 
-    if parsed.scheme == "postgresql":
-        scheme = "postgresql+asyncpg"
-    elif parsed.scheme == "postgresql+psycopg2":
-        scheme = "postgresql+asyncpg"
-    elif parsed.scheme == "postgresql+asyncpg":
+    if parsed.scheme in ("postgres", "postgresql", "postgresql+psycopg2", "postgresql+asyncpg"):
         scheme = "postgresql+asyncpg"
     else:
         scheme = parsed.scheme

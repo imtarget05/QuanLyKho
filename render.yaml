@@ -6,17 +6,20 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/v1/health/ready
+    preDeployCommand: alembic upgrade head
     envVars:
       - key: APP_ENV
         value: production
       - key: SERVER_RELOAD
         value: "false"
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
       - key: AI_PROVIDER
         value: disabled
       - key: FRONTEND_BASE_URL
         value: https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev
       - key: ALLOWED_ORIGINS
-        value: '["https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev"]'
+        value: '["https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev", "https://quan-ly-kho-tra-sua.pages.dev"]'
       # Secrets are supplied only in the Render dashboard at Blueprint creation.
       - key: DATABASE_URL
         sync: false

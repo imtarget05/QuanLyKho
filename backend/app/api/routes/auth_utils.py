@@ -260,8 +260,8 @@ def _get_redis_client():
         _redis_client = redis.Redis.from_url(
             url,
             decode_responses=True,
-            socket_connect_timeout=0.25,
-            socket_timeout=0.25,
+            socket_connect_timeout=2.0,
+            socket_timeout=2.0,
         )
     except Exception as exc:  # noqa: BLE001 - thiếu client/URL sai -> fallback RAM
         _redis_unavailable(exc)
