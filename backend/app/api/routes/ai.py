@@ -29,7 +29,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     provider: str | None = Field(
         default=None,
-        description="AI provider: cloudflare, ollama, or disabled. Overrides default setting when provided.",
+        description="AI provider: cloudflare, ollama, modal_llm, openrouter, or disabled. Overrides default setting when provided.",
     )
 
 
