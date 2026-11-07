@@ -433,17 +433,16 @@ class TestBoot:
         r = client.get("/health/live")
         assert r.status_code == 200, r.text
 
-    def test_health_ready_returns_5xx_when_db_down(self, client):
-        """Readiness phải fail khi DB không sẵn sàng; 200 'degraded' sẽ qua healthcheck ảo."""
+    def test_health_ready_requires_database(self, client):
+        """200 chỉ hợp lệ khi DB sẵn sàng; Redis tùy chọn có thể degraded."""
         r = client.get("/health/ready")
         assert r.status_code in (200, 503), r.text
+        body = r.json()
         if r.status_code == 200:
-            body = r.json()
-            assert body.get("status") == "ready", (
-                "GET /health/ready trả 200 với status "
-                f"{body.get('status')!r} -> orchestrator thấy 'healthy' dù DB chết. "
-                "docs/11: 'ready có kiểm tra DB'; docs/06: 503 dependency unavailable."
-            )
+            assert body.get("services", {}).get("database") == "ready", body
+            assert body.get("status") in ("ready", "degraded"), body
+        else:
+            assert body.get("status") == "not_ready", body
 
     def test_ready_does_not_leak_internal_error_detail(self, client):
         r = client.get("/health/ready")
