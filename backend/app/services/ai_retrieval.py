@@ -23,8 +23,11 @@ def _get_docs_root() -> Path:
         Path.cwd().parent / "docs",
     ]
     for c in candidates:
-        if c.is_dir():
-            return c
+        try:
+            if c.is_dir():
+                return c
+        except (PermissionError, OSError):
+            continue
     return candidates[0]
 
 
