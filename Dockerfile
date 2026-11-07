@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir poetry==2.5.1 poetry-plugin-export==1.10.1 && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app ./app
+COPY docs /app/docs
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/entrypoint.sh /app/backend/entrypoint.sh

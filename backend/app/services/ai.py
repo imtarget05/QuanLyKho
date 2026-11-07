@@ -171,38 +171,6 @@ async def _cloudflare_assessment(data: dict, settings: Settings, client: httpx.A
     return _assessment_payload(answer)
 
 
-async def _openrouter_assessment(data: dict, settings: Settings, client: httpx.AsyncClient) -> dict:
-    api_key = settings.openrouter_api_key.get_secret_value()
-    if not api_key:
-        raise ValueError('OpenRouter API key is not configured')
-    base_url = settings.openrouter_base_url.rstrip('/')
-    model = settings.openrouter_model
-    url = f'{base_url}/chat/completions'
-    messages = [
-        {'role': 'system', 'content': ASSESSMENT_PROMPT},
-        {'role': 'user', 'content': json.dumps(data, ensure_ascii=False)},
-    ]
-    response = await client.post(
-        url,
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'HTTP-Referer': settings.frontend_base_url,
-            'X-Title': 'QuanLyKho Inventory Advisor',
-        },
-        json={'model': model, 'messages': messages, 'max_tokens': 512, 'temperature': 0.1, 'stream': False},
-        timeout=settings.ai_timeout_seconds,
-    )
-    response.raise_for_status()
-    body = response.json()
-    choices = body.get('choices')
-    if not choices or not isinstance(choices, list):
-        raise ValueError('OpenRouter rejected assessment')
-    answer = choices[0]['message']['content']
-    if not isinstance(answer, str):
-        raise ValueError('OpenRouter returned an invalid assessment')
-    return _assessment_payload(answer)
-
-
 def _merge_assessment(data: dict, policy: dict, suggestion: dict, source: str, model: str) -> dict:
     """Keep deterministic policy findings authoritative; LLM can only add caution."""
     policy_level = policy['risk_level']
@@ -227,8 +195,8 @@ def _merge_assessment(data: dict, policy: dict, suggestion: dict, source: str, m
         'recommendations': recommendations[:40],
         'audit_stamp': hashlib.sha256(raw_stamp.encode('utf-8')).hexdigest(),
         'assessment_source': source,
-        'provider': 'cloudflare' if source == 'cloudflare' else 'openrouter' if source == 'openrouter' else 'heuristic',
-        'model': model if source in ('cloudflare', 'openrouter') else 'deterministic-policy-v1',
+        'provider': 'cloudflare' if source == 'cloudflare' else 'heuristic',
+        'model': model if source == 'cloudflare' else 'deterministic-policy-v1',
         'simulation': True,
     }
 
@@ -277,39 +245,24 @@ async def assess_request(
 ) -> dict:
     t0 = time.monotonic()
     policy = assess_request_heuristic(data)
-    if settings.ai_provider not in ('cloudflare', 'openrouter'):
+    if settings.ai_provider != 'cloudflare':
         # F1 — AI đã tắt (hoặc dùng provider khác): TUYỆT ĐỐI không gửi dữ liệu
         # phiếu (amount/maker/reason) ra ngoài hệ thống. Chỉ còn chính sách
         # xác định tại chỗ.
-        model = (
-            settings.cloudflare_model
-            if settings.ai_provider == 'cloudflare'
-            else settings.openrouter_model
-            if settings.ai_provider == 'openrouter'
-            else settings.cloudflare_model
-        )
-        result = _merge_assessment(data, policy, policy, 'heuristic_fallback', model)
+        result = _merge_assessment(data, policy, policy, 'heuristic_fallback', settings.cloudflare_model)
         # Bug-fix: ghi trace cho MỌI provider (bao gồm heuristic_fallback),
         # không chỉ khi provider='cloudflare'.
         _record_assessment_trace(result, data, time.monotonic() - t0, user_id, settings)
         return result
     try:
-        if settings.ai_provider == 'cloudflare':
-            suggestion = await _cloudflare_assessment(data, settings, client)
-            source = 'cloudflare'
-            model = settings.cloudflare_model
-        else:  # openrouter
-            suggestion = await _openrouter_assessment(data, settings, client)
-            source = 'openrouter'
-            model = settings.openrouter_model
+        suggestion = await _cloudflare_assessment(data, settings, client)
     except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError, json.JSONDecodeError):
         # Fail safely and report the source explicitly; never pass provider output through.
         suggestion = policy
         source = 'heuristic_fallback'
-        model = settings.cloudflare_model if settings.ai_provider == 'cloudflare' else settings.openrouter_model
     else:
-        source = 'cloudflare' if settings.ai_provider == 'cloudflare' else 'openrouter'
-    result = _merge_assessment(data, policy, suggestion, source, model)
+        source = 'cloudflare'
+    result = _merge_assessment(data, policy, suggestion, source, settings.cloudflare_model)
     _record_assessment_trace(result, data, time.monotonic() - t0, user_id, settings)
     return result
 
@@ -337,8 +290,6 @@ async def generate(message: str, settings: Settings, client: httpx.AsyncClient, 
     headers = {}
     if provider == 'cloudflare' and (not settings.cloudflare_account_id or not settings.cloudflare_api_token.get_secret_value()):
         raise HTTPException(503, {'code': AI_UNAVAILABLE_CODE, 'message': UNAVAILABLE})
-    if provider == 'openrouter' and not settings.openrouter_api_key.get_secret_value():
-        raise HTTPException(503, {'code': AI_UNAVAILABLE_CODE, 'message': UNAVAILABLE})
     if provider == 'cloudflare':
         model = settings.cloudflare_model
         url = f'https://api.cloudflare.com/client/v4/accounts/{settings.cloudflare_account_id}/ai/run/{model}'
@@ -363,20 +314,6 @@ async def generate(message: str, settings: Settings, client: httpx.AsyncClient, 
             'temperature': 0.2,
             'stream': False,
         }
-    elif provider == 'openrouter':
-        model = settings.openrouter_model
-        base_url = settings.openrouter_base_url.rstrip('/')
-        url = f'{base_url}/chat/completions'
-        headers['Authorization'] = f'Bearer {settings.openrouter_api_key.get_secret_value()}'
-        headers['HTTP-Referer'] = settings.frontend_base_url
-        headers['X-Title'] = 'QuanLyKho Inventory Advisor'
-        payload = {
-            'model': model,
-            'messages': messages,
-            'max_tokens': 512,
-            'temperature': 0.2,
-            'stream': False,
-        }
     else:
         raise HTTPException(503, {'code': AI_UNAVAILABLE_CODE, 'message': UNAVAILABLE})
 
@@ -390,11 +327,6 @@ async def generate(message: str, settings: Settings, client: httpx.AsyncClient, 
                 raise ValueError('Provider rejected request')
             answer = body['result']['response']
         elif provider == 'modal_llm':
-            choices = body.get('choices')
-            if not choices or not isinstance(choices, list):
-                raise ValueError('Provider rejected request')
-            answer = choices[0]['message']['content']
-        elif provider == 'openrouter':
             choices = body.get('choices')
             if not choices or not isinstance(choices, list):
                 raise ValueError('Provider rejected request')

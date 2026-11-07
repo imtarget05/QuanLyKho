@@ -81,7 +81,7 @@ def main() -> None:
 
     # --- 4. Tạo request nhập kho ---
     print("\n[4] Tạo request nhập kho (receipt)...")
-    idem_key = "smoke-test-receipt-idem-0000-0000-000000000001"
+    idem_key = str(uuid.uuid4())
     r = client.post(
         "/inventory/requests",
         headers={**maker_hdr, "Idempotency-Key": idem_key},
@@ -130,7 +130,7 @@ def main() -> None:
     r = client.get(f"/inventory/requests/{req_id}", headers=checker_hdr)
     check(r.status_code == 200, f"GET request {req_id} as checker -> {r.status_code}")
 
-    approve_idem = "smoke-test-approve-idem-0000-0000-000000000001"
+    approve_idem = str(uuid.uuid4())
     r = client.post(
         f"/inventory/requests/{req_id}/approve",
         headers={**checker_hdr, "Idempotency-Key": approve_idem},

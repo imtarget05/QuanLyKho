@@ -86,9 +86,9 @@ class Settings(BaseSettings):
         ]
     )
 
-    ai_provider: Literal["cloudflare", "ollama", "modal_llm", "openrouter", "disabled"] = Field(
-        default="disabled",
-        description="LLM provider: cloudflare (Workers AI), ollama (local), modal_llm (Modal), openrouter (OpenRouter), disabled (no external calls)",
+    ai_provider: Literal["cloudflare", "ollama", "modal_llm", "disabled"] = Field(
+        default="cloudflare",
+        description="LLM provider: cloudflare (Workers AI), ollama (local), modal_llm (Modal), disabled (no external calls)",
     )
 
     @field_validator("allowed_origins", mode="after")
@@ -169,7 +169,7 @@ class Settings(BaseSettings):
         or "Ban Quản Trị Hệ Thống"
     )
 
-    ai_provider: Literal['disabled', 'cloudflare', 'ollama', 'modal_llm', 'openrouter'] = 'disabled'
+    ai_provider: Literal['disabled', 'cloudflare', 'ollama', 'modal_llm'] = 'disabled'
     cloudflare_account_id: str = Field(default='', pattern=r'^([a-fA-F0-9]{32})?$')
     cloudflare_api_token: SecretStr = SecretStr('')
     cloudflare_model: str = '@cf/meta/llama-3.1-8b-instruct'
@@ -180,9 +180,6 @@ class Settings(BaseSettings):
         description='Endpoint OpenAI-compatible của space LLM bạn (thay thế bằng giá trị thực tế).',
     )
     modal_llm_model: str = Field(default='Qwen2.5-1.5B-Instruct.Q4_K_M')
-    openrouter_api_key: SecretStr = SecretStr('')
-    openrouter_base_url: str = 'https://openrouter.ai/api/v1'
-    openrouter_model: str = 'openai/gpt-3.5-turbo'
     ai_timeout_seconds: int = Field(default=120, ge=1, le=300)
     ai_requests_per_minute: int = Field(default=10, ge=1, le=100)
     supervisor_pin: SecretStr = SecretStr('')
@@ -305,9 +302,6 @@ class Settings(BaseSettings):
                 required.append('MODAL_LLM_URL')
             if not self.modal_llm_model:
                 required.append('MODAL_LLM_MODEL')
-        elif provider == 'openrouter':
-            if not self.openrouter_api_key.get_secret_value():
-                required.append('OPENROUTER_API_KEY')
         else:  # pragma: no cover - deveris safeguard
             required.append(f'{provider.upper()}_PROVIDER')
 

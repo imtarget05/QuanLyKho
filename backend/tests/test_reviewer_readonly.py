@@ -12,37 +12,6 @@ from fastapi.testclient import TestClient
 DEMO_PASSWORD = "DemoPass123!"
 
 LOCATION_BAR = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1"  # BAR-MAIN
-
-
-@pytest.fixture(autouse=True)
-def _reset_demo_user_passwords():
-    """Reset mat khau demo_maker / demo_auditor ve mac dinh truoc moi test.
-
-    Bo test chia sare tai khoan seed. Cau truc khong rollback DB giua cac test,
-    nen mot test som hon co the thay doi mat khau demo_maker/demo_auditor, khien
-    cac test muon (dang nhap lai) bi 401. Reset lai mat khau lop lop test nay
-    khong phu thuộc trạng thái chia sẻ (giong nguyen nguyen "state pollution"
-    ma nhom challenger gap phai).
-    """
-    import asyncio
-
-    from sqlalchemy import select
-
-    from app.api.routes.auth_utils import get_password_hash
-    from app.database import AsyncSessionLocal
-    from app.models.iam import User
-
-    async def _reset() -> None:
-        async with AsyncSessionLocal() as session:
-            for username in ("demo_maker", "demo_auditor"):
-                result = await session.execute(select(User).where(User.username == username))
-                user = result.scalar_one_or_none()
-                if user is not None:
-                    user.password_hash = get_password_hash(DEMO_PASSWORD)
-            await session.commit()
-
-    asyncio.run(_reset())
-
 ITEM_TRA_DEN = "cccccccc-cccc-4ccc-8ccc-ccccccccccc1"  # Tra Den Loc Phat So 9
 
 

@@ -38,9 +38,7 @@ target_metadata = Base.metadata
 # Get database URL
 def get_url():
     url = settings.database_url
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-    elif url.startswith("postgresql+asyncpg://"):
+    if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
