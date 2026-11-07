@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: quanlykho
+
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/imtarget05/bankops-api
+    newName: acrflashsalep6.azurecr.io/quanlykho/bankops-api@sha256:7c409840ab3765de0f6b2a3f23c78811627cd8ebbda65c46ac38d28cafd417fc
+
+replicas:
+  - count: 1
+    name: bankops-api
