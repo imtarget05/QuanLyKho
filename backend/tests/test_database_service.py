@@ -25,7 +25,7 @@ class TestNormalizeAsyncDatabaseUrl:
 
     def test_channel_binding_removed(self):
         result = _normalize_async_database_url(
-            "******localhost:5432/db?sslmode=require&channel_binding=require"
+            "postgresql://user:pass@localhost:5432/db?sslmode=require&channel_binding=require"
         )
         assert "channel_binding=" not in result
         assert "sslmode=" not in result
