@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from collections.abc import AsyncIterator
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -11,16 +12,42 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 def _normalize_async_database_url(url: str) -> str:
-    """Normalize database URL for asyncpg engine."""
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    elif url.startswith("postgresql+psycopg2://"):
-        url = url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
-    # asyncpg expects ssl=require, not sslmode=require
-    if "sslmode=" in url:
-        url = url.replace("sslmode=", "ssl=")
-    return url
+    """Normalize database URL for asyncpg engine.
+
+    Some Postgres providers send query params such as ``sslmode=require`` and
+    ``channel_binding=require``. asyncpg uses ``ssl=require`` and rejects the
+    unsupported ``channel_binding`` option, which is why startup can fail with
+    ``connect() got an unexpected keyword argument 'channel_binding'``.
+    """
+    if url.startswith("sqlite"):
+        return url
+
+    parsed = urlsplit(url)
+    query_pairs = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        normalized_key = key.lower()
+        if normalized_key == "channel_binding":
+            continue
+        if normalized_key == "sslmode":
+            key = "ssl"
+        query_pairs.append((key, value))
+    query = urlencode(query_pairs, doseq=True)
+
+    if parsed.scheme in ("postgres", "postgresql", "postgresql+psycopg2", "postgresql+asyncpg"):
+        scheme = "postgresql+asyncpg"
+    else:
+        scheme = parsed.scheme
+
+    if query:
+        normalized = urlunsplit(parsed._replace(scheme=scheme, query=query))
+    else:
+        normalized = urlunsplit(parsed._replace(scheme=scheme, query=""))
+
+    if "sslmode=" in normalized:
+        normalized = normalized.replace("sslmode=", "ssl=")
+    return normalized
 
 
 DATABASE_URL = _normalize_async_database_url(settings.database_url)

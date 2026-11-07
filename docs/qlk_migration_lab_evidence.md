@@ -65,3 +65,9 @@ Verified in isolation on a clean seeded `bankops_test`: **3 passed**. (`INVALID_
 **PARTIAL.** Migration lab core (migration 001→034, snapshot upgrade 033→034, backup/restore/rollback, lint, QA_PLAN negative cases) is fully demonstrated and verified. `make test-backend` result recorded but the full suite does not complete cleanly (flaky challenger-test hang), so a fully-green backend suite cannot be claimed.
 
 **Does NOT claim cloud acceptance** — needs cloud DB + UAT accounts + real devices (per constraint `no_azure_production_mutations`; kind-local only).
+
+## Status update — 2026-11-06
+
+The original full-suite hang above is historical for its recorded runs. On the current local checkout `e3420a5` (`codex/qlk-migration-lab`), `TEST_POSTGRES_PORT=55441 make test-backend` completed with **980 passed, 8 skipped, 1 xfailed, 25 warnings** in 844.94 seconds. A separate disposable PostgreSQL 16 rehearsal also backed up version 033, upgraded to 034, restored the 033 snapshot, verified 30 inventory items and 33 balances, and upgraded to 034 again. See [`docs/evidence/t12-migration-rehearsal-2026-11-06.md`](./evidence/t12-migration-rehearsal-2026-11-06.md).
+
+This update is specific to SHA `e3420a5`; it does not assert that the separately reported SHA `5f0890b` was checked out or tested here. Neither result is Azure/cloud acceptance.

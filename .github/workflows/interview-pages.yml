@@ -1,0 +1,77 @@
+name: Interview demo Pages — same SHA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: interview-pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      API_BASE_URL: https://kho-tra-sua-fastapi.onrender.com/api/v1
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check cloud credentials and backend SHA
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          actual=$(curl --fail --silent --show-error --max-time 90 "$API_BASE_URL/health/version" | jq -r '.release_sha')
+          test "$actual" = "$GITHUB_SHA" || {
+            echo "Backend SHA does not match the workflow SHA: $actual";
+            exit 1;
+          }
+          curl --fail --silent --show-error --max-time 90 "$API_BASE_URL/health/ready" \
+            | jq -e '.status == "ready"' > /dev/null
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Build Flutter Web
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter test
+          flutter build web --release --no-tree-shake-icons \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=APP_ENV=demo \
+            --dart-define=APP_BUILD_COMMIT="$GITHUB_SHA"
+          cp ../infra/cloudflare-pages/_headers build/web/_headers
+          cp ../infra/cloudflare-pages/_redirects build/web/_redirects
+          jq -n --arg sha "$GITHUB_SHA" --arg api "$API_BASE_URL" \
+            '{app_name:"kho_tra_sua",release_sha:$sha,api_base_url:$api}' \
+            > build/web/version.json
+
+      - name: Deploy and verify Pages
+        run: |
+          npx --yes wrangler@4 pages deploy frontend/build/web \
+            --project-name=quan-ly-kho-tra-sua \
+            --branch=main \
+            --commit-hash="$GITHUB_SHA"
+          attempt=1
+          while [ "$attempt" -le 36 ]; do
+            if curl --fail --silent --show-error --max-time 10 \
+              https://quan-ly-kho-tra-sua.pages.dev/version.json \
+              | jq -e --arg sha "$GITHUB_SHA" '.release_sha == $sha' > /dev/null; then
+              echo "Pages and Render serve the same release SHA."
+              exit 0
+            fi
+            sleep 10
+            attempt=$((attempt + 1))
+          done
+          echo "Pages did not serve this release SHA within 6 minutes."
+          exit 1

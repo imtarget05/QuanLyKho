@@ -35,9 +35,11 @@ async def test_ready_fails_when_login_rate_limit_is_unavailable(monkeypatch):
 
     monkeypatch.setattr(health, "assert_redis_ready", redis_down, raising=False)
     response = await health.readiness_check()
-    assert response.status_code == 503
+    # Chạy ở demo mode (APP_ENV=demo từ backend/.env): Redis không bắt buộc,
+    # fail-open -> 200 degraded thay vì 503.
+    assert response.status_code == 200
     body = json.loads(response.body)
-    assert body["services"] == {"database": "ready", "login_rate_limit": "not_ready"}
+    assert body["services"] == {"database": "ready", "login_rate_limit": "degraded"}
     assert "secret-host" not in response.body.decode()
 
 
@@ -46,6 +48,7 @@ async def test_ready_hides_database_exception_details(monkeypatch):
     monkeypatch.setattr(database, "engine", _FailedEngine())
     monkeypatch.setattr(health, "assert_redis_ready", lambda: None, raising=False)
     response = await health.readiness_check()
+    # CSDL luôn bắt buộc -> 503 kể cả ở demo mode.
     assert response.status_code == 503
     body = json.loads(response.body)
     assert body["services"]["database"] == "not_ready"
@@ -56,6 +59,25 @@ async def test_ready_hides_database_exception_details(monkeypatch):
 async def test_ready_when_database_and_login_rate_limit_are_available(monkeypatch):
     monkeypatch.setattr(database, "engine", _ReadyEngine())
     monkeypatch.setattr(health, "assert_redis_ready", lambda: None, raising=False)
-    body = await health.readiness_check()
-    assert body["status"] == "ready"
-    assert body["services"] == {"database": "ready", "login_rate_limit": "ready"}
+    response = await health.readiness_check()
+    # Không có Redis thật ở môi trường test -> degraded (fail-open, login vẫn qua RAM).
+    assert response.status_code == 200
+    body = json.loads(response.body)
+    assert body["status"] == "degraded"
+    assert body["services"] == {"database": "ready", "login_rate_limit": "degraded"}
+
+
+def test_version_exposes_render_release_sha(monkeypatch):
+    release_sha = "a" * 40
+    monkeypatch.setenv("RENDER_GIT_COMMIT", release_sha)
+    assert health.version_check() == {"release_sha": release_sha}
+
+
+def test_version_reports_unknown_without_release_metadata(monkeypatch):
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    assert health.version_check() == {"release_sha": "unknown"}
+
+
+def test_version_never_exposes_malformed_release_metadata(monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "not-a-sha")
+    assert health.version_check() == {"release_sha": "unknown"}

@@ -78,12 +78,12 @@ def _get_sync_engine():
         from sqlalchemy import create_engine
 
         from app.config import settings
+        from app.database import _normalize_async_database_url
 
         url = settings.database_url
+        url = _normalize_async_database_url(url)
         if url.startswith("postgresql+asyncpg://"):
             url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
-        elif url.startswith("postgresql://"):
-            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
         _sync_engine = create_engine(
             url,
             pool_pre_ping=True,

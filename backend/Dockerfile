@@ -2,6 +2,12 @@
 FROM python:3.11-slim AS builder
 WORKDIR /app
 
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install poetry
 RUN pip install --no-cache-dir poetry==2.5.1 poetry-plugin-export==1.10.1
 

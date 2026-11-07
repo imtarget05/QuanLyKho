@@ -36,7 +36,7 @@ def _item_and_loc(client, maker):
     assert items, "cần seed nguyên liệu trà sữa"
     item = items[0]["id"]
     locs = _h(client, "GET", "/inventory/locations", token=maker).json()["locations"]
-    loc = next((l for l in locs if l["code"] == "BAR-MAIN"), locs[0])["id"]
+    loc = next((loc_row for loc_row in locs if loc_row["code"] == "BAR-MAIN"), locs[0])["id"]
     return item, loc
 
 
