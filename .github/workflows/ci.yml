@@ -175,12 +175,29 @@ jobs:
       - name: Verify build
         run: echo "Docker build successful"
 
-  sonar:
-    name: SonarCloud scan
+  sonar-scan:
+    name: SonarQube scan
     runs-on: ubuntu-latest
-    needs: [lint, test, frontend-web, worker-typecheck]
+    needs: [lint]
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      APP_ENV: demo
+      DEMO_MODE: "true"
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bankops
+          POSTGRES_PASSWORD: bankops
+          # Deliberately not the developer/demo database; the pytest session
+          # guard rejects non-test database names.
+          POSTGRES_DB: bankops_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bankops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -194,19 +211,37 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: pip install poetry==2.5.1 poetry-plugin-export==1.10.1
+      - name: Install dependencies (Poetry dev toolchain)
+        # pytest-cov and ruff live in [tool.poetry.group.dev.dependencies]
+        working-directory: backend
+        run: |
+          poetry export -o requirements.txt --without-hashes --with dev
+          pip install -r requirements.txt
+      - name: Run migration
+        working-directory: backend
+        run: |
+          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" alembic upgrade head
+      - name: Seed the test database
+        working-directory: backend
+        run: |
+          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" python -m app.seed
+      - name: Run tests with coverage
+        # backend/app is the backend package under backend/
+        working-directory: backend
+        run: |
+          DATABASE_URL="postgresql+psycopg2://bankops:bankops@localhost:5432/bankops_test" poetry run pytest tests --cov=app --cov-report=xml
+      - name: Lint with ruff (Poetry)
+        working-directory: backend
+        run: poetry run ruff check .
       - name: Validate SonarCloud token
         run: |
           if [ -z "${SONAR_TOKEN:-}" ]; then
-            echo "::error::SONAR_TOKEN is unset or empty. Recreate and configure the GitHub secret before running SonarCloud."
+            echo "::error::SONAR_TOKEN is unset or empty. Recreate and configure the GitHub secret before running SonarQube/SonarCloud."
             exit 1
           fi
-      - name: Download backend coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-coverage
-      - name: Require coverage report
-        run: test -s coverage.xml
-      - name: SonarCloud scan
+      - name: SonarQube scan
         run: |
           set -euxo pipefail
           curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 \
@@ -214,16 +249,13 @@ jobs:
             -o sonar-scanner.zip
           unzip -q sonar-scanner.zip
           sed -i 's/^use_embedded_jre=true/use_embedded_jre=false/' "$PWD/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner"
-          echo "JAVA_HOME=${JAVA_HOME}"
           export PATH="${JAVA_HOME}/bin:$PWD/sonar-scanner-5.0.1.3006-linux/bin:${PATH}"
-          java -version
-          "$PWD/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner" \
+          sonar-scanner \
             -Dsonar.projectKey=imtarget05_BankOps \
             -Dsonar.organization=imtarget05 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login="$SONAR_TOKEN" \
             -Dsonar.automaticAnalysis=false \
-            -Dsonar.python.coverage.reportPaths=coverage.xml \
-            -Dsonar.python.xunit.reportPaths=test-results.xml
+            -Dsonar.python.coverage.reportPaths=backend/coverage.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
