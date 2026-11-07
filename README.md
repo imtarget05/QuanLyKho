@@ -5,7 +5,7 @@
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16_tmpfs-4169E1.svg?logo=postgresql&logoColor=white)](docker-compose.yml)
 [![SQLAlchemy 2.0](https://img.shields.io/badge/SQLAlchemy-2.0.35+-red.svg)](https://www.sqlalchemy.org)
 [![Docker](https://img.shields.io/badge/Docker-Multi--stage_Non--root-2496ED.svg?logo=docker&logoColor=white)](backend/Dockerfile)
-[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_PreSync-orange.svg?logo=argo&logoColor=white)](infra/k8s/base/migration-job.yaml)
+[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_Job-orange.svg?logo=argo&logoColor=white)](infra/k8s/base/migration-job.yaml)
 [![Backend Tests](https://img.shields.io/badge/Backend_Tests-988_Passed_|_0_Failed-success.svg)](backend/tests/)
 [![Frontend Tests](https://img.shields.io/badge/Frontend_Tests-355_Passed_|_0_Failed-success.svg)](frontend/test/)
 [![Ruff](https://img.shields.io/badge/Linter-Ruff_0.17.0_Clean-black.svg)](backend/pyproject.toml)
@@ -39,7 +39,7 @@ QuanLyKho was built from first principles to solve these challenges using bank-g
 | **Durable Idempotency** | PostgreSQL-backed `idempotency_keys` table with SHA-256 payload validation, surviving node crashes and multi-replica restarts. |
 | **Transactional Outbox Pattern** | Atomic dual-write of domain state and `outbox_events`, drained via a background worker using `SELECT ... FOR UPDATE SKIP LOCKED`. |
 | **Append-Only Tamper-Evident Audit** | `audit_events` store protected by SQLAlchemy DBAPI-level event listeners physically intercepting and rejecting `UPDATE` and `DELETE` mutations. |
-| **Zero-Downtime Database Evolutions**| 33 sequential Alembic migrations (spanning 001 to 034, 023 omitted) decoupled from pod autoscaling via Kubernetes ArgoCD `PreSync` hook jobs. |
+| **Zero-Downtime Database Evolutions**| 33 sequential Alembic migrations (spanning 001 to 034, 023 omitted) decoupled from pod autoscaling via Kubernetes ArgoCD migration jobs. |
 
 ### Quick Facts & Verified Quality Metrics
 
@@ -267,7 +267,7 @@ Regulatory compliance demands that operational activity logs cannot be pruned, a
 1. **33 Sequential Alembic Migrations:** Exactly 33 database migrations (`backend/alembic/versions/` spanning `001_initial.py` to `034_general_ledger_coa.py`, with revision 023 omitted and 024 linking directly to 022) follow expand/contract patterns, managing custom UUID generation, check constraints, composite partial indexes, and financial charts of accounts.
 2. **Decoupling Migrations from Pod Scaling:** Pod entrypoints commonly execute migrations at startup, which causes severe database lock contention and race conditions when Kubernetes Horizontal Pod Autoscaler (HPA) scales pods out under load.
    - In QuanLyKho, `backend/entrypoint.sh` explicitly bypasses `alembic upgrade head`.
-   - Migrations are decoupled and orchestrated via an ArgoCD `PreSync` Hook Job (`infra/k8s/base/migration-job.yaml`), guaranteeing that schema evolution completes successfully before new application pods are deployed.
+   - Migrations are decoupled and orchestrated via a dedicated Kubernetes migration Job (`infra/k8s/base/migration-job.yaml`, managed by ArgoCD), guaranteeing that schema evolution completes successfully before new application pods are deployed.
 3. **Hardened Multi-Stage Container:** The backend `Dockerfile` utilizes a two-stage build (`python:3.11-slim`), pruning compiler toolchains from the final image, and executes under a dedicated non-root Linux user (`appuser`, UID 10001).
 4. **Fail-Fast Entrypoint Security:** The entrypoint script (`backend/entrypoint.sh`) enforces strict configuration validation. In `APP_ENV=production` or `staging`, the container terminates immediately if `BANKOPS_SIGNING_KEY` is omitted, eliminating the risk of accidental deployment with ephemeral, insecure secrets.
 
@@ -291,7 +291,7 @@ To maintain strict engineering integrity, every architectural claim is verified 
 | **10** | **Transactional Outbox** | Atomic dual-write of domain changes and outbox rows in single DB transaction; worker leases via `FOR UPDATE SKIP LOCKED` | `backend/app/models/activity.py:56-69`<br>`backend/app/worker.py:68-98, 369-409`<br>`backend/app/api/routes/inventory.py:2353` | `pytest tests/test_kafka_outbox.py`<br>`pytest tests/test_worker_jobs.py` |
 | **11** | **Append-Only Audit** | Tamper-evident audit logs with SQLAlchemy event listeners physically intercepting and blocking `UPDATE` and `DELETE` at DBAPI level | `backend/app/models/activity.py:20-54` (`_block_audit_update`, `_block_audit_delete` raising `DBAPIError`) | `pytest tests/test_audit_events_pagination.py` |
 | **12** | **Database Migrations** | 33 sequential zero-downtime Alembic migrations (spanning 001 to 034, 023 omitted) managing UUIDs, CheckConstraints, and partial indexes | `backend/alembic/versions/` (33 files from `001_initial.py` to `034_general_ledger_coa.py`) | `alembic upgrade head`<br>`pytest tests/test_migration_cost_price.py` |
-| **13** | **GitOps & Delivery** | Multi-stage Docker container (non-root `appuser`), ArgoCD PreSync hook migration decoupling, fail-fast signing key check | `backend/Dockerfile:1-50`<br>`backend/entrypoint.sh:18-43, 45-51`<br>`infra/k8s/base/migration-job.yaml:1-35` | `docker build backend/`<br>`kubectl kustomize infra/k8s/base` |
+| **13** | **GitOps & Delivery** | Multi-stage Docker container (non-root `appuser`), ArgoCD migration job decoupling, fail-fast signing key check | `backend/Dockerfile:1-50`<br>`backend/entrypoint.sh:18-43, 45-51`<br>`infra/k8s/base/migration-job.yaml:1-47` | `docker build backend/`<br>`kubectl kustomize infra/k8s/base` |
 | **14** | **Observability** | End-to-end OpenTelemetry instrumentation for FastAPI routes, SQLAlchemy queries, and worker queue loops | `backend/app/api/telemetry.py:1-120`<br>`backend/app/worker.py:34-46, 426-444`<br>`backend/pyproject.toml:26-33` | `pytest tests/test_observability.py` |
 | **15** | **Test Discipline** | 988 backend tests + 355 frontend tests verified; Ruff 0.17.0 clean; automated secret scan in CI | `backend/tests/` (127 test modules)<br>`frontend/test/` (355 unit tests)<br>`.github/workflows/ci.yml:1-122` | `pytest tests -q`<br>`flutter test`<br>`ruff check backend/ ai/`<br>`python3 scripts/check_no_secrets.py` |
 
@@ -366,7 +366,7 @@ The deployment infrastructure is designed according to modern GitOps and Twelve-
 +-----------------------------------------------------------------------------------+
 | Kubernetes Cluster Deployment Topology                                            |
 |                                                                                   |
-|  [ArgoCD PreSync Hook]                                                            |
+|  [ArgoCD Migration Job]                                                           |
 |       |                                                                           |
 |       v                                                                           |
 |  +--------------------+                                                           |
@@ -390,7 +390,7 @@ The deployment infrastructure is designed according to modern GitOps and Twelve-
 
 ### Kubernetes & ArgoCD GitOps
 - **Manifest Directory:** Declarative Kustomize overlays in `infra/k8s/base/` define API deployments, worker daemons, config maps, and ingress configurations.
-- **ArgoCD PreSync Hook:** `infra/k8s/base/migration-job.yaml` runs migrations as a Kubernetes Job before pod rollout, annotated with `argocd.argoproj.io/hook: PreSync` and `argocd.argoproj.io/hook-delete-policy: BeforeHookCreation`.
+- **Decoupled Migration Job:** `infra/k8s/base/migration-job.yaml` runs migrations as a dedicated Kubernetes Job managed by ArgoCD (`app.kubernetes.io/managed-by: argocd`), executing `alembic upgrade head` independently of pod lifecycle to eliminate database lock contention.
 - **Worker Separation:** Asynchronous job processing runs as a dedicated workload decoupled from customer-facing API request pools, preventing long-running queue drains from starving HTTP worker threads.
 
 ### Container Security
@@ -448,7 +448,7 @@ QuanLyKho/
 │   ├── test/                            # 355 unit, widget, and state management tests
 │   └── pubspec.yaml                     # Flutter package dependencies
 ├── infra/                               # Infrastructure as Code & GitOps Delivery
-│   └── k8s/base/                        # Kubernetes Kustomize manifests & PreSync jobs
+│   └── k8s/base/                        # Kubernetes Kustomize manifests & migration jobs
 ├── scripts/                             # Utility scripts (secret guard scanner, seeding)
 ├── docker-compose.yml                   # Local production-like development cluster
 ├── docker-compose.test.yml              # Isolated tmpfs PostgreSQL test environment
