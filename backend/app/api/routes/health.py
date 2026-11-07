@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.api.routes.auth_utils import assert_redis_ready
+from app.config import settings
 
 logger = logging.getLogger("quanlykho.health")
 
@@ -62,15 +63,65 @@ async def readiness_check():
     except Exception as exc:
         logger.warning("Database readiness check failed (%s)", type(exc).__name__)
 
+    # Production yêu cầu Redis (fail closed -> 503 khi down); demo/không
+    # production stays up và báo degraded khi Redis xuống (fail open) để login
+    # vẫn chạy qua rate limiting trong RAM.
+    redis_required = (
+        settings.app_env.strip().lower() == "production" and not settings.is_demo_mode
+    )
+
     login_rate_limit_status = "not_ready"
     try:
         await asyncio.to_thread(assert_redis_ready)
-        login_rate_limit_status = "ready"
+        if redis_required:
+            login_rate_limit_status = "ready"
+        else:
+            # Chế độ demo/không production: assert_redis_ready bỏ qua, nên ta
+            # cần tự kiểm tra chính xác Redis trước khi báo "ready". Nếu không
+            # thể kết nối -> báo "degraded" (fail-open, login vẫn qua RAM) thay
+            # vì giả sẵn sẵn.
+            from app.api.routes.auth_utils import _get_redis_client
+
+            client = _get_redis_client()
+            if client is None:
+                login_rate_limit_status = "degraded"
+            else:
+                try:
+                    client.ping()
+                    login_rate_limit_status = "ready"
+                except Exception as exc:  # noqa: BLE001 - Redis labil trong demo
+                    login_rate_limit_status = "degraded"
+                    logger.warning(
+                        "Redis unavailable in demo mode; login rate limit "
+                        "degrades to in-memory (%s)",
+                        type(exc).__name__,
+                    )
     except Exception as exc:
-        logger.warning("Login rate-limit readiness check failed (%s)", type(exc).__name__)
+        if redis_required:
+            # Production: Redis bắt buộc -> fail closed, orchestrator loại pod.
+            login_rate_limit_status = "not_ready"
+            logger.error("Required Redis readiness check failed (%s)", type(exc).__name__)
+        else:
+            # Demo: Redis không bắt buộc -> fail open, báo degraded thay vì 503.
+            login_rate_limit_status = "degraded"
+            logger.warning(
+                "Redis unavailable in demo mode; login rate limit "
+                "degrades to RAM (%s)", type(exc).__name__
+            )
+
+    # CSDL luôn bắt buộc. Chỉ login_rate_limit được phép degraded ở demo mode.
+    db_down = db_status == "not_ready"
+    redis_hard_down = login_rate_limit_status == "not_ready"
+    redis_degraded = login_rate_limit_status == "degraded"
+
+    not_ready = db_down or redis_hard_down
+    degraded = (not not_ready) and redis_degraded
+    ready = not not_ready and not degraded
+
+    status = "ready" if ready else ("degraded" if degraded else "not_ready")
 
     body = {
-        "status": "ready" if db_status == login_rate_limit_status == "ready" else "not_ready",
+        "status": status,
         "timestamp": datetime.now(UTC),
         "version": "0.1.0",
         "services": {
@@ -78,7 +129,8 @@ async def readiness_check():
             "login_rate_limit": login_rate_limit_status,
         },
     }
-    if body["status"] != "ready":
+    if not ready:
         body["timestamp"] = body["timestamp"].isoformat()
-        return JSONResponse(status_code=503, content=body)
+        code = 503 if not_ready else 200
+        return JSONResponse(status_code=code, content=body)
     return body

@@ -1,207 +1,27 @@
-# Kho Trà Sữa — Hệ Thống Vận Hành Tồn Kho & Quỹ Mô Phỏng
+# QuanLyKho — Inventory & Treasury Operations (Demo)
 
-> **Interview release:** [five-minute demo, evidence, and production boundaries](docs/INTERVIEW_RELEASE.md) · [portfolio pack](../PORTFOLIO_INTERVIEW.md)
+Portfolio demo: FastAPI + PostgreSQL backend, Flutter web frontend, maker-checker workflow with audit trail. **Demo only** — not production, no real banking data.
 
-[![CI](https://github.com/imtarget05/QuanLyKho/actions/workflows/ci.yml/badge.svg)](https://github.com/imtarget05/QuanLyKho/actions/workflows/ci.yml)
-[![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?logo=flutter)](https://flutter.dev)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](https://postgresql.org)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages%20%2F%20AI%20provider-F38020?logo=cloudflare)](https://developers.cloudflare.com)
-[![Quality Gate](https://img.shields.io/badge/Quality_Gate-Passed-success)](https://github.com/imtarget05/QuanLyKho)
+## Evidence (verified 2026-11-07)
 
-> **Product boundary:** Đây là ứng dụng vận hành **kho nguyên liệu trà sữa**. Các module quỹ, journal và đối soát chỉ là **financial-operations simulation** để minh hoạ maker-checker, audit và tính đúng đắn giao dịch. Đây không phải core-banking, không kết nối ngân hàng, không sử dụng dữ liệu khách hàng thật và không xử lý tiền thật.
+- Release SHA: `4418ad71b376d7f28d93daa39012fafdbadfd320`
+- CI: https://github.com/imtarget05/QuanLyKho/actions/runs/42270199810 (success)
+- S10 cloud CI acceptance: https://github.com/imtarget05/QuanLyKho/actions/runs/42270199866 (success)
+- Render deploy `dep-dbn9muou01pc73c4ijig` live on this SHA; `/health/ready` → 200, DB ready, login rate limit ready
+- Cloudflare Pages: https://quan-ly-kho-tra-sua.pages.dev/ (version.json exposes same SHA)
+- DB: Alembic empty→head (`034_general_ledger_coa`), 10 demo users, 30 items, 33 balances, 120 safety stock, 3 cashboxes
+- Maker-checker journey PASS: inventory +15, cash +300,000 VND; self-approval → 403
+- Full evidence: see `INTERVIEW_CLOUD_EVIDENCE_2026-11-07.md`, `docs/INTERVIEW_RELEASE.md`
 
-> **Thiết kế web/app nhân viên — khảo sát 14/10/2026:** Xem [bộ tài liệu hiện trạng, kiến trúc, luồng nghiệp vụ và backlog nghiệm thu](docs/employee-app/README.md). Tài liệu phân biệt phần đã có trong mã nguồn với phần đề xuất, đồng thời ghi nhận các khác biệt FastAPI/Worker và các vấn đề cần xử lý trước pilot. Các số liệu kiểm thử bên dưới là kết quả lịch sử, chưa chứng nhận working tree hiện tại.
+## Open (not claimed)
 
-> **Nguồn API chuẩn:** FastAPI + PostgreSQL là backend nghiệp vụ duy nhất. Thư mục Cloudflare Worker được giữ tạm để tương thích/đối chiếu, không có cam kết parity và không phải đích deploy production. Chi tiết ở [kiến trúc](docs/03-architecture.md) và [ghi chú Cloudflare](docs/14-cloudflare-deploy.md).
+Full 21-ID UAT, mobile/offline device test, backup/restore drill, real owner sign-off. Render Free + shared KV are demo-grade.
 
----
+## Stack
 
-## 1. Điểm Nhấn Kiến Trúc Nâng Cấp (Key Architectural Pillars)
+FastAPI, PostgreSQL 16, Redis (optional, fail-open in demo), Flutter 3.24+, Cloudflare Pages, Render.
 
-```mermaid
-flowchart TD
-    subgraph MakerSection ["1. Maker (Giao dịch viên)"]
-        M1["Lập phiếu Quỹ hoặc Kho"] --> M2["Gửi duyệt (submit)"]
-    end
+## Run locally
 
-    subgraph RealtimeBus ["2. Realtime Event Bus"]
-        M2 --> EB["Event Broadcast Stream"]
-        EB -->|"Live Push"| AS["Sidebar Badge + TopBar Ring + In-app Toast"]
-    end
+See `backend/README` and `frontend/`. Tests: `pytest` (backend), `flutter test` (frontend).
 
-    subgraph CheckerSection ["3. Checker (Kiểm soát viên)"]
-        AS --> AP["Hộp thư duyệt 4-mắt (Auto-Refresh)"]
-        AP --> AI["AI Copilot Thẩm Định Rủi Ro<br/>(Risk Score 0-100 · Rules Flagged · Recommendations)"]
-        AI --> FlowDecision{"Checker quyết định<br/>server kiểm tra policy"}
-        FlowDecision -->|Phiếu hợp lệ theo policy| QuickApp["Checker xác nhận duyệt"]
-        FlowDecision -->|Rủi ro cao theo policy demo| SecDialog["Hộp thoại kiểm soát kép<br/>Step-up verification"]
-        QuickApp --> DBPost["Ghi sổ cái kép (Dual-entry ledger)"]
-        SecDialog --> Stamp["Khóa con dấu kiểm toán SHA-256"]
-        Stamp --> DBPost
-    end
-```
-
-### 1.1. Real-time Dual-Control Notification & Live Sync
-- **Đồng bộ sự kiện thời gian thực:** Ngay khi Maker gửi phiếu, Checker nhận thông báo Toast nổi, badge `X CHỜ DUYỆT` trên thanh điều hướng tự động nhảy số.
-- **Hộp thư duyệt tự động làm mới:** Tự động reload danh sách phiếu chờ duyệt mà không cần người dùng thao tác F5.
-
-### 1.2. Smart Maker-Checker AI Copilot & Risk Scoring
-- **Phân tích rủi ro đa chiều:** Tính toán `risk_score` (0-100), phân loại `LOW` / `MEDIUM` / `HIGH`.
-- **Nhận diện vi phạm định mức:** Phát hiện tự động các lệnh rút tiền vượt định mức quầy ($\ge 500$ triệu VND) hoặc xuất ấn chỉ/phôi thẻ số lượng lớn ($\ge 50$ phôi).
-- **Kiến nghị hành động & Con dấu kiểm toán:** Đề xuất kiểm đếm thực tế, đối chiếu chứng từ và sinh mã Audit Stamp Hash SHA-256:
-  $$\text{Audit Stamp} = \text{SHA256}(\text{request\_id} : \text{maker} : \text{amount} : \text{risk\_score})$$
-
-### 1.3. Dual-Control Security Verification
-- **Cơ chế 4 mắt bắt buộc:** Với các lệnh mô phỏng rủi ro cao, hệ thống yêu cầu step-up verification tại Client và Server. Giá trị demo chỉ được seed trong demo profile, không phải credential triển khai.
-- **Kiểm soát dòng tiền chặt chẽ:** Tự động từ chối nếu số dư két không đủ (`INSUFFICIENT_SIM_CASH`) trước khi cấp quyền ghi sổ.
-
----
-
-## 2. Hệ Thống Trợ Lý AI & Small LLM Pipeline
-
-1. **Trợ lý Hội thoại Kho-Trà-Sữa AI (qua FastAPI)**:
-   - FastAPI là lớp duy nhất áp dụng RBAC, retrieval và guardrail trước khi gọi provider AI.
-   - Cloudflare Workers AI có thể là provider từ xa khi FastAPI được cấu hình phù hợp; Worker trong repository không phục vụ API chat production.
-2. **Small LLM Pipeline Cho Máy Không Có GPU & Google Colab T4**:
-   - Mô hình nền tảng: `Qwen2.5-1.5B-Instruct` (GGUF Quantized 4-bit `q4_k_m`, tiêu thụ < 1.4 GB RAM trên CPU).
-   - Notebook huấn luyện mẫu: [`ai/colab_finetune_kho-tra-sua_t4.ipynb`](ai/colab_finetune_kho-tra-sua_t4.ipynb). Thời gian huấn luyện phụ thuộc máy và chưa là SLA.
-   - Tập dữ liệu huấn luyện: [`ai/dataset/train.jsonl`](ai/dataset/train.jsonl); đây là dữ liệu demo, không phải dữ liệu giao dịch thật.
-   - Máy chủ suy luận CPU độc lập: [`ai/serve_cpu.py`](ai/serve_cpu.py) tương thích OpenAI API và Ollama.
-
----
-
-## 3. Demo profile và phân quyền
-
-Chế độ demo web bắt đầu trống; thao tác tạo sản phẩm, đối tác, chứng từ và thanh toán chỉ nằm trong RAM của trình duyệt. Demo không cần đăng nhập, không gọi API và không đọc/ghi PostgreSQL. Tải lại trang sẽ xóa phiên hiện tại và bắt đầu trống.
-
-Chế độ live dùng đăng nhập thật, phân quyền theo tài khoản và quy trình maker–checker của backend. Không dùng demo auth hoặc tài khoản mẫu trong môi trường live.
-
----
-
-## 4. Khởi Chạy Nhanh Hệ Thống (Docker Compose)
-
-Mặc định, `make up` mở giao diện demo tại [http://localhost:8080](http://localhost:8080). Demo khởi động trống; mọi thao tác chỉ ở RAM. Tải lại trang để xóa phiên hiện tại. Demo không gọi API và không ghi/xóa PostgreSQL.
-
-```bash
-make up
-```
-
-Muốn dùng cùng giao diện mới với API và PostgreSQL, dùng lệnh riêng. Lệnh này build UI ở chế độ live, chạy migration và không nạp dữ liệu mẫu:
-
-```bash
-make up-backend
-```
-
-- **Giao diện Web App:** [http://localhost:8080](http://localhost:8080)
-- **Tài liệu Backend Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **API Health Check:** [http://localhost:8000/health/live](http://localhost:8000/health/live)
-- Tạo dữ liệu thật yêu cầu tài khoản có quyền và dữ liệu kho/đối tác; bán, mua, thanh toán và kiểm kê được lưu qua API, chịu phân quyền và bước duyệt phù hợp.
-- Backend startup chỉ kiểm tra kết nối; schema được nâng bằng Alembic khi chạy backend. Không dùng lệnh reset demo để thao tác database.
-
----
-
-## 5. Kiểm Thử Chất Lượng & Nghiệm Thu Tự Động
-
-### 5.1. Chạy Kịch Bản Kiểm Chứng E2E Maker-Checker Thực Tế
-Chạy script kiểm tra trực tiếp trên cụm Docker API và PostgreSQL thật:
-```bash
-python3 backend/tests/verify_live_e2e.py
-
-> **10-minute runnable (Python backend only):** `bash scripts/smoke_demo.sh` spins up a disposable PostgreSQL, migrates to head, seeds demo data, and runs the maker-checker inventory journey end-to-end. See `docs/portfolio/journey-evidence.md`.
-```
-> Đây là kịch bản demo mô phỏng. Chỉ coi kết quả là bằng chứng khi chạy trên commit hiện tại, với database test cô lập; không suy diễn thành chứng nhận triển khai production.
-
-### 5.2. Chạy Toàn Bộ Test Suite Backend & Frontend (1-Click)
-```bash
-# Kiểm tra toàn bộ linter, typecheck và tests của cả Backend + Frontend + Worker legacy
-make check-all
-
-# Hoặc chạy từng phân hệ thủ công:
-# 1. Kiểm tra tĩnh & linter (Worker typecheck không chứng minh parity API)
-python3 -m ruff check backend/ ai/
-cd frontend && flutter analyze .
-cd infra/cloudflare-worker && npm run typecheck
-
-# 2. Chạy unit & widget tests Frontend (28/28 passed)
-cd frontend && flutter test --no-pub
-
-# 3. Chạy unit & integration tests Backend trên PostgreSQL tạm.
-# Không trỏ pytest vào database demo/dev đang chạy ở cổng 5432.
-make test-backend
-```
-
----
-
-## 6. Cấu Trúc Thư Mục Dự Án
-
-```
-Kho-Trà-Sữa/
-├── ai/                          # Small LLM Pipeline (Qwen2.5-1.5B, Colab Notebook, Dataset)
-├── backend/                     # FastAPI Backend (Clean Architecture, Async SQLAlchemy)
-│   ├── app/api/routes/          # API Routers (auth, cash_sim, inventory, approvals, ai, reports)
-│   ├── app/services/            # AI services, ledger, approval controls, SSE approval events
-│   └── tests/                   # Test suite (136 tests: E2E, QA acceptance, contracts, AI, SSE)
-├── frontend/                    # Flutter Web Client (Material 3, Responsive Desktop/Mobile)
-│   ├── lib/src/features/        # Các phân hệ (auth, approvals, cash, inventory, reports, ai, timeline)
-│   └── test/                    # Widget & Unit test suite (28 tests: roles, exports, timeline, charts)
-├── infra/cloudflare-worker/     # Implementation legacy/compatibility; không phải API production
-├── infra/hf-llm-space/          # Self-hosted llama.cpp Docker Space cho Hugging Face
-├── sample-data/                 # Dữ liệu mẫu ban đầu (users, cashboxes, items, locations)
-└── docker-compose.yml           # Cấu hình cụm Docker 4 containers
-```
-
----
-
-## 7. Phạm vi pilot thay bằng ứng dụng kho trà sữa (10/2026)
-
-> **Domain hiện tại:** Nhập–Xuất–Tồn nguyên liệu theo 3 ca (Sáng 07:30–15:00,
-> Chiều 15:00–23:00, Lỡ ngày 07:30–18:00), theo `docs/SRS_QUAN_LY_KHO_TRA_SUA.md`.
-> Module Quỹ/Tích hợp/Đối soát là simulation financial-operations phụ trợ; không
-> là core-banking và không là product boundary chính.
->
-> Năng lực cần được xác minh trên exact commit: danh mục nguyên liệu + Min/Max,
-> phiếu nhập (lô/HSD), chốt ca, điều chỉnh, cảnh báo tồn thấp/cận date và báo cáo.
-> AI assistant là tính năng hỗ trợ, không thay thế kiểm soát nghiệp vụ.
-
-> **Kiểm chứng phỏng vấn:** [audit nghiệp vụ, ma trận bằng chứng và demo AI → checker](docs/PORTFOLIO_AUDIT_2026-10-21.md). AI assessment nhận dữ liệu do client gửi, nên đánh giá chỉ là tư vấn; quyết định ghi tồn kho luôn đi qua phiếu canonical, RBAC và giao dịch FastAPI.
->
-> Chưa triển khai (cần consent của TEAM): offline chốt ca + outbox đồng bộ (Phase 6),
-> FCM/push real, tích hợp Google Sheets/APPs Script, deploy staging + UAT luồng ca.
-
-(Trivial smoke-test commit to trigger `ci.yml` CI on push to main.)
-
----
-
-## 🎤 Interview Release (2 phút)
-
-Mục đích: portfolio có bằng chứng, dễ demo, trung thực — không mở rộng tính năng mới.
-
-### 1. Bài toán kinh doanh
-Hệ thống vận hành tồn kho & quỹ mô phỏng cho kho nguyên liệu trà sữa, yêu cầu maker-checker 4 mắt trước khi ghi sổ. Không phải core-banking, không kết nối ngân hàng, không xử lý tiền thật.
-
-### 2. Kiến trúc chính
-FastAPI + SQLAlchemy 2.0 + Alembic + PostgreSQL 16 + Flutter mobile/web. Dual-entry sub-ledger, keyset pagination, SSE real-time notification, outbox pattern.
-
-### 3. Bạn trực tiếp implement gì?
-- P0 B01–B09: inventory catalog/balances, request/approval/post, asset serial, cashbox+journal, audit/outbox/activity+SSE
-- P1 B10–B15: Sheets integration, reconciliation jobs, cross-platform E2E, backup/restore, demo deploy
-- Idempotency middleware, dual-control security, audit stamp SHA-256
-
-### 4. Có test/evidence nào?
-- `poetry run ruff check backend/ ai/` → **0 errors**
-- `poetry run python -m pytest tests/ -q` → **977 passed, 8 skipped, 1 xfailed** (trên PostgreSQL test DB, isolated `bankops_test`)
-- `cd frontend && flutter test --no-pub` → **350/350 passed**
-- Alembic: **34 migrations**
-- Chi tiết: `DEMO.md`, `docs/PORTFOLIO_AUDIT_2026-10-21.md`
-
-### 5. Trade-off và giới hạn
-- Modular monolith (không microservices): đúng cho maker-checker cần 1 PostgreSQL transaction + 1 business authority.
-- Quỹ/journal là financial simulation, không phải core-banking.
-- Cloudflare Worker giữ tạm để tương thích, không phải đích production.
-
-### 6. Nếu production thật thì còn thiếu gì?
-- Production deploy evidence (chưa có live deployment).
-- Encrypted PostgreSQL at scale (hiện tại là local dev DB).
-- Real bank connection (không kết nối ngân hàng trong scope demo).
-- Formal SLO/RPO documentation.
