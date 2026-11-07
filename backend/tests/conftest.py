@@ -27,7 +27,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 # A syntactically valid placeholder so `app.config.Settings()` can be built
 # without a real database. Tests never open a connection through this URL.
 os.environ.setdefault(
-    "DATABASE_URL", "postgresql+psycopg2://127.0.0.1:5432/bankops"
+    "DATABASE_URL", "postgresql+psycopg2://127.0.0.1:5432/bankops_test"
 )
 
 # Demo mode là opt-in TƯỜNG MINH (APP_ENV=demo + DEMO_MODE=true). Bộ test chạy
