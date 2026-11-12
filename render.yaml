@@ -14,8 +14,11 @@ services:
         value: "false"
       - key: FORWARDED_ALLOW_IPS
         value: "*"
+      # P3.3 — AI luồng bật cho production (2026-11-12). cloudflare = Workers AI;
+      # ollama = CPU local (ai/serve_cpu.py). Cần CLOUDFLARE_ACCOUNT_ID +
+      # CLOUDFLARE_API_TOKEN secret trong Render dashboard trước khi deploy.
       - key: AI_PROVIDER
-        value: disabled
+        value: cloudflare
       - key: FRONTEND_BASE_URL
         value: https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev
       - key: ALLOWED_ORIGINS
