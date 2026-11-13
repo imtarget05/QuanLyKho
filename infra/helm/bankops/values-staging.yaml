@@ -1,0 +1,56 @@
+# staging environment overrides
+replicaCount: 2
+api:
+  replicaCount: 2
+  env:
+    - name: APP_ENV
+      value: "staging"
+    - name: DEMO_MODE
+      value: "false"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: bankops-staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - bankops-staging.example.com
+      secretName: bankops-staging-tls
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+networkPolicy:
+  enabled: true
+monitoring:
+  serviceMonitor:
+    enabled: true
+otel:
+  collector:
+    enabled: true
+configmap:
+  data:
+    APP_ENV: "staging"
+    DEMO_MODE: "false"
+    AI_PROVIDER: "cloudflare"

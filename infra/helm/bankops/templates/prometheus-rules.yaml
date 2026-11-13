@@ -1,0 +1,71 @@
+{{- if .Values.monitoring.alerts.enabled | default true -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "bankops.fullname" . }}-alerts
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: alert-rules
+spec:
+  groups:
+    - name: bankops-sli
+      rules:
+        - alert: BankOpsHighErrorRate
+          expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate on bankops API"
+            description: "Error rate exceeds 5% threshold over the last 5m."
+        - alert: BankOpsHighLatencyP95
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High p95 latency on bankops API"
+            description: "p95 latency exceeds 500ms over the last 10m."
+        - alert: BankOpsApiDown
+          expr: up{job="bankops-api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "bankops API is down"
+            description: "bankops API has been down for more than 2 minutes."
+        - alert: BankOpsHighCPUUsage
+          expr: rate(container_cpu_usage_seconds_total{container="api"}[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage on bankops API"
+            description: "CPU usage exceeds 80% over the last 10m."
+        - alert: BankOpsHighMemoryUsage
+          expr: container_memory_usage_bytes{container="api"} / kube_pod_container_resource_requests_memory_bytes > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage on bankops API"
+            description: "Memory usage exceeds 85% of request over the last 10m."
+    - name: bankops-saturation
+      rules:
+        - alert: BankOpsDBConnectionsHigh
+          expr: pg_database_connections{database="bankops"} / 100 > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High PostgreSQL connection usage"
+            description: "DB connections at 80% of max."
+        - alert: BankOpsPodRestartFrequent
+          expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Frequent pod restarts"
+            description: "Pod is restarting frequently."
+{{- end }}

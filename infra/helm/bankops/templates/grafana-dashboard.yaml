@@ -1,0 +1,131 @@
+{{- if .Values.monitoring.grafana.dashboard.enabled | default true -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bankops.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: grafana-dashboard
+    grafana_dashboard: "1"
+data:
+  bankops-sli-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "QuanLyKho / BankOps SLI Dashboard",
+        "tags": ["bankops", "sli", "devops"],
+        "timezone": "UTC",
+        "schemaVersion": 38,
+        "version": 1,
+        "panels": [
+          {
+            "type": "stat",
+            "title": "Error Rate (5m)",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+                "legendFormat": "error_rate"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percentunit",
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 0.01},
+                    {"color": "red", "value": 0.05}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+          },
+          {
+            "type": "graph",
+            "title": "p95 Request Duration",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+                "legendFormat": "p95_duration"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "s",
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 0.5},
+                    {"color": "red", "value": 1.0}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"x": 6, "y": 0, "w": 12, "h": 8}
+          },
+          {
+            "type": "graph",
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total[5m])",
+                "legendFormat": "{{ printf "{{ %s }} {{ %s }}" "method" "path" }}"
+              }
+            ],
+            "gridPos": {"x": 18, "y": 0, "w": 12, "h": 8}
+          },
+          {
+            "type": "graph",
+            "title": "CPU Usage",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{container=\"api\"}[5m])",
+                "legendFormat": "api_cpu"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percentunit"
+              }
+            },
+            "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+          },
+          {
+            "type": "graph",
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{container=\"api\"}",
+                "legendFormat": "api_memory"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes"
+              }
+            },
+            "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+          },
+          {
+            "type": "graph",
+            "title": "DB Connections",
+            "targets": [
+              {
+                "expr": "pg_database_connections{database=\"bankops\"}",
+                "legendFormat": "db_connections"
+              }
+            ],
+            "gridPos": {"x": 24, "y": 8, "w": 6, "h": 8}
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+{{- end }}

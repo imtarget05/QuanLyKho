@@ -1,0 +1,43 @@
+# dev environment overrides
+replicaCount: 1
+api:
+  replicaCount: 1
+  env:
+    - name: APP_ENV
+      value: "dev"
+    - name: DEMO_MODE
+      value: "true"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+ingress:
+  enabled: false
+autoscaling:
+  enabled: false
+networkPolicy:
+  enabled: false
+monitoring:
+  serviceMonitor:
+    enabled: false
+otel:
+  collector:
+    enabled: false
+configmap:
+  data:
+    APP_ENV: "dev"
+    DEMO_MODE: "true"
+    AI_PROVIDER: "ollama"
+    OLLAMA_BASE_URL: "http://ollama.ollama.svc.cluster.local:11434"

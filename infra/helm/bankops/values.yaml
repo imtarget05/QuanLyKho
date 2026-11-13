@@ -1,0 +1,390 @@
+# =============================================================================
+# bankops — QuanLyKho Helm values (base). Mỗi environment override qua values-<env>.yaml.
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Container image (immutable tag khuyên dùng trong prod: sha-<GITHUB_SHA>)
+image:
+  repository: ghcr.io/imtarget05/bankops-api
+  tag: latest
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Komponen được triển khai (api, worker đều có mặt trong image đơn lẻ)
+component: backend
+deploy:
+  api: true
+  worker: true
+
+replicaCount: 1
+
+# Labels & annotations chung
+commonLabels: {}
+commonAnnotations: {}
+
+# ServiceAccount
+serviceAccount:
+  create: true
+  name: ""
+  automountServiceAccountToken: true
+
+# ── API Deployment ───────────────────────────────────────────────────────────
+api:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/imtarget05/bankops-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  containerPort: 8000
+  command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+  env:
+    - name: APP_ENV
+      value: "production"
+    - name: DEMO_MODE
+      value: "false"
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: bankops-secrets
+          key: DATABASE_URL
+    - name: REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: bankops-secrets
+          key: REDIS_URL
+    - name: BANKOPS_SIGNING_KEY
+      valueFrom:
+        secretKeyRef:
+          name: bankops-secrets
+          key: BANKOPS_SIGNING_KEY
+    - name: OTEL_SERVICE_NAME
+      value: quanlykho-api
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://bankops-otel-collector.monitoring.svc.cluster.local:4318
+    - name: APP_VERSION
+      value: "{{ .Chart.AppVersion }}"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: 8000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+  startupProbe:
+    httpGet:
+      path: /health/live
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+
+# ── Worker Deployment ────────────────────────────────────────────────────────
+worker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/imtarget05/bankops-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  command: ["python", "-m", "app.worker"]
+  env:
+    - name: APP_ENV
+      value: "production"
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: bankops-secrets
+          key: DATABASE_URL
+    - name: REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: bankops-secrets
+          key: REDIS_URL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# ── Services ─────────────────────────────────────────────────────────────────
+service:
+  api:
+    enabled: true
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+    name: http
+  worker:
+    enabled: false
+
+# ── Ingress (nginx) ──────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+  hosts:
+    - host: bankops.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── ConfigMap ────────────────────────────────────────────────────────────────
+configmap:
+  enabled: true
+  data:
+    APP_ENV: "production"
+    DEMO_MODE: "false"
+    ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8080","http://127.0.0.1:8080"]'
+    AI_PROVIDER: "disabled"
+    OLLAMA_BASE_URL: "http://localhost:11434"
+    OLLAMA_MODEL: "qwen2.5:1.5b"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://bankops-otel-collector.monitoring.svc.cluster.local:4318"
+
+# ── Secret (template — giá trị thực phải qua ExternalSecrets / SOPS / env) ────
+secret:
+  enabled: true
+  mode: raw          # raw | sealed | external
+  stringData:
+    DATABASE_URL: "CHANGE_ME"
+    REDIS_URL: "CHANGE_ME"
+    BANKOPS_SIGNING_KEY: "CHANGE_ME"
+
+# ── SealedSecret (Bitnami SealedSecrets controller) ───────────────────────────
+sealedSecret:
+  enabled: false
+
+# ── ExternalSecret (ExternalSecrets Operator) ─────────────────────────────────
+externalSecret:
+  enabled: false
+  provider: awssm   # awssm | gcpsm | webhook
+  region: ap-southeast-1
+  projectId: bankops-project
+  secretPath: bankops
+
+# ── Autoscaling ──────────────────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ── Pod Disruption Budget ────────────────────────────────────────────────────
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# ── NetworkPolicy ────────────────────────────────────────────────────────────
+networkPolicy:
+  enabled: false
+  allowIngressFrom:
+    - namespaceSelector: {}
+      podSelector: {}
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+
+# ── Argo Rollouts (canary / blue-green) ──────────────────────────────────────
+rollouts:
+  enabled: false
+  strategy: canary  # canary | bluegreen
+  maxUnavailable: 1
+  maxSurge: 1
+  analysis:
+    enabled: false
+    templates:
+      - name: success-rate
+        args:
+          - name: service-name
+            value: bankops-api
+          - name: threshold
+            value: "99"
+
+# ── Monitoring (ServiceMonitor / PodMonitor / PrometheusRule / Grafana) ─────────────────────────────────
+monitoring:
+  serviceMonitor:
+    enabled: false
+    endpoints:
+      - port: http
+        path: /metrics
+        interval: 30s
+        scrapeTimeout: 10s
+  podMonitor:
+    enabled: false
+  grafana:
+    dashboard:
+      enabled: true
+  alerts:
+    enabled: true
+  grafana:
+    dashboard:
+      enabled: true
+
+# ── Namespace (được override mỗi environment) ────────────────────────────────
+namespace: bankops
+
+# ── PostgreSQL (statefulset, kèm theo chart để dev/staging tự cung cấp) ──────
+postgres:
+  enabled: false
+  statefulset:
+    name: bankops-postgres
+    serviceName: bankops-postgres
+    replicas: 1
+  service:
+    name: bankops-postgres
+    port: 5432
+  image:
+    repository: postgres
+    tag: 16-alpine
+  maxConnections: "100"
+  pgdata: /var/lib/postgresql/data/pgdata
+  env:
+    POSTGRES_DB: bankops
+    POSTGRES_USER: bankops
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  readinessProbe:
+    pg_isready:
+      - -U
+      - bankops
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    pg_isready:
+      - -U
+      - bankops
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    storageClass: ""
+    size: 8Gi
+
+# ── Frontend (tùy chọn, nginx serve dist) ────────────────────────────────────
+frontend:
+  enabled: false
+  containerPort: 80
+
+# ── Backup CronJob (disaster recovery) ───────────────────────────────────────
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  image:
+    repository: postgres
+    tag: 16-alpine
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ── OpenTelemetry Collector (sidecar-agnostic, chạy là Deployment riêng) ─────
+# Cấu hình collector nằm ở infra/helm/bankops/templates/otel-collector-config.yaml
+otel:
+  collector:
+    enabled: false
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    replicaCount: 1
+    otlpEndpoint: http://bankops-otel-collector.monitoring.svc.cluster.local:4318
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# ── Migration Job (Alembic upgrade head, chạy một lần mỗi release) ───────────
+migration:
+  enabled: true
+  backoffLimit: 3
+  image:
+    repository: ghcr.io/imtarget05/bankops-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  command:
+    - alembic
+    - upgrade
+    - head
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

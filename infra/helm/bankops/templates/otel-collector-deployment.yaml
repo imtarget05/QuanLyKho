@@ -1,0 +1,51 @@
+{{- if .Values.otel.collector.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bankops.fullname" . }}-otel-collector
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: otel-collector
+spec:
+  replicas: {{ .Values.otel.collector.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "bankops.selectorLabels" . | nindent 6 }}
+      component: otel-collector
+  template:
+    metadata:
+      labels:
+        {{- include "bankops.labels" . | nindent 8 }}
+        component: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: {{ .Values.otel.collector.image }}
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/otel-collector-config.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: prometheus
+              containerPort: 9464
+              protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.otel.collector.resources.requests.cpu | default "100m" }}
+              memory: {{ .Values.otel.collector.resources.requests.memory | default "256Mi" }}
+            limits:
+              cpu: {{ .Values.otel.collector.resources.limits.cpu | default "500m" }}
+              memory: {{ .Values.otel.collector.resources.limits.memory | default "512Mi" }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector-config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "bankops.fullname" . }}-otel-collector-config
+{{- end }}

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "qlk-001",
+    "question": "Tồn kho hiện tại của mặt hàng SKU-123 là bao nhiêu?",
+    "golden_answer": "Mặt hàng SKU-123 hiện có 45 đơn vị trong kho tại chi nhánh Hà Nội.",
+    "expected_concepts": ["tồn kho", "SKU-123", "chi nhánh Hà Nội"],
+    "expected_source_keywords": ["inv_items", "balances"],
+    "category": "inventory_query"
+  },
+  {
+    "id": "qlk-002",
+    "question": "Làm thế nào để tạo yêu cầu chi tiêu (cash request)?",
+    "golden_answer": "Truy cập menu Quản lý tiền → Tạo yêu cầu chi tiêu, điền số liệu và chờ duyệt.",
+    "expected_concepts": ["cash request", "duyệt", "tiêu"],
+    "expected_source_keywords": ["cash_requests"],
+    "category": "procedure"
+  },
+  {
+    "id": "qlk-003",
+    "question": "Giới hạn chi tiêu hàng ngày cho nhân viên là bao nhiêu?",
+    "golden_answer": "Giới hạn mặc định là 5.000.000 VND/ngày, có thể điều chỉnh theo vai trò.",
+    "expected_concepts": ["giới hạn chi tiêu", "5.000.000 VND", "vai trò"],
+    "expected_source_keywords": ["iam_capabilities", "limits"],
+    "category": "policy"
+  }
+]

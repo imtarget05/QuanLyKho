@@ -1,0 +1,91 @@
+{{- if .Values.postgres.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.statefulset.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ .Values.postgres.statefulset.name }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ .Values.postgres.statefulset.serviceName }}
+  replicas: {{ .Values.postgres.statefulset.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.postgres.statefulset.name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.postgres.statefulset.name }}
+        app.kubernetes.io/component: database
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.postgres.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.postgres.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.postgres.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.postgres.securityContext.fsGroup }}
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          args:
+            - "postgres"
+            - "-c"
+            - "max_connections={{ .Values.postgres.maxConnections }}"
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.postgres.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.postgres.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.postgres.containerSecurityContext.capabilities.drop | nindent 16 }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.env.POSTGRES_DB | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.env.POSTGRES_USER | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bankops.fullname" . }}-secrets
+                  key: DB_PASSWORD
+            - name: PGDATA
+              value: {{ .Values.postgres.pgdata | quote }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.postgres.readinessProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.postgres.livenessProbe | nindent 12 }}
+      volumes:
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+  {{- if .Values.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.postgres.persistence.accessModes | nindent 10 }}
+        {{- if .Values.postgres.persistence.storageClass }}
+        storageClassName: {{ .Values.postgres.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.persistence.size }}
+  {{- else }}
+  volumeClaimTemplates: []
+  {{- end }}
+{{- end }}

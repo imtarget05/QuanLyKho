@@ -1,0 +1,55 @@
+{{- if .Values.backup.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "bankops.fullname" . }}-backup-db
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "bankops.name" . }}-backup-db
+    app.kubernetes.io/component: disaster-recovery
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: {{ .Values.backup.concurrencyPolicy }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: db-backup
+              image: "{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}"
+              envFrom:
+                - configMapRef:
+                    name: {{ include "bankops.fullname" . }}-config
+                - secretRef:
+                    name: {{ include "bankops.fullname" . }}-secrets
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  echo "=== Starting BankOps PostgreSQL Automated Backup ==="
+                  TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
+                  BACKUP_DIR="/tmp/backups"
+                  mkdir -p "${BACKUP_DIR}"
+                  DUMP_FILE="${BACKUP_DIR}/bankops_db_${TIMESTAMP}.dump"
+                  CHECKSUM_FILE="${DUMP_FILE}.sha256"
+                  echo "--> Step 1: Performing pg_dump (Custom compressed format)..."
+                  PGPASSWORD="${DB_PASSWORD:-bankops}" pg_dump \
+                    -h "${DB_HOST:-bankops-postgres}" \
+                    -U "${DB_USER:-bankops}" \
+                    -d "${DB_NAME:-bankops}" \
+                    -p "${DB_PORT:-5432}" \
+                    -Fc \
+                    -f "${DUMP_FILE}"
+                  echo "--> Step 2: Computing SHA-256 checksum..."
+                  sha256sum "${DUMP_FILE}" > "${CHECKSUM_FILE}"
+                  echo "--> Step 3: Uploading to Cloud Object Storage (S3 / Cloudflare R2)..."
+                  S3_TARGET="s3://${S3_BUCKET}/backups/postgres/${TIMESTAMP}/"
+                  aws s3 cp "${DUMP_FILE}" "${S3_TARGET}" --endpoint-url "${S3_ENDPOINT}"
+                  aws s3 cp "${CHECKSUM_FILE}" "${S3_TARGET}" --endpoint-url "${S3_ENDPOINT}"
+                  echo "✅ Backup completed and uploaded to ${S3_TARGET}"
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+{{- end }}

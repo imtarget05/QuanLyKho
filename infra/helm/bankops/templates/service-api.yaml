@@ -1,0 +1,41 @@
+{{- if .Values.service.api.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bankops.fullname" . }}-api
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: api
+  annotations:
+    {{- toYaml .Values.commonAnnotations | nindent 4 }}
+spec:
+  type: {{ .Values.service.api.type }}
+  ports:
+    - name: {{ .Values.service.api.name }}
+      port: {{ .Values.service.api.port }}
+      targetPort: {{ .Values.api.containerPort }}
+      protocol: TCP
+  selector:
+    {{- include "bankops.selectorLabels" . | nindent 4 }}
+    component: api
+---
+{{- end }}
+{{- if .Values.service.worker.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bankops.fullname" . }}-worker
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: worker
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  selector:
+    {{- include "bankops.selectorLabels" . | nindent 4 }}
+    component: worker
+{{- end }}

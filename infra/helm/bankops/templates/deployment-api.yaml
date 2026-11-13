@@ -1,0 +1,90 @@
+{{- if and .Values.deploy.api (not .Values.rollouts.enabled) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bankops.fullname" . }}-api
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: api
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- if .Values.api.annotations }}
+    {{- toYaml .Values.api.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "bankops.selectorLabels" . | nindent 6 }}
+      component: api
+  template:
+    metadata:
+      labels:
+        {{- include "bankops.labels" . | nindent 8 }}
+        component: api
+      annotations:
+        {{- if .Values.api.podAnnotations }}
+        {{- toYaml .Values.api.podAnnotations | nindent 8 }}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bankops.name" . }}-api
+      securityContext:
+        {{- toYaml .Values.api.securityContext | nindent 8 }}
+      containers:
+        - name: api
+          image: {{ include "bankops.image" .Values.api.image }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.api.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.containerPort }}
+              protocol: TCP
+          env:
+            {{- toYaml .Values.api.env | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "bankops.name" . }}-config
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.api.containerSecurityContext | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.api.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.api.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.api.startupProbe | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

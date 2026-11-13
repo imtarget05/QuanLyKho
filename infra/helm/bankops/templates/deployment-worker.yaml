@@ -1,0 +1,68 @@
+{{- if .Values.deploy.worker -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bankops.fullname" . }}-worker
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: worker
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- if .Values.worker.annotations }}
+    {{- toYaml .Values.worker.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "bankops.selectorLabels" . | nindent 6 }}
+      component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "bankops.labels" . | nindent 8 }}
+        component: worker
+      annotations:
+        {{- if .Values.worker.podAnnotations }}
+        {{- toYaml .Values.worker.podAnnotations | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bankops.name" . }}-worker
+      securityContext:
+        {{- toYaml .Values.worker.securityContext | nindent 8 }}
+      containers:
+        - name: worker
+          image: {{ include "bankops.image" .Values.worker.image }}
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.worker.command | nindent 12 }}
+          env:
+            {{- toYaml .Values.worker.env | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "bankops.name" . }}-config
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.worker.containerSecurityContext | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

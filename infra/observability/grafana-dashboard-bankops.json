@@ -1,0 +1,59 @@
+{
+  "title": "BankOps — SLI/SLO Overview",
+  "uid": "bankops-sli-slo",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "HTTP Error Rate (5m)",
+      "targets": [
+        {
+          "expr": "sum(rate(quanlykho_http_requests_total{status_class=~\"5..\"}[5m])) / sum(rate(quanlykho_http_requests_total[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.01}, {"color": "red", "value": 0.05}]}
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "HTTP p95 Latency (5m)",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(quanlykho_http_request_duration_seconds_bucket[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.5}, {"color": "red", "value": 1.0}]}
+        }
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Request Rate by Status Class",
+      "targets": [
+        {
+          "expr": "sum(rate(quanlykho_http_requests_total[5m])) by (status_class)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Maker-Checker Decisions",
+      "targets": [
+        {
+          "expr": "sum(rate(quanlykho_approval_decisions_total[5m])) by (kind, outcome)",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

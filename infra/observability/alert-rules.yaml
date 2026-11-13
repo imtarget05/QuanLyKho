@@ -1,0 +1,81 @@
+groups:
+  - name: bankops-sli-slo
+    rules:
+      # ── SLI: latency p95 (HTTP) ──
+      - alert: BankOpsApiHighLatencyP95
+        expr: histogram_quantile(0.95, rate(quanlykho_http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: bankops-api
+          slo: latency_p95
+        annotations:
+          summary: "BankOps API p95 latency > 500ms"
+          description: "p95 request duration {{ $value }}s trên {{ $labels.instance }}."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/api-high-latency.md"
+
+      # ── SLI: error rate ──
+      - alert: BankOpsApiHighErrorRate
+        expr: |
+          sum(rate(quanlykho_http_requests_total{status_class=~"5.."}[5m]))
+          /
+          sum(rate(quanlykho_http_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: bankops-api
+          slo: error_rate
+        annotations:
+          summary: "BankOps API error rate > 1%"
+          description: "Tỷ lệ lỗi 5xx {{ $value | humanizePercentage }} trong 5 phút."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/api-high-error-rate.md"
+
+      # ── SLI: saturation (CPU/memory) ──
+      - alert: BankOpsApiCpuSaturation
+        expr: sum(rate(container_cpu_usage_seconds_total{container="api"}[5m])) / sum(kube_pod_container_resource_requests_cpu_cores) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: bankops-api
+          slo: saturation
+        annotations:
+          summary: "BankOps API CPU saturation > 80%"
+          description: "CPU usage {{ $value | humanizePercentage }} của request."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/cpu-saturation.md"
+
+      - alert: BankOpsApiMemorySaturation
+        expr: sum(container_memory_working_set_bytes{container="api"}) / sum(kube_pod_container_resource_requests_memory_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: bankops-api
+          slo: saturation
+        annotations:
+          summary: "BankOps API memory saturation > 85%"
+          description: "Memory usage {{ $value | humanizePercentage }} của request."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/memory-saturation.md"
+
+      # ── Business: maker-checker pending too long ──
+      - alert: BankOpsApprovalPendingTooLong
+        expr: quanlykho_approval_pending_seconds > 3600
+        for: 10m
+        labels:
+          severity: warning
+          service: bankops-api
+          slo: maker_checker_latency
+        annotations:
+          summary: "Don approval chờ quá 1 giờ"
+          description: "Có đơn maker-checker pending > 3600s."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/approval-stuck.md"
+
+      # ── Infrastructure ──
+      - alert: BankOpsPodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: bankops-api
+        annotations:
+          summary: "Pod BankOps crash-looping"
+          description: "Pod {{ $labels.pod }} restart {{ $value }} lần / 15p."
+          runbook: "https://github.com/imtarget05/bankops/blob/main/docs/runbooks/pod-crashloop.md"

@@ -1,0 +1,23 @@
+{{- if and .Values.otel.collector.enabled .Values.monitoring.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bankops.fullname" . }}-otel-collector
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: otel-collector
+    monitoring: enabled
+spec:
+  selector:
+    matchLabels:
+      {{- include "bankops.selectorLabels" . | nindent 6 }}
+      component: otel-collector
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.namespace }}
+  endpoints:
+    - port: prometheus
+      interval: 30s
+      path: /metrics
+{{- end }}

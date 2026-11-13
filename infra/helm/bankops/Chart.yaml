@@ -1,0 +1,20 @@
+apiVersion: v2
+name: bankops
+description: Helm chart for QuanLyKho (FastAPI inventory + worker) — DevOps/Platform portfolio
+type: application
+version: 1.0.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+icon: https://raw.githubusercontent.com/imtarget05/bankops/main/logo.png
+keywords:
+  - fastapi
+  - postgresql
+  - redis
+  - argocd
+  - argo-rollouts
+home: https://github.com/imtarget05/bankops
+sources:
+  - https://github.com/imtarget05/bankops
+maintainers:
+  - name: imtarget05
+    email: tanmainguyenbinhtan@gmail.com

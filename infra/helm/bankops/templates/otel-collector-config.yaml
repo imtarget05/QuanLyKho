@@ -1,0 +1,56 @@
+{{- if .Values.otel.collector.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bankops.fullname" . }}-otel-collector-config
+  labels:
+    {{- include "bankops.labels" . | nindent 4 }}
+    component: otel-collector
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'bankops-api'
+              scrape_interval: 30s
+              static_configs:
+                - targets: ['bankops-api:8000']
+            - job_name: 'bankops-worker'
+              scrape_interval: 30s
+              static_configs:
+                - targets: ['bankops-worker:8000']
+
+    exporters:
+      {{- if .Values.otel.collector.otlpEndpoint }}
+      otlp/http:
+        endpoint: {{ .Values.otel.collector.otlpEndpoint | quote }}
+      {{- else }}
+      otlp/http:
+        endpoint: "http://otel-collector.monitoring.svc.cluster.local:4318"
+      {{- end }}
+      logging:
+        loglevel: debug
+      prometheus:
+        endpoint: 0.0.0.0:9464
+      loki:
+        endpoint: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlp/http, logging]
+        metrics:
+          receivers: [otlp, prometheus]
+          exporters: [otlp/http, prometheus, logging]
+        logs:
+          receivers: [otlp]
+          exporters: [loki, logging]
+{{- end }}
