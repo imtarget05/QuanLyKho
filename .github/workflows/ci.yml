@@ -259,3 +259,70 @@ jobs:
             -Dsonar.python.coverage.reportPaths=backend/coverage.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ════════════════════════════════════════════════════════════════
+  # Supply-chain security gates (gitleaks / Trivy / SBOM)
+  # Added by feat/ci-supply-chain. These job names intentionally do NOT
+  # collide with the branch-protection required checks (secret-guard, lint,
+  # test, frontend-web, worker-typecheck, build, sonar-scan).
+  # ════════════════════════════════════════════════════════════════
+
+  trivy-fs:
+    name: Trivy filesystem scan (vuln/secret)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          scanners: vuln,secret
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          output: trivy-fs-results.txt
+      - name: Upload Trivy results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs-results
+          path: trivy-fs-results.txt
+          retention-days: 7
+
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        # Reads .gitleaks.toml from the repo root automatically.
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    name: SBOM generation (Syft, SPDX JSON)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image for SBOM
+        run: docker build -t bankops-api:ci ./backend
+      - name: Generate SPDX JSON SBOM for the backend image
+        uses: anchore/sbom-action@v0
+        with:
+          image: bankops-api:ci
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-QuanLyKho
+          path: sbom.spdx.json
+          retention-days: 30
