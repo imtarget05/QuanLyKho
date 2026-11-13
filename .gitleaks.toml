@@ -1,0 +1,33 @@
+# Gitleaks configuration for QuanLyKho CI.
+#
+# - extends gitleaks' default rule set: a real leaked credential of any
+#   known kind (AWS, GitHub PAT, Stripe, Slack, GCP, ...) fails the job
+# - allowlists the repo's intentional CHANGE_ME_* deployment placeholders,
+#   mirroring scripts/check_no_secrets.py where they are warn severity and
+#   non-blocking; real credentials still fail
+# - allowlists three known dummy values used by tests, docs and the rotation
+#   verification script (all placeholders, never real credentials)
+
+[extend]
+useDefault = true
+
+[allowlist]
+  description = "Intentional placeholders and dummy test fixtures"
+  regexes = [
+    'CHANGE_ME[_A-Z0-9]*',
+    '0123456789abcdef0123456789abcdef',
+    'ya29\.a0AWY7C1234567890',
+    'BANKOPS_SIGNING_KEY=',
+  ]
+
+[paths]
+  ignorePaths = [
+    'backend/poetry.lock',
+    'infra/hf-llm-space/model/**',
+    'frontend/**/node_modules/**',
+    '**/*.example*',
+    '**/sample-data/**',
+    'docs/**',
+    'tests/**',
+    '.git/**',
+  ]
