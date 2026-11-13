@@ -31,6 +31,11 @@ services:
       # Secrets are supplied only in the Render dashboard at Blueprint creation.
       - key: DATABASE_URL
         sync: false
+      # Cloudflare Workers AI credentials (bắt buộc khi AI_PROVIDER=cloudflare).
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
       # Production login fails closed without a reachable TLS Redis instance.
       - key: REDIS_URL
         sync: false
