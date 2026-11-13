@@ -42,7 +42,7 @@ Source: `.github/workflows/*.yml`
 - Production deploy requires manual `workflow_dispatch` with confirm input — acceptable for manual gating, but consider adding automatic deploy-on-merge to `main` after branch protection is enabled.
 
 ## To do (P0)
-- [ ] Enable GitHub branch protection on `main`: require PR, require review, require CI status checks.
+- [x] Enable GitHub branch protection on `main`: require PR, require review, require CI status checks. **Done 2026-11-13:** 1 required review + 7 required CI checks (secret-guard, lint, test, frontend-web, worker-typecheck, build, sonar-scan), enforce_admins; CI green on both landed commits (fe6350d, 265a27c).
 - [ ] Reconcile `render.yaml` (Render free, `AI_PROVIDER=disabled`) vs actual Modal production backend (P3.2).
 - [ ] Change `AI_PROVIDER` from `disabled` to `cloudflare`/`ollama` and configure `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` secrets (P3.3).
 - [ ] Review hardcoded `SMTP_USER=binhtan5734@gmail.com` in `render.yaml` — move to `sync: false` secret for production.
