@@ -37,12 +37,11 @@ Source: `.github/workflows/*.yml`
 ## Findings
 - `secret-guard` job enforces no committed secrets and no tracked `.env` — good security baseline.
 - CI runs lint, test, frontend, worker-typecheck, build, sonar before Docker build — solid gating.
-- **Inconsistency:** `render.yaml` declares a Render free service `kho-tra-sua-fastapi` with `AI_PROVIDER=disabled`, but `deploy-pages.yml` deploys Flutter to Cloudflare Workers Assets calling a **Modal** FastAPI endpoint. Render is not in the active deploy path; reconcile render.yaml vs Modal before production cutover (P3.2).
-- `AI_PROVIDER=disabled` in render.yaml confirms G9 (AI luồng chưa bật) — must be changed for P3.3.
+- `render.yaml` now sets `AI_PROVIDER=cloudflare` (Workers AI; fe6350d), but `deploy-pages.yml` deploys Flutter to Cloudflare Workers Assets calling a **Modal** FastAPI endpoint. Render is a secondary/preview environment (documented in `render.yaml` header); Modal remains the canonical production API (P3.2 reconciled 2026-11-13).
 - Production deploy requires manual `workflow_dispatch` with confirm input — acceptable for manual gating, but consider adding automatic deploy-on-merge to `main` after branch protection is enabled.
 
 ## To do (P0)
 - [ ] Enable GitHub branch protection on `main`: require PR, require review, require CI status checks.
-- [ ] Reconcile `render.yaml` (Render free, `AI_PROVIDER=disabled`) vs actual Modal production backend (P3.2).
-- [ ] Change `AI_PROVIDER` from `disabled` to `cloudflare`/`ollama` and configure `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` secrets (P3.3).
-- [ ] Review hardcoded `SMTP_USER=binhtan5734@gmail.com` in `render.yaml` — move to `sync: false` secret for production.
+- [x] Reconcile `render.yaml` vs actual Modal production backend (P3.2). **Done 2026-11-13:** `render.yaml` header now documents Modal as the canonical production API path; this blueprint is a secondary/preview environment, not the cutover path.
+- [x] Change `AI_PROVIDER` from `disabled` to `cloudflare` and rely on existing `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` GitHub secrets (P3.3). **Done in fe6350d:** render.yaml now sets `AI_PROVIDER=cloudflare`. Note: runtime AI creds must also be configured on the Modal backend's own environment; Modal deploy requires `MODAL_TOKEN`, not present in GitHub secrets.
+- [x] Review hardcoded `SMTP_USER=binhtan5734@gmail.com` in `render.yaml` — moved to `sync: false` (2026-11-13); value lives in the Render dashboard / deploy environment.

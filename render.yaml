@@ -1,3 +1,8 @@
+# NOTE (P3.2 reconciliation, 2026-11-13): the canonical production API runs on
+# Modal (`deploy-pages.yml` builds Flutter -> Cloudflare Workers Assets pointed
+# at imtarget05--quan-ly-kho-tra-sua-api.us-east.modal.run). This blueprint
+# deploys the same FastAPI app to Render free tier as a secondary/preview
+# environment. Do not treat this file as the production cutover path.
 services:
   - type: web
     name: kho-tra-sua-fastapi
@@ -39,7 +44,7 @@ services:
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        value: binhtan5734@gmail.com
+        sync: false
       - key: SMTP_FROM_NAME
         value: Ban Quản Trị Hệ Thống
       - key: SMTP_PASSWORD
