@@ -259,3 +259,252 @@ jobs:
             -Dsonar.python.coverage.reportPaths=backend/coverage.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy-fs:
+    name: Trivy filesystem scan (vuln/secret/misconfig)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          output: trivy-fs-results.txt
+      - name: Upload Trivy results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs-results
+          path: trivy-fs-results.txt
+          retention-days: 7
+
+  trivy-image:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: |
+          docker build -t bankops-api:ci ./backend
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image: 'bankops-api:ci'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          output: trivy-image-results.txt
+      - name: Upload Trivy image results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-results
+          path: trivy-image-results.txt
+          retention-days: 7
+
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GLEAKS_CONFIG: .gitleaks.toml
+
+  pip-audit:
+    name: Python dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install pip-audit
+        run: python -m pip install --only-binary ':all:' pip-audit==2.10.1
+      - name: Audit backend dependencies
+        working-directory: backend
+        run: |
+          pip install poetry==2.5.1 poetry-plugin-export==1.10.1
+          poetry export --without-hashes --with dev -o /tmp/requirements-all.txt
+          pip-audit -r /tmp/requirements-all.txt --progress-spinner off
+
+  npm-audit:
+    name: npm dependency audit (MCP/Cloudflare worker)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install Cloudflare worker deps
+        working-directory: infra/cloudflare-worker
+        run: npm ci --ignore-scripts || true
+      - name: npm audit
+        working-directory: infra/cloudflare-worker
+        run: npm audit --audit-level=high || true
+
+    name: Generate SBOM (Syft)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Syft SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: 'bankops-api:ci'
+          output-file: sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-bankops-api
+          path: sbom.spdx.json
+          retention-days: 30
+
+  cosign-sign:
+    name: Cosign sign container image
+    runs-on: ubuntu-latest
+    needs: [build, trivy-image, sbom]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+      - name: Sign image with Cosign
+        run: |
+          IMAGE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' bankops-api:ci | cut -d@ -f2)"
+          echo "${COSIGN_PASSWORD}" | cosign login ghcr.io -u imtarget05 --password-stdin
+          cosign sign --key="${COSIGN_KEY}" --yes "ghcr.io/imtarget05/bankops-api@${IMAGE_DIGEST}"
+        env:
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+      - name: Verify signature
+        run: |
+          IMAGE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' bankops-api:ci | cut -d@ -f2)"
+          cosign verify --key="${COSIGN_KEY}" "ghcr.io/imtarget05/bankops-api@${IMAGE_DIGEST}"
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+
+  k6-load-test:
+    name: k6 load testing
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.4.0
+        with:
+          filename: tests/load/k6/inventory-load-test.js
+        env:
+          API_URL: http://localhost:8000
+
+  live-ai-eval:
+    name: Live AI eval (golden dataset + LLM-as-judge)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Poetry
+        run: pip install poetry==2.5.1 poetry-plugin-export==1.10.1
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          poetry export -o requirements.txt --without-hashes --with dev
+          pip install -r requirements.txt
+      - name: Run live AI eval
+        working-directory: backend
+        run: |
+          MLFLOW_TRACKING_URI="sqlite:///./mlflow.db" python -m app.services.live_eval
+        env:
+          AI_JUDGE_ENDPOINT: ${{ secrets.AI_JUDGE_ENDPOINT }}
+
+  terraform-plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform init
+        working-directory: infra/terraform
+        run: terraform init
+      - name: Terraform validate
+        working-directory: infra/terraform
+        run: terraform validate
+      - name: Terraform plan
+        working-directory: infra/terraform
+        run: terraform plan -var-file=environments/dev/terraform.tfvars
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  helm-lint:
+    name: Helm lint + unit test
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+      - name: Helm lint
+        run: helm lint infra/helm/bankops
+      - name: Helm template render (dry-run)
+        run: |
+          helm template bankops infra/helm/bankops \
+            -f infra/helm/bankops/values-dev.yaml \
+            -n quanlykho-dev > /dev/null
+
+  kubeconform:
+    name: Kubeconform manifest validation
+    runs-on: ubuntu-latest
+    needs: [helm-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubeconform
+        run: |
+          curl -L https://github.com/yannh/kubeconform/releases/download/v0.6.4/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - name: Render and validate manifests
+        run: |
+          helm template bankops infra/helm/bankops \
+            -f infra/helm/bankops/values-dev.yaml \
+            -n quanlykho-dev > /tmp/rendered.yaml
+          kubeconform -kubernetes-version 1.28.0 /tmp/rendered.yaml
+
+  # ════════════════════════════════════════════════════════════════
+  # k6 load testing (Wave 3)
+  # ════════════════════════════════════════════════════════════════
+  k6-load-test:
+    name: k6 load test
+    runs-on: ubuntu-latest
+    needs: [helm-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.4.0
+        with:
+          filename: loadtest/k6-flashsale.js
+        env:
+          BASE_URL: http://localhost:8080
