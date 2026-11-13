@@ -1,0 +1,113 @@
+# Argo Rollout — QuanLyKho backend (bankops-api)
+#
+# This Rollout CR (argoproj.io/v1alpha1) replicates infra/k8s/base/deployment-api.yaml
+# exactly (selector, template, probes, envFrom, resources) so it can replace the
+# Deployment 1:1 during a GitOps cutover. It is intentionally NOT yet wired into
+# infra/k8s/base/kustomization.yaml — see argo/README.md for the rollout/rollback path.
+#
+# Container spec source of truth (verified 2026-11-13 against origin/main 265a27c):
+#   - infra/k8s/base/deployment-api.yaml (image ghcr.io/imtarget05/bankops-api, port 8000,
+#     probes /health/live + /health/ready — the app also serves the same handlers under
+#     /api/v1/health/* per backend/app/main.py, but the base Deployment probes the root path)
+#   - infra/k8s/base/configmap.yaml -> bankops-config, infra/k8s/base/secret-template.yaml -> bankops-secrets
+# Note: deploy.yml also publishes ghcr.io/imtarget05/quanlykho/quanlykho-api (Azure Container
+# Apps path). The k8s base uses ghcr.io/imtarget05/bankops-api, retagged per overlay via the
+# `images:` transformer; keep that override mechanism when cutting over to this Rollout.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: bankops-api
+  labels:
+    app.kubernetes.io/name: bankops-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: bankops-system
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  minReadySeconds: 30
+  progressDeadlineSeconds: 600
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bankops-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bankops-api
+        app.kubernetes.io/component: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: api
+          image: ghcr.io/imtarget05/bankops-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: bankops-config
+            - secretRef:
+                name: bankops-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+  strategy:
+    canary:
+      # Traffic-router caveat: setWeight steps only shift real traffic when
+      # trafficRouting is configured. Without a router (current state), each
+      # setWeight is a no-op for traffic and the canary progresses by pod
+      # scaling; the pause + analysis gates below still provide the
+      # maker-checker safety. Enable the nginx block once bankops-api-stable /
+      # bankops-api-canary Services and the ingresses exist:
+      #
+      # trafficRouting:
+      #   nginx:
+      #     stableService: bankops-api-stable
+      #     canaryService: bankops-api-canary
+      #     stableIngress: bankops-ingress
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 2m
+        - setWeight: 40
+        - analysis:
+            templates:
+              - templateName: quanlykho-analysis
+        - setWeight: 60
+        - pause:
+            duration: 2m
+        - setWeight: 80
+        - pause:
+            duration: 5m
+        - setWeight: 100
