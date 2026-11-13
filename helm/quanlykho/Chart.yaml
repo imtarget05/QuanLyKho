@@ -1,0 +1,22 @@
+apiVersion: v2
+name: quanlykho
+description: Helm chart for the QuanLyKho (Kho Trà Sữa) FastAPI backend
+type: application
+
+# Version of this chart. Bump when templates/values change.
+version: 0.1.0
+
+# Matches backend/pyproject.toml [tool.poetry] version = "0.1.0".
+appVersion: "0.1.0"
+
+home: https://github.com/imtarget05/QuanLyKho
+sources:
+  - https://github.com/imtarget05/QuanLyKho
+maintainers:
+  - name: imtarget05
+    email: binhtan5734@gmail.com
+
+keywords:
+  - fastapi
+  - quanlykho
+  - inventory

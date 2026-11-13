@@ -1,0 +1,23 @@
+# =============================================================================
+# DEV environment overlay — 1 replica, no HPA, no ingress, small resources.
+# =============================================================================
+replicaCount: 1
+
+backend:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+env:
+  APP_ENV: "dev"
+  LOG_LEVEL: "DEBUG"
+
+autoscaling:
+  enabled: false
+
+ingress:
+  enabled: false

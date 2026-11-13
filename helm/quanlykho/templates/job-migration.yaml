@@ -1,0 +1,52 @@
+{{- if .Values.migrations.enabled }}
+# Alembic schema migration. Runs ONCE before install/upgrade (Helm hook),
+# matching infra/k8s/base/migration-job.yaml behaviour — backend pods never
+# run alembic themselves (entrypoint.sh skips it to avoid DB lock races).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "quanlykho.fullname" . }}-migration-{{ .Release.Revision }}
+  labels:
+    {{- include "quanlykho.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "quanlykho.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "quanlykho.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.backend.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.backend.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.backend.securityContext.fsGroup }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Applying Alembic database migrations..."
+              alembic upgrade head
+          envFrom:
+            # DATABASE_URL is read from the same external Secret as the backend.
+            - secretRef:
+                name: {{ include "quanlykho.secretName" . }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: {{ .Values.backend.securityContext.allowPrivilegeEscalation }}
+            capabilities:
+              {{- toYaml .Values.backend.securityContext.capabilities | nindent 14 }}
+{{- end }}

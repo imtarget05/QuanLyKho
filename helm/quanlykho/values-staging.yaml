@@ -1,0 +1,32 @@
+# =============================================================================
+# STAGING environment overlay — HPA enabled, ingress on, staging TLS issuer.
+# =============================================================================
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+env:
+  APP_ENV: "staging"
+  LOG_LEVEL: "INFO"
+  ALLOWED_ORIGINS: '["https://quanlykho-staging.internal"]'
+
+ingress:
+  enabled: true
+  className: nginx
+  # PLACEHOLDER — real staging ingress host is set per cluster
+  # (helm upgrade --set ingress.host=<real-staging-host>).
+  host: quanlykho-staging.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    enabled: true
+    secretName: quanlykho-staging-tls-cert
+
+secrets:
+  existingSecret: "quanlykho-staging-secrets"

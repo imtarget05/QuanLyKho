@@ -1,0 +1,38 @@
+# =============================================================================
+# PROD environment overlay — HPA enabled, ingress on, prod-grade settings.
+#
+# NOTE: The real production host, quan-ly-kho-tra-sua.tanmainguyenbinh
+# .workers.dev, is a Cloudflare Workers route, NOT a Kubernetes cluster
+# ingress host — it does not apply here. The ingress host below is a
+# placeholder; the real cluster ingress host is set per cluster via
+# `helm upgrade --set ingress.host=<real-host>` or the cluster's own
+# values overlay, then backed by Cloudflare in front of the cluster.
+# =============================================================================
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+env:
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  ALLOWED_ORIGINS: '["https://quanlykho.internal"]'
+
+ingress:
+  enabled: true
+  className: nginx
+  # PLACEHOLDER — real prod ingress host is set per cluster.
+  host: quanlykho-prod.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    enabled: true
+    secretName: quanlykho-tls-cert
+
+secrets:
+  existingSecret: "quanlykho-prod-secrets"

@@ -1,0 +1,35 @@
+=============================================================================
+ QuanLyKho backend — release {{ .Release.Name }} ({{ .Values.env.APP_ENV | default "production" | upper }})
+=============================================================================
+
+1. Check deployment status:
+
+   kubectl --namespace {{ .Release.Namespace }} get pods -l "app.kubernetes.io/instance={{ .Release.Name }}"
+   kubectl --namespace {{ .Release.Namespace }} rollout status deployment/{{ include "quanlykho.fullname" . }}-backend
+
+2. Secret provisioning:
+
+   The chart does NOT create secrets. Pods will crash-loop until the external
+   Secret "{{ include "quanlykho.secretName" . }}" exists and contains:
+   DATABASE_URL, REDIS_URL, BANKOPS_SIGNING_KEY, BANKOPS_SESSION_SECRET,
+   SMTP_USER, SMTP_PASSWORD, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN.
+   Provision it with SealedSecrets / External Secrets / kubectl BEFORE install.
+
+3. Access the API:
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := (list .Values.ingress.host) }}
+   https://{{ $host }}/docs              (API docs)
+   https://{{ $host }}/api/v1/health/live   (liveness)
+   https://{{ $host }}/api/v1/health/ready  (readiness)
+{{- end }}
+{{- else }}
+   kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "quanlykho.fullname" . }}-backend {{ .Values.service.port }}:{{ .Values.service.port }}
+   curl http://127.0.0.1:{{ .Values.service.port }}/api/v1/health/ready
+{{- end }}
+
+4. Migrations run automatically as a pre-install/pre-upgrade hook
+   (`alembic upgrade head`). To run manually:
+
+   kubectl --namespace {{ .Release.Namespace }} exec deploy/{{ include "quanlykho.fullname" . }}-backend -- alembic current
+=============================================================================
