@@ -55,11 +55,16 @@ from app.services.outbox_service import (
     register_outbox_subscriber,
 )
 
-POSTGRES_TEST_URL = (
+_raw_pg_url = (
     os.environ.get("DATABASE_URL_TEST")
     or os.environ.get("DATABASE_URL")
     or "postgresql+asyncpg://postgres:postgres@localhost:5432/bankops_test"
 )
+for _pfx in ("postgresql+psycopg2://", "postgresql://", "postgres://"):
+    if _raw_pg_url.startswith(_pfx):
+        _raw_pg_url = _raw_pg_url.replace(_pfx, "postgresql+asyncpg://", 1)
+        break
+POSTGRES_TEST_URL = _raw_pg_url
 
 
 # ============================================================================
