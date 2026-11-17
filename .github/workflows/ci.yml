@@ -381,12 +381,24 @@ jobs:
     name: Cosign sign container image
     runs-on: ubuntu-latest
     needs: [build, trivy-image, sbom]
-    if: ${{ secrets.COSIGN_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check Cosign key
+        id: cosign-check
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+        run: |
+          if [ -n "$COSIGN_KEY" ]; then
+            echo "has_cosign=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_cosign=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::COSIGN_KEY secret not configured. Container signing skipped."
+          fi
       - name: Install Cosign
+        if: steps.cosign-check.outputs.has_cosign == 'true'
         uses: sigstore/cosign-installer@v3.5.0
       - name: Sign image with Cosign
+        if: steps.cosign-check.outputs.has_cosign == 'true'
         run: |
           IMAGE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' bankops-api:ci | cut -d@ -f2)"
           echo "${COSIGN_PASSWORD}" | cosign login ghcr.io -u imtarget05 --password-stdin
@@ -395,6 +407,7 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
       - name: Verify signature
+        if: steps.cosign-check.outputs.has_cosign == 'true'
         run: |
           IMAGE_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' bankops-api:ci | cut -d@ -f2)"
           cosign verify --key="${COSIGN_KEY}" "ghcr.io/imtarget05/bankops-api@${IMAGE_DIGEST}"
@@ -452,14 +465,14 @@ jobs:
         working-directory: infra/terraform
         run: terraform validate
       - name: Terraform plan
-        if: ${{ secrets.AZURE_CLIENT_ID != '' }}
-        working-directory: infra/terraform
-        run: terraform plan -var-file=environments/dev/terraform.tfvars
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        if: env.ARM_CLIENT_ID != ''
+        working-directory: infra/terraform
+        run: terraform plan -var-file=environments/dev/terraform.tfvars
 
   helm-lint:
     name: Helm lint + unit test
