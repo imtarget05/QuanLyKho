@@ -45,3 +45,14 @@ Source: `.github/workflows/*.yml`
 - [x] Reconcile `render.yaml` vs actual Modal production backend (P3.2). **Done 2026-11-13:** `render.yaml` header now documents Modal as the canonical production API path; this blueprint is a secondary/preview environment, not the cutover path.
 - [x] Change `AI_PROVIDER` from `disabled` to `cloudflare` and rely on existing `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` GitHub secrets (P3.3). **Done in fe6350d:** render.yaml now sets `AI_PROVIDER=cloudflare`. Note: runtime AI creds must also be configured on the Modal backend's own environment; Modal deploy requires `MODAL_TOKEN`, not present in GitHub secrets.
 - [x] Review hardcoded `SMTP_USER=binhtan5734@gmail.com` in `render.yaml` — moved to `sync: false` (2026-11-13); value lives in the Render dashboard / deploy environment.
+
+## Canary rollout (P0.6) — 2026-11-13
+
+Added a canary release path for the FastAPI backend under `argo/` (worktree branch `feat/canary-rollouts`, PR to `main`):
+
+- `argo/rollouts-backend.yaml` — `argoproj.io/v1alpha1 Rollout` for `bankops-api`, a 1:1 replica of `infra/k8s/base/deployment-api.yaml` (same selector, probes `/health/live` + `/health/ready`, envFrom, resources, securityContext), with canary steps 20% → 2m pause → 40% → Prometheus analysis → 60% → 2m → 80% → 5m → 100%, `minReadySeconds: 30`, `progressDeadlineSeconds: 600`. A commented `trafficRouting.nginx` block documents the cutover to real weighted traffic (base ingress is nginx).
+- `argo/analysis-template.yaml` — `AnalysisTemplate quanlykho-analysis` with two Prometheus metrics (`successRate` ≥ 0.99 and `p95Latency` ≤ 1.0 s, `failureLimit: 1`), querying the app's own exporters (`quanlykho_http_requests_total{status_class="5xx"}`, `quanlykho_http_request_duration_seconds_bucket`) documented as assumptions; Prometheus address is a placeholder (`http://prometheus.observability:9090`) until the observability stack lands.
+- `argo/kustomization.yaml` — kustomize entry for ArgoCD / `kubectl apply -k argo/`.
+- `argo/README.md` — rationale (canary = maker-checker for traffic), controller + kubectl-plugin install, watch/promote/abort commands, cutover notes (Rollout replaces the base Deployment; same name/selector), and the planned `rollout.enabled` values flag for a future `helm/quanlykho` chart.
+
+Not yet wired into `infra/k8s/base/kustomization.yaml` or `infra/argocd/quanlykho-application.yaml` — adoption is a deliberate follow-up (see `argo/README.md` § Integration).

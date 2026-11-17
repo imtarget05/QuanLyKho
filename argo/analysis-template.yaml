@@ -1,0 +1,53 @@
+# AnalysisTemplate — QuanLyKho backend canary gate
+#
+# Prometheus provider. Address is a placeholder: point it at the real
+# Prometheus/vmalert-compatible instance that scrapes the backend /metrics
+# endpoint. When the observability stack lands, override per overlay, e.g.:
+#   kubectl -n <ns> patch analysistemplate quanlykho-analysis --type merge \
+#     -p '{"spec":{"metrics":[{"name":"...","provider":{"prometheus":{"address":"http://<real-addr>:9090"}}}]}}'
+# or use Argo Rollouts' args passing (spec.args.prometheus-address + {{args.*}}).
+#
+# Metric-name assumptions (verified against backend/app/api/observability.py,
+# origin/main 265a27c, 2026-11-13):
+#   - quanlykho_http_requests_total            Counter, labels (method, route, status_class)
+#     status_class is f"{status_code // 100}xx" -> "5xx" for server errors.
+#   - quanlykho_http_request_duration_seconds  Histogram, labels (method, route)
+#     prometheus_client emits _bucket/_count/_sum in SECONDS.
+# If the metrics are scraped through a per-pod relabeling that renames them,
+# adjust the queries below to the scraped names.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: quanlykho-analysis
+  labels:
+    app.kubernetes.io/name: quanlykho-analysis
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: bankops-system
+spec:
+  metrics:
+    # Gate 1 — success rate: 1 - (5xx / total) over a 2m window.
+    # successCondition 0.99 => at most 1% server errors allowed during the canary window.
+    - name: successRate
+      interval: 1m
+      count: 2
+      successCondition: result[0] >= 0.99
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.observability:9090
+          query: |
+            (1 - sum(rate(quanlykho_http_requests_total{status_class="5xx"}[2m]))
+                / sum(rate(quanlykho_http_requests_total[2m])))
+    # Gate 2 — p95 latency: histogram_quantile p95 of request duration over 2m.
+    # The histogram records seconds, so successCondition 1.0 => p95 must stay <= 1 second.
+    - name: p95Latency
+      interval: 1m
+      count: 2
+      successCondition: result[0] <= 1.0
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus.observability:9090
+          query: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(quanlykho_http_request_duration_seconds_bucket[2m])))
