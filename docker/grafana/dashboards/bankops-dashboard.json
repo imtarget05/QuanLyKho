@@ -1,0 +1,89 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "BankOps — Observability",
+    "tags": ["bankops", "otel", "prometheus", "loki"],
+    "timezone": "UTC",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "15s",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "HTTP Request Rate",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(quanlykho_http_requests_total[5m]))",
+            "legendFormat": "req/s"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "type": "stat",
+        "title": "HTTP p95 Duration",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(quanlykho_http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95s"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "type": "stat",
+        "title": "5xx Error Rate",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(quanlykho_http_requests_total{status_class=\"5xx\"}[5m])) / sum(rate(quanlykho_http_requests_total[5m])) * 100",
+            "legendFormat": "5xx %"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "type": "graph",
+        "title": "Maker-Checker Approval Decisions",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(quanlykho_approval_decisions_total[5m])) by (kind)",
+            "legendFormat": "{{kind}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6}
+      },
+      {
+        "type": "graph",
+        "title": "External Dependency Outcomes",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum(rate(quanlykho_external_dependency_results_total[5m])) by (provider, outcome)",
+            "legendFormat": "{{provider}} {{outcome}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6}
+      },
+      {
+        "type": "logs",
+        "title": "Recent Logs (Loki)",
+        "datasource": "Loki",
+        "targets": [
+          {
+            "expr": "{container=\"kho-tra-sua-api\"} |= \"\"",
+            "legendFormat": ""
+          }
+        ],
+        "gridPos": {"x": 0, "y": 10, "w": 24, "h": 8}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

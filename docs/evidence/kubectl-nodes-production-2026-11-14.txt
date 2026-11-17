@@ -1,0 +1,18 @@
+NAME                                STATUS   ROLES    AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION             CONTAINER-RUNTIME
+aks-nodepool1-24593395-vmss000000   Ready    <none>   118s   v1.36.5   10.0.2.4      <none>        Ubuntu 24.04.5 LTS   6.8.0-1073-azure (amd64)   containerd://2.3.7-4
+NAMESPACE     NAME                                             READY   STATUS    RESTARTS      AGE
+kube-system   azure-cns-ms56p                                  2/2     Running   0             119s
+kube-system   azure-ip-masq-agent-mfsnt                        1/1     Running   0             119s
+kube-system   cloud-node-manager-bh82r                         1/1     Running   0             119s
+kube-system   coredns-5bf45f87d-f9hx9                          1/1     Running   0             2m10s
+kube-system   coredns-5bf45f87d-sklsb                          1/1     Running   0             47s
+kube-system   coredns-autoscaler-7467554f77-d589n              1/1     Running   0             2m10s
+kube-system   csi-azuredisk-node-7p8g6                         3/3     Running   0             119s
+kube-system   csi-azurefile-node-7xs46                         4/4     Running   0             119s
+kube-system   konnectivity-agent-75c46788ff-cwf5n              1/1     Running   0             2m8s
+kube-system   konnectivity-agent-75c46788ff-mv86f              1/1     Running   0             47s
+kube-system   konnectivity-agent-autoscaler-5b658f6697-2hn6v   1/1     Running   0             2m7s
+kube-system   kube-proxy-k2hxc                                 1/1     Running   0             119s
+kube-system   metrics-server-54645bd9cd-b54nv                  1/2     Running   1 (31s ago)   2m7s
+kube-system   metrics-server-dff79fd46-xfl6d                   1/2     Running   0             32s
+kube-system   metrics-server-dff79fd46-z4cbb                   1/2     Running   0             32s

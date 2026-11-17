@@ -1,0 +1,830 @@
+[0m[1mdata.azurerm_client_config.current: Reading...[0m[0m
+[0m[1mdata.azurerm_client_config.current: Read complete after 0s [id=Y2xpZW50Q29uZmlncy9jbGllbnRJZD0wNGIwNzc5NS04ZGRiLTQ2MWEtYmJlZS0wMmY5ZTFiZjdiNDY7b2JqZWN0SWQ9MjhlNDgzMjMtZDQ4My00YjZlLWJjNjEtNWE5ZTQ3M2JiYTg1O3N1YnNjcmlwdGlvbklkPWEzZGVlYzc4LTdlZGItNDFjZC05ZTk0LWVjMWQ0ZDkzNzlmNTt0ZW5hbnRJZD1hYTc5YTkyYy1lYzA5LTRkZTEtYmFhOS0xNTFiOGY5ZGY4ODY=][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform planned the following actions, but then encountered a problem:
+
+[1m  # azurerm_key_vault.secrets[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_key_vault" "secrets" {
+      [32m+[0m[0m access_policy                 = (known after apply)
+      [32m+[0m[0m id                            = (known after apply)
+      [32m+[0m[0m location                      = "southeastasia"
+      [32m+[0m[0m name                          = "kv-rg-bankops"
+      [32m+[0m[0m public_network_access_enabled = true
+      [32m+[0m[0m resource_group_name           = "rg-bankops"
+      [32m+[0m[0m sku_name                      = "standard"
+      [32m+[0m[0m soft_delete_retention_days    = 90
+      [32m+[0m[0m tags                          = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+      [32m+[0m[0m tenant_id                     = "aa79a92c-ec09-4de1-baa9-151b8f9df886"
+      [32m+[0m[0m vault_uri                     = (known after apply)
+
+      [32m+[0m[0m contact (known after apply)
+
+      [32m+[0m[0m network_acls (known after apply)
+    }
+
+[1m  # azurerm_key_vault_access_policy.aks_identity[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_key_vault_access_policy" "aks_identity" {
+      [32m+[0m[0m id                 = (known after apply)
+      [32m+[0m[0m key_vault_id       = (known after apply)
+      [32m+[0m[0m object_id          = (known after apply)
+      [32m+[0m[0m secret_permissions = [
+          [32m+[0m[0m "Get",
+          [32m+[0m[0m "List",
+        ]
+      [32m+[0m[0m tenant_id          = "aa79a92c-ec09-4de1-baa9-151b8f9df886"
+    }
+
+[1m  # azurerm_kubernetes_cluster.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_kubernetes_cluster" "main" {
+      [32m+[0m[0m api_server_authorized_ip_ranges     = (known after apply)
+      [32m+[0m[0m current_kubernetes_version          = (known after apply)
+      [32m+[0m[0m dns_prefix                          = "bankops"
+      [32m+[0m[0m fqdn                                = (known after apply)
+      [32m+[0m[0m http_application_routing_zone_name  = (known after apply)
+      [32m+[0m[0m id                                  = (known after apply)
+      [32m+[0m[0m image_cleaner_enabled               = false
+      [32m+[0m[0m image_cleaner_interval_hours        = 48
+      [32m+[0m[0m kube_admin_config                   = (sensitive value)
+      [32m+[0m[0m kube_admin_config_raw               = (sensitive value)
+      [32m+[0m[0m kube_config                         = (sensitive value)
+      [32m+[0m[0m kube_config_raw                     = (sensitive value)
+      [32m+[0m[0m kubernetes_version                  = (known after apply)
+      [32m+[0m[0m location                            = "southeastasia"
+      [32m+[0m[0m name                                = "aks-rg-bankops"
+      [32m+[0m[0m node_resource_group                 = (known after apply)
+      [32m+[0m[0m node_resource_group_id              = (known after apply)
+      [32m+[0m[0m oidc_issuer_url                     = (known after apply)
+      [32m+[0m[0m portal_fqdn                         = (known after apply)
+      [32m+[0m[0m private_cluster_enabled             = false
+      [32m+[0m[0m private_cluster_public_fqdn_enabled = false
+      [32m+[0m[0m private_dns_zone_id                 = (known after apply)
+      [32m+[0m[0m private_fqdn                        = (known after apply)
+      [32m+[0m[0m public_network_access_enabled       = true
+      [32m+[0m[0m resource_group_name                 = "rg-bankops"
+      [32m+[0m[0m role_based_access_control_enabled   = true
+      [32m+[0m[0m run_command_enabled                 = true
+      [32m+[0m[0m sku_tier                            = "Free"
+      [32m+[0m[0m support_plan                        = "KubernetesOfficial"
+      [32m+[0m[0m tags                                = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+      [32m+[0m[0m workload_identity_enabled           = false
+
+      [32m+[0m[0m api_server_access_profile (known after apply)
+
+      [32m+[0m[0m auto_scaler_profile (known after apply)
+
+      [32m+[0m[0m default_node_pool {
+          [32m+[0m[0m enable_auto_scaling  = false
+          [32m+[0m[0m kubelet_disk_type    = (known after apply)
+          [32m+[0m[0m max_pods             = 30
+          [32m+[0m[0m name                 = "agentpool"
+          [32m+[0m[0m node_count           = 3
+          [32m+[0m[0m node_labels          = (known after apply)
+          [32m+[0m[0m orchestrator_version = (known after apply)
+          [32m+[0m[0m os_disk_size_gb      = (known after apply)
+          [32m+[0m[0m os_disk_type         = "Managed"
+          [32m+[0m[0m os_sku               = (known after apply)
+          [32m+[0m[0m scale_down_mode      = "Delete"
+          [32m+[0m[0m type                 = "VirtualMachineScaleSets"
+          [32m+[0m[0m ultra_ssd_enabled    = false
+          [32m+[0m[0m vm_size              = "Standard_D2s_v3"
+          [32m+[0m[0m vnet_subnet_id       = (known after apply)
+          [32m+[0m[0m workload_runtime     = (known after apply)
+        }
+
+      [32m+[0m[0m identity {
+          [32m+[0m[0m principal_id = (known after apply)
+          [32m+[0m[0m tenant_id    = (known after apply)
+          [32m+[0m[0m type         = "SystemAssigned"
+        }
+
+      [32m+[0m[0m kubelet_identity (known after apply)
+
+      [32m+[0m[0m network_profile {
+          [32m+[0m[0m dns_service_ip          = (known after apply)
+          [32m+[0m[0m docker_bridge_cidr      = (known after apply)
+          [32m+[0m[0m ip_versions             = (known after apply)
+          [32m+[0m[0m load_balancer_sku       = "standard"
+          [32m+[0m[0m network_mode            = (known after apply)
+          [32m+[0m[0m network_plugin          = "azure"
+          [32m+[0m[0m network_policy          = (known after apply)
+          [32m+[0m[0m outbound_ip_address_ids = (known after apply)
+          [32m+[0m[0m outbound_ip_prefix_ids  = (known after apply)
+          [32m+[0m[0m outbound_type           = "loadBalancer"
+          [32m+[0m[0m pod_cidr                = (known after apply)
+          [32m+[0m[0m pod_cidrs               = (known after apply)
+          [32m+[0m[0m service_cidr            = (known after apply)
+          [32m+[0m[0m service_cidrs           = (known after apply)
+
+          [32m+[0m[0m load_balancer_profile (known after apply)
+
+          [32m+[0m[0m nat_gateway_profile (known after apply)
+        }
+
+      [32m+[0m[0m windows_profile (known after apply)
+    }
+
+[1m  # azurerm_log_analytics_workspace.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_log_analytics_workspace" "main" {
+      [32m+[0m[0m allow_resource_only_permissions = true
+      [32m+[0m[0m daily_quota_gb                  = -1
+      [32m+[0m[0m id                              = (known after apply)
+      [32m+[0m[0m internet_ingestion_enabled      = true
+      [32m+[0m[0m internet_query_enabled          = true
+      [32m+[0m[0m local_authentication_disabled   = false
+      [32m+[0m[0m location                        = "southeastasia"
+      [32m+[0m[0m name                            = "law-rg-bankops"
+      [32m+[0m[0m primary_shared_key              = (sensitive value)
+      [32m+[0m[0m resource_group_name             = "rg-bankops"
+      [32m+[0m[0m retention_in_days               = 30
+      [32m+[0m[0m secondary_shared_key            = (sensitive value)
+      [32m+[0m[0m sku                             = "PerGB2018"
+      [32m+[0m[0m tags                            = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+      [32m+[0m[0m workspace_id                    = (known after apply)
+    }
+
+[1m  # azurerm_redis_cache.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_redis_cache" "main" {
+      [32m+[0m[0m capacity                      = 1
+      [32m+[0m[0m enable_non_ssl_port           = false
+      [32m+[0m[0m family                        = "C"
+      [32m+[0m[0m hostname                      = (known after apply)
+      [32m+[0m[0m id                            = (known after apply)
+      [32m+[0m[0m location                      = "southeastasia"
+      [32m+[0m[0m minimum_tls_version           = "1.2"
+      [32m+[0m[0m name                          = "redis-rg-bankops"
+      [32m+[0m[0m port                          = (known after apply)
+      [32m+[0m[0m primary_access_key            = (sensitive value)
+      [32m+[0m[0m primary_connection_string     = (sensitive value)
+      [32m+[0m[0m private_static_ip_address     = (known after apply)
+      [32m+[0m[0m public_network_access_enabled = true
+      [32m+[0m[0m redis_version                 = (known after apply)
+      [32m+[0m[0m replicas_per_master           = (known after apply)
+      [32m+[0m[0m replicas_per_primary          = (known after apply)
+      [32m+[0m[0m resource_group_name           = "rg-bankops"
+      [32m+[0m[0m secondary_access_key          = (sensitive value)
+      [32m+[0m[0m secondary_connection_string   = (sensitive value)
+      [32m+[0m[0m sku_name                      = "Basic"
+      [32m+[0m[0m ssl_port                      = (known after apply)
+      [32m+[0m[0m tags                          = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+
+      [32m+[0m[0m redis_configuration (known after apply)
+    }
+
+[1m  # azurerm_resource_group.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_resource_group" "main" {
+      [32m+[0m[0m id       = (known after apply)
+      [32m+[0m[0m location = "southeastasia"
+      [32m+[0m[0m name     = "rg-bankops"
+      [32m+[0m[0m tags     = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+    }
+
+[1m  # azurerm_storage_account.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_storage_account" "main" {
+      [32m+[0m[0m access_tier                        = (known after apply)
+      [32m+[0m[0m account_kind                       = "StorageV2"
+      [32m+[0m[0m account_replication_type           = "LRS"
+      [32m+[0m[0m account_tier                       = "Standard"
+      [32m+[0m[0m allow_nested_items_to_be_public    = true
+      [32m+[0m[0m cross_tenant_replication_enabled   = true
+      [32m+[0m[0m default_to_oauth_authentication    = false
+      [32m+[0m[0m dns_endpoint_type                  = "Standard"
+      [32m+[0m[0m enable_https_traffic_only          = true
+      [32m+[0m[0m id                                 = (known after apply)
+      [32m+[0m[0m infrastructure_encryption_enabled  = false
+      [32m+[0m[0m is_hns_enabled                     = false
+      [32m+[0m[0m large_file_share_enabled           = (known after apply)
+      [32m+[0m[0m local_user_enabled                 = true
+      [32m+[0m[0m location                           = "southeastasia"
+      [32m+[0m[0m min_tls_version                    = "TLS1_2"
+      [32m+[0m[0m name                               = "bankopsdevstore"
+      [32m+[0m[0m nfsv3_enabled                      = false
+      [32m+[0m[0m primary_access_key                 = (sensitive value)
+      [32m+[0m[0m primary_blob_connection_string     = (sensitive value)
+      [32m+[0m[0m primary_blob_endpoint              = (known after apply)
+      [32m+[0m[0m primary_blob_host                  = (known after apply)
+      [32m+[0m[0m primary_blob_internet_endpoint     = (known after apply)
+      [32m+[0m[0m primary_blob_internet_host         = (known after apply)
+      [32m+[0m[0m primary_blob_microsoft_endpoint    = (known after apply)
+      [32m+[0m[0m primary_blob_microsoft_host        = (known after apply)
+      [32m+[0m[0m primary_connection_string          = (sensitive value)
+      [32m+[0m[0m primary_dfs_endpoint               = (known after apply)
+      [32m+[0m[0m primary_dfs_host                   = (known after apply)
+      [32m+[0m[0m primary_dfs_internet_endpoint      = (known after apply)
+      [32m+[0m[0m primary_dfs_internet_host          = (known after apply)
+      [32m+[0m[0m primary_dfs_microsoft_endpoint     = (known after apply)
+      [32m+[0m[0m primary_dfs_microsoft_host         = (known after apply)
+      [32m+[0m[0m primary_file_endpoint              = (known after apply)
+      [32m+[0m[0m primary_file_host                  = (known after apply)
+      [32m+[0m[0m primary_file_internet_endpoint     = (known after apply)
+      [32m+[0m[0m primary_file_internet_host         = (known after apply)
+      [32m+[0m[0m primary_file_microsoft_endpoint    = (known after apply)
+      [32m+[0m[0m primary_file_microsoft_host        = (known after apply)
+      [32m+[0m[0m primary_location                   = (known after apply)
+      [32m+[0m[0m primary_queue_endpoint             = (known after apply)
+      [32m+[0m[0m primary_queue_host                 = (known after apply)
+      [32m+[0m[0m primary_queue_microsoft_endpoint   = (known after apply)
+      [32m+[0m[0m primary_queue_microsoft_host       = (known after apply)
+      [32m+[0m[0m primary_table_endpoint             = (known after apply)
+      [32m+[0m[0m primary_table_host                 = (known after apply)
+      [32m+[0m[0m primary_table_microsoft_endpoint   = (known after apply)
+      [32m+[0m[0m primary_table_microsoft_host       = (known after apply)
+      [32m+[0m[0m primary_web_endpoint               = (known after apply)
+      [32m+[0m[0m primary_web_host                   = (known after apply)
+      [32m+[0m[0m primary_web_internet_endpoint      = (known after apply)
+      [32m+[0m[0m primary_web_internet_host          = (known after apply)
+      [32m+[0m[0m primary_web_microsoft_endpoint     = (known after apply)
+      [32m+[0m[0m primary_web_microsoft_host         = (known after apply)
+      [32m+[0m[0m public_network_access_enabled      = true
+      [32m+[0m[0m queue_encryption_key_type          = "Service"
+      [32m+[0m[0m resource_group_name                = "rg-bankops"
+      [32m+[0m[0m secondary_access_key               = (sensitive value)
+      [32m+[0m[0m secondary_blob_connection_string   = (sensitive value)
+      [32m+[0m[0m secondary_blob_endpoint            = (known after apply)
+      [32m+[0m[0m secondary_blob_host                = (known after apply)
+      [32m+[0m[0m secondary_blob_internet_endpoint   = (known after apply)
+      [32m+[0m[0m secondary_blob_internet_host       = (known after apply)
+      [32m+[0m[0m secondary_blob_microsoft_endpoint  = (known after apply)
+      [32m+[0m[0m secondary_blob_microsoft_host      = (known after apply)
+      [32m+[0m[0m secondary_connection_string        = (sensitive value)
+      [32m+[0m[0m secondary_dfs_endpoint             = (known after apply)
+      [32m+[0m[0m secondary_dfs_host                 = (known after apply)
+      [32m+[0m[0m secondary_dfs_internet_endpoint    = (known after apply)
+      [32m+[0m[0m secondary_dfs_internet_host        = (known after apply)
+      [32m+[0m[0m secondary_dfs_microsoft_endpoint   = (known after apply)
+      [32m+[0m[0m secondary_dfs_microsoft_host       = (known after apply)
+      [32m+[0m[0m secondary_file_endpoint            = (known after apply)
+      [32m+[0m[0m secondary_file_host                = (known after apply)
+      [32m+[0m[0m secondary_file_internet_endpoint   = (known after apply)
+      [32m+[0m[0m secondary_file_internet_host       = (known after apply)
+      [32m+[0m[0m secondary_file_microsoft_endpoint  = (known after apply)
+      [32m+[0m[0m secondary_file_microsoft_host      = (known after apply)
+      [32m+[0m[0m secondary_location                 = (known after apply)
+      [32m+[0m[0m secondary_queue_endpoint           = (known after apply)
+      [32m+[0m[0m secondary_queue_host               = (known after apply)
+      [32m+[0m[0m secondary_queue_microsoft_endpoint = (known after apply)
+      [32m+[0m[0m secondary_queue_microsoft_host     = (known after apply)
+      [32m+[0m[0m secondary_table_endpoint           = (known after apply)
+      [32m+[0m[0m secondary_table_host               = (known after apply)
+      [32m+[0m[0m secondary_table_microsoft_endpoint = (known after apply)
+      [32m+[0m[0m secondary_table_microsoft_host     = (known after apply)
+      [32m+[0m[0m secondary_web_endpoint             = (known after apply)
+      [32m+[0m[0m secondary_web_host                 = (known after apply)
+      [32m+[0m[0m secondary_web_internet_endpoint    = (known after apply)
+      [32m+[0m[0m secondary_web_internet_host        = (known after apply)
+      [32m+[0m[0m secondary_web_microsoft_endpoint   = (known after apply)
+      [32m+[0m[0m secondary_web_microsoft_host       = (known after apply)
+      [32m+[0m[0m sftp_enabled                       = false
+      [32m+[0m[0m shared_access_key_enabled          = true
+      [32m+[0m[0m table_encryption_key_type          = "Service"
+      [32m+[0m[0m tags                               = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+
+      [32m+[0m[0m blob_properties (known after apply)
+
+      [32m+[0m[0m network_rules (known after apply)
+
+      [32m+[0m[0m queue_properties (known after apply)
+
+      [32m+[0m[0m routing (known after apply)
+
+      [32m+[0m[0m share_properties (known after apply)
+    }
+
+[1m  # azurerm_storage_container.backups[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_storage_container" "backups" {
+      [32m+[0m[0m container_access_type             = "private"
+      [32m+[0m[0m default_encryption_scope          = (known after apply)
+      [32m+[0m[0m encryption_scope_override_enabled = true
+      [32m+[0m[0m has_immutability_policy           = (known after apply)
+      [32m+[0m[0m has_legal_hold                    = (known after apply)
+      [32m+[0m[0m id                                = (known after apply)
+      [32m+[0m[0m metadata                          = (known after apply)
+      [32m+[0m[0m name                              = "backups"
+      [32m+[0m[0m resource_manager_id               = (known after apply)
+      [32m+[0m[0m storage_account_name              = "bankopsdevstore"
+    }
+
+[1m  # azurerm_subnet.aks[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_subnet" "aks" {
+      [32m+[0m[0m address_prefixes                               = [
+          [32m+[0m[0m "10.0.1.0/24",
+        ]
+      [32m+[0m[0m enforce_private_link_endpoint_network_policies = (known after apply)
+      [32m+[0m[0m enforce_private_link_service_network_policies  = (known after apply)
+      [32m+[0m[0m id                                             = (known after apply)
+      [32m+[0m[0m name                                           = "aks-subnet"
+      [32m+[0m[0m private_endpoint_network_policies_enabled      = (known after apply)
+      [32m+[0m[0m private_link_service_network_policies_enabled  = (known after apply)
+      [32m+[0m[0m resource_group_name                            = "rg-bankops"
+      [32m+[0m[0m service_endpoints                              = [
+          [32m+[0m[0m "Microsoft.Storage",
+        ]
+      [32m+[0m[0m virtual_network_name                           = "vnet-rg-bankops"
+    }
+
+[1m  # azurerm_virtual_network.main[0m will be created
+[0m  [32m+[0m[0m resource "azurerm_virtual_network" "main" {
+      [32m+[0m[0m address_space       = [
+          [32m+[0m[0m "10.0.0.0/16",
+        ]
+      [32m+[0m[0m dns_servers         = (known after apply)
+      [32m+[0m[0m guid                = (known after apply)
+      [32m+[0m[0m id                  = (known after apply)
+      [32m+[0m[0m location            = "southeastasia"
+      [32m+[0m[0m name                = "vnet-rg-bankops"
+      [32m+[0m[0m resource_group_name = "rg-bankops"
+      [32m+[0m[0m subnet              = (known after apply)
+      [32m+[0m[0m tags                = {
+          [32m+[0m[0m "environment" = "dev"
+          [32m+[0m[0m "owner"       = "platform"
+          [32m+[0m[0m "project"     = "bankops"
+        }
+    }
+
+[1m  # helm_release.external_secrets[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "external_secrets" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "external-secrets"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = true
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "external-secrets"
+      [32m+[0m[0m namespace                  = "external-secrets"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://external-secrets.github.io/kubernetes-external-secrets/"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "0.10.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "installCRDs"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "replicaCount"
+          [32m+[0m[0m value = "1"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # helm_release.kube_prometheus_stack[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "kube_prometheus_stack" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "kube-prometheus-stack"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = false
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "kube-prometheus-stack"
+      [32m+[0m[0m namespace                  = "monitoring"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://prometheus-community.github.io/helm-charts"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "59.0.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "alertmanager.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "grafana.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "kube-state-metrics.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus-node-exporter.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus.prometheusSpec.podMonitorNamespaceSelector.matchLabels.monitoring"
+          [32m+[0m[0m value = "enabled"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus.prometheusSpec.retention"
+          [32m+[0m[0m value = "15d"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus.prometheusSpec.serviceMonitorNamespaceSelector.matchLabels.monitoring"
+          [32m+[0m[0m value = "enabled"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.accessModes[0]"
+          [32m+[0m[0m value = "ReadWriteOnce"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage"
+          [32m+[0m[0m value = "8Gi"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # helm_release.kyverno[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "kyverno" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "kyverno"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = true
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "kyverno"
+      [32m+[0m[0m namespace                  = "kyverno"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://kyverno.github.io/kyverno/"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "3.2.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "backgroundController.replicas"
+          [32m+[0m[0m value = "1"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "replicaCount"
+          [32m+[0m[0m value = "1"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "webhookConfiguration.timeoutSeconds"
+          [32m+[0m[0m value = "10"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # helm_release.loki[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "loki" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "loki-stack"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = false
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "loki"
+      [32m+[0m[0m namespace                  = "monitoring"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://grafana.github.io/loki/charts"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "2.9.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "grafana.enabled"
+          [32m+[0m[0m value = "false"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "loki.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "loki.persistence.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "loki.persistence.size"
+          [32m+[0m[0m value = "10Gi"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "promtail.enabled"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # helm_release.opa_gatekeeper[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "opa_gatekeeper" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "gatekeeper"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = true
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "gatekeeper"
+      [32m+[0m[0m namespace                  = "gatekeeper-system"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://open-policy-agent.github.io/gatekeeper/charts"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "3.13.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "audit.fromDeploymentAnnotations"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "audit.interval"
+          [32m+[0m[0m value = "60s"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "replicas"
+          [32m+[0m[0m value = "1"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # helm_release.sealed_secrets[0m will be created
+[0m  [32m+[0m[0m resource "helm_release" "sealed_secrets" {
+      [32m+[0m[0m atomic                     = false
+      [32m+[0m[0m chart                      = "sealed-secrets"
+      [32m+[0m[0m cleanup_on_fail            = false
+      [32m+[0m[0m create_namespace           = true
+      [32m+[0m[0m dependency_update          = false
+      [32m+[0m[0m disable_crd_hooks          = false
+      [32m+[0m[0m disable_openapi_validation = false
+      [32m+[0m[0m disable_webhooks           = false
+      [32m+[0m[0m force_update               = false
+      [32m+[0m[0m id                         = (known after apply)
+      [32m+[0m[0m lint                       = false
+      [32m+[0m[0m manifest                   = (known after apply)
+      [32m+[0m[0m max_history                = 0
+      [32m+[0m[0m metadata                   = (known after apply)
+      [32m+[0m[0m name                       = "sealed-secrets"
+      [32m+[0m[0m namespace                  = "kube-system"
+      [32m+[0m[0m pass_credentials           = false
+      [32m+[0m[0m recreate_pods              = false
+      [32m+[0m[0m render_subchart_notes      = true
+      [32m+[0m[0m replace                    = false
+      [32m+[0m[0m repository                 = "https://bitnami-labs.github.io/sealed-secrets"
+      [32m+[0m[0m reset_values               = false
+      [32m+[0m[0m reuse_values               = false
+      [32m+[0m[0m skip_crds                  = false
+      [32m+[0m[0m status                     = "deployed"
+      [32m+[0m[0m timeout                    = 300
+      [32m+[0m[0m verify                     = false
+      [32m+[0m[0m version                    = "2.15.0"
+      [32m+[0m[0m wait                       = true
+      [32m+[0m[0m wait_for_jobs              = false
+
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "createCustomResource"
+          [32m+[0m[0m value = "true"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m set {
+          [32m+[0m[0m name  = "fullnameOverride"
+          [32m+[0m[0m value = "sealed-secrets"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+    }
+
+[1m  # kubernetes_namespace.monitoring[0m will be created
+[0m  [32m+[0m[0m resource "kubernetes_namespace" "monitoring" {
+      [32m+[0m[0m id                               = (known after apply)
+      [32m+[0m[0m wait_for_default_service_account = false
+
+      [32m+[0m[0m metadata {
+          [32m+[0m[0m generation       = (known after apply)
+          [32m+[0m[0m labels           = {
+              [32m+[0m[0m "monitoring" = "enabled"
+            }
+          [32m+[0m[0m name             = "monitoring"
+          [32m+[0m[0m resource_version = (known after apply)
+          [32m+[0m[0m uid              = (known after apply)
+        }
+    }
+
+[1m  # kubernetes_secret_v1.bankops_external_secret[0m will be created
+[0m  [32m+[0m[0m resource "kubernetes_secret_v1" "bankops_external_secret" {
+      [32m+[0m[0m binary_data_wo                 = (write-only attribute)
+      [32m+[0m[0m data                           = (sensitive value)
+      [32m+[0m[0m data_wo                        = (write-only attribute)
+      [32m+[0m[0m id                             = (known after apply)
+      [32m+[0m[0m type                           = "Opaque"
+      [32m+[0m[0m wait_for_service_account_token = true
+
+      [32m+[0m[0m metadata {
+          [32m+[0m[0m generation       = (known after apply)
+          [32m+[0m[0m name             = "bankops-external-secrets"
+          [32m+[0m[0m namespace        = "quanlykho"
+          [32m+[0m[0m resource_version = (known after apply)
+          [32m+[0m[0m uid              = (known after apply)
+        }
+    }
+
+[1m  # kubernetes_secret_v1.bankops_secret_store[0m will be created
+[0m  [32m+[0m[0m resource "kubernetes_secret_v1" "bankops_secret_store" {
+      [32m+[0m[0m binary_data_wo                 = (write-only attribute)
+      [32m+[0m[0m data                           = (sensitive value)
+      [32m+[0m[0m data_wo                        = (write-only attribute)
+      [32m+[0m[0m id                             = (known after apply)
+      [32m+[0m[0m type                           = "Opaque"
+      [32m+[0m[0m wait_for_service_account_token = true
+
+      [32m+[0m[0m metadata {
+          [32m+[0m[0m generation       = (known after apply)
+          [32m+[0m[0m name             = "bankops-secret-store"
+          [32m+[0m[0m namespace        = "quanlykho"
+          [32m+[0m[0m resource_version = (known after apply)
+          [32m+[0m[0m uid              = (known after apply)
+        }
+    }
+
+[1m  # kubernetes_secret_v1.eso_credentials[0m will be created
+[0m  [32m+[0m[0m resource "kubernetes_secret_v1" "eso_credentials" {
+      [32m+[0m[0m binary_data_wo                 = (write-only attribute)
+      [32m+[0m[0m data                           = (sensitive value)
+      [32m+[0m[0m data_wo                        = (write-only attribute)
+      [32m+[0m[0m id                             = (known after apply)
+      [32m+[0m[0m type                           = "Opaque"
+      [32m+[0m[0m wait_for_service_account_token = true
+
+      [32m+[0m[0m metadata {
+          [32m+[0m[0m generation       = (known after apply)
+          [32m+[0m[0m name             = "eso-azure-credentials"
+          [32m+[0m[0m namespace        = "external-secrets"
+          [32m+[0m[0m resource_version = (known after apply)
+          [32m+[0m[0m uid              = (known after apply)
+        }
+    }
+
+[1mPlan:[0m [0m20 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  [32m+[0m[0m key_vault_name          = "kv-rg-bankops"
+  [32m+[0m[0m key_vault_uri           = (known after apply)
+  [32m+[0m[0m kubernetes_cluster_id   = (known after apply)
+  [32m+[0m[0m kubernetes_cluster_name = "aks-rg-bankops"
+  [32m+[0m[0m kyverno_release         = "kyverno"
+  [32m+[0m[0m loki_release            = "loki"
+  [32m+[0m[0m monitoring_namespace    = "monitoring"
+  [32m+[0m[0m opa_gatekeeper_release  = "gatekeeper"
+  [32m+[0m[0m prometheus_release      = "kube-prometheus-stack"
+  [32m+[0m[0m redis_hostname          = (sensitive value)
+  [32m+[0m[0m resource_group_name     = "rg-bankops"
+  [32m+[0m[0m storage_account_name    = "bankopsdevstore"
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mNo valid credential sources found[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with provider["registry.terraform.io/hashicorp/aws"].multi_cloud,
+[31m│[0m [0m  on main.tf line 36, in provider "aws":
+[31m│[0m [0m  36: provider "aws" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mPlease see https://registry.terraform.io/providers/hashicorp/aws
+[31m│[0m [0mfor more information about providing credentials.
+[31m│[0m [0m
+[31m│[0m [0mError: failed to refresh cached credentials, no EC2 IMDS role found,
+[31m│[0m [0moperation error ec2imds: GetMetadata, exceeded maximum number of attempts,
+[31m│[0m [0m3, request send failed, Get
+[31m│[0m [0m"http://169.254.169.254/latest/meta-data/iam/security-credentials/": dial
+[31m│[0m [0mtcp 169.254.169.254:80: connect: host is down
+[31m│[0m [0m
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mAttempted to load application default credentials since neither `credentials` nor `access_token` was set in the provider block.  No credentials loaded. To use your gcloud credentials, run 'gcloud auth application-default login'[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with provider["registry.terraform.io/hashicorp/google"].multi_cloud,
+[31m│[0m [0m  on main.tf line 42, in provider "google":
+[31m│[0m [0m  42: provider "google" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mgoogle: could not find default credentials. See
+[31m│[0m [0mhttps://cloud.google.com/docs/authentication/external/set-up-adc for more
+[31m│[0m [0minformation
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1m"sku_name" is not a valid sku name, got Standard_B1ms[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with azurerm_postgresql_flexible_server.main,
+[31m│[0m [0m  on main.tf line 116, in resource "azurerm_postgresql_flexible_server" "main":
+[31m│[0m [0m 116:   sku_name             = [4mvar.pg_sku[0m[0m
+[31m│[0m [0m
+[31m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mFailed to construct REST client[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with kubernetes_manifest.kyverno_pod_security_policy,
+[31m│[0m [0m  on policy.tf line 71, in resource "kubernetes_manifest" "kyverno_pod_security_policy":
+[31m│[0m [0m  71: resource "kubernetes_manifest" "kyverno_pod_security_policy" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mcannot create REST client: no client config
+[31m╵[0m[0m

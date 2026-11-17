@@ -3,14 +3,17 @@
 import uuid
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -30,7 +33,7 @@ class ChartOfAccounts(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (
@@ -72,7 +75,7 @@ class GeneralLedgerJournal(Base):
             name="uq_gl_journals_source",
         ),
         CheckConstraint(
-            "source_type IN ('inventory', 'cash_simulation')",
+            "source_type IN ('inventory', 'cash_simulation', 'order', 'transfer', 'manual', 'adjustment')",
             name="source_type_valid",
         ),
     )
@@ -91,7 +94,7 @@ class GeneralLedgerJournal(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 
@@ -133,3 +136,37 @@ class GeneralLedgerEntry(Base):
     )
     debit = Column(Numeric(20, 2), nullable=False, default=0, server_default="0")
     credit = Column(Numeric(20, 2), nullable=False, default=0, server_default="0")
+
+
+class GLAccountBalance(Base):
+    __tablename__ = "gl_account_balances"
+
+    account_code: str = Column(
+        String(128),
+        ForeignKey(
+            "coa_accounts.code",
+            ondelete="CASCADE",
+            name="fk_gl_account_balances_account_code",
+        ),
+        primary_key=True,
+    )
+    currency: str = Column(String(3), nullable=False, default="VND", server_default="VND")
+    ledger_balance = Column(BigInteger, nullable=False, default=0, server_default="0")
+    available_balance = Column(BigInteger, nullable=False, default=0, server_default="0")
+    hold_balance = Column(BigInteger, nullable=False, default=0, server_default="0")
+    version: int = Column(Integer, nullable=False, default=1, server_default="1")
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "hold_balance >= 0",
+            name="chk_gl_hold_non_negative",
+        ),
+        CheckConstraint(
+            "available_balance = ledger_balance - hold_balance",
+            name="chk_gl_available_balance",
+        ),
+    )
+

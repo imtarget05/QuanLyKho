@@ -24,6 +24,7 @@ from app.api.routes import (
     approvals,
     auth,
     auth_google,
+    banking,
     cash_sim,
     commerce,
     dashboard,
@@ -303,6 +304,7 @@ def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True
     target.include_router(integrations.router, tags=["integrations"], include_in_schema=include_in_schema)
     target.include_router(reconciliations.router, tags=["reconciliations"], include_in_schema=include_in_schema)
     target.include_router(demo.router, tags=["demo"], include_in_schema=include_in_schema)
+    target.include_router(banking.router, tags=["banking"], include_in_schema=include_in_schema)
     # docs/06:9 khai báo `GET /me` (không qua /auth) — alias tới cùng handler.
     target.add_api_route("/me", auth.get_current_user_info, methods=["GET"], tags=["auth"], include_in_schema=include_in_schema)
     target.add_api_route("/me", auth.update_profile, methods=["PUT"], tags=["auth"], include_in_schema=include_in_schema)

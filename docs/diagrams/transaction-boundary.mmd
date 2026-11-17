@@ -1,0 +1,31 @@
+%%{init: {'theme': 'base'}}%%
+flowchart TB
+    subgraph Client ["Client"]
+        U[Người dùng]
+    end
+
+    subgraph API ["API (atomic boundary)"]
+        BEGIN[BEGIN TRANSACTION]
+        VALIDATE[Validate business rules]
+        WRITE[Write changes to tables]
+        OUTBOX[Insert into outbox_events]
+        COMMIT[COMMIT]
+        ROLLBACK[ROLLBACK on error]
+    end
+
+    subgraph Outbox ["Outbox pattern (relayer)"]
+        POLL[Poll outbox_events]
+        PUB[Publish to Redis / Kafka]
+        MARK[Mark as processed]
+    end
+
+    U --> BEGIN --> VALIDATE --> WRITE --> OUTBOX --> COMMIT
+    COMMIT --> POLL --> PUB --> MARK
+    VALIDATE -.->|Invalid| ROLLBACK
+    WRITE -.->|DB error| ROLLBACK
+    ROLLBACK --> END[Return error to client]
+
+    style BEGIN fill:#e8f5e9
+    style COMMIT fill:#e8f5e9
+    style ROLLBACK fill:#ffebee
+    style OUTBOX fill:#fff3e0

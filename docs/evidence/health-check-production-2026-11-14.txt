@@ -1,0 +1,8 @@
+=== Health Check ===
+LoadBalancer IP: 20.124.136.40
+Health check (root): HTTP 200
+AKS Version: v1.36.5
+Node count: 1
+VM Size: Standard_D2s_v4
+Region: eastus
+Infrastructure: VNet + 3 subnets (public/private/db), AKS, Storage, Key Vault, Redis, Log Analytics

@@ -1,0 +1,28 @@
+%%{init: {'theme': 'base'}}%%
+flowchart TD
+    subgraph Normal ["Hoạt động bình thường"]
+        API[API Running]
+        PG[PostgreSQL Healthy]
+        API --> PG
+    end
+
+    subgraph Failure ["Sự cố: Data corruption / xóa nhầm"]
+        DETECT[Phát hiện sự cố]
+        MAINTENANCE[Bật maintenance mode: replicas=0]
+        PITR[PITR restore về thời điểm trước sự cố]
+    end
+
+    subgraph Recovery ["Khôi phục"]
+        VALIDATE[Kiểm tra alembic_version + table count]
+        REOPEN[Mở lại hệ thống: replicas=2]
+        VERIFY[Verify data integrity via SHA-256]
+    end
+
+    Normal -->|Incident| DETECT --> MAINTENANCE --> PITR --> VALIDATE --> REOPEN --> VERIFY --> Normal
+
+    style DETECT fill:#ffebee
+    style MAINTENANCE fill:#fff3e0
+    style PITR fill:#fff3e0
+    style VALIDATE fill:#e8f5e9
+    style REOPEN fill:#e8f5e9
+    style VERIFY fill:#e8f5e9

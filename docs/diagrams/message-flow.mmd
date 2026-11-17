@@ -1,0 +1,23 @@
+%%{init: {'theme': 'base'}}%%
+sequenceDiagram
+    participant C as Client
+    participant API as FastAPI API
+    participant PG as PostgreSQL
+    participant OUT as Outbox Table
+    participant REDIS as Redis Pub/Sub
+    participant W as Worker
+
+    C->>API: POST /api/v1/inventory/adjust (idempotency-key)
+    API->>PG: BEGIN; INSERT into inv_adjustments
+    API->>OUT: INSERT into outbox_events (payload, status='pending')
+    API->>PG: COMMIT
+    API-->>C: 202 Accepted (idempotent)
+    
+    loop Every 5s
+        W->>OUT: SELECT * WHERE status='pending' LIMIT 100
+        OUT-->>W: events
+        W->>REDIS: PUBLISH inventory.adjusted {event}
+        W->>OUT: UPDATE status='processed'
+    end
+
+    REDIS-->>C: SSE push (inventory updated)

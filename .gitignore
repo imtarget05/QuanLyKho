@@ -62,3 +62,10 @@ frontend/dist/
 
 # Built web artifacts (build in CI/deploy)
 frontend/dist/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
