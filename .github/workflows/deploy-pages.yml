@@ -118,6 +118,20 @@ jobs:
           curl -fsS -m 90 "${TARGET_URL}/health/live" | grep -q '"status":"alive"'
           echo "Backend health OK: ${TARGET_URL}"
 
+      - name: Verify deployed browser API target
+        run: |
+          PAGE_URL=https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev
+          for attempt in {1..10}; do
+            if curl -fsS -m 30 -H 'Cache-Control: no-cache' "$PAGE_URL/main.dart.js" |
+              grep -Fq -- "${API_BASE_URL}"; then
+              echo "Deployed Flutter bundle targets ${API_BASE_URL}"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Deployed Flutter bundle does not target the configured API.' >&2
+          exit 1
+
       - name: Print deployment URL
         run: |
           echo "✅ Flutter Web deployed to Cloudflare Workers Assets"

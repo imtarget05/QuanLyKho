@@ -66,6 +66,7 @@ testcontainers = "^4.8.0"
     # exactly this mismatch: venv ruff 0.6.9 vs CI 0.17.0).
     ruff = "^0.17.0"
 mypy = "^1.11.0"
+aiosqlite = ">=0.20.0"
 
 [build-system]
 requires = ["poetry-core"]

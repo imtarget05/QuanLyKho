@@ -1,9 +1,11 @@
 """Transactional posting from operational sub-ledgers to the general ledger."""
 
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +15,227 @@ from app.models.ledger import (
     ChartOfAccounts,
     GeneralLedgerEntry,
     GeneralLedgerJournal,
+    GLAccountBalance,
 )
+
+
+class UnbalancedJournalException(ValueError):
+    """Raised when sum of debits does not equal sum of credits in a journal."""
+    pass
+
+
+async def ensure_account_balance(session: AsyncSession, account_code: str) -> GLAccountBalance:
+    """Ensures balance record exists for given account code."""
+    res = await session.execute(
+        select(GLAccountBalance).where(GLAccountBalance.account_code == account_code)
+    )
+    bal = res.scalars().first()
+    if bal is None:
+        bal = GLAccountBalance(
+            account_code=account_code,
+            currency="VND",
+            ledger_balance=0,
+            available_balance=0,
+            hold_balance=0,
+            version=1,
+            updated_at=datetime.now(UTC),
+        )
+        session.add(bal)
+        await session.flush()
+    return bal
+
+
+async def post_inventory_movement_to_gl(
+    session: AsyncSession,
+    movement_type: str,
+    product_id: int,
+    quantity: int,
+    unit_cost_cents: int,
+    reference_id: str,
+    warehouse_id: int,
+    description: str,
+    dest_warehouse_id: int | None = None,
+) -> GeneralLedgerJournal:
+    """Creates and commits a balanced GL journal entry for inventory movements:
+
+    - STOCK_IN: Debit Account 156 (Inventory Asset), Credit Account 331 (Accounts Payable)
+    - STOCK_OUT: Debit Account 632 (COGS Expense), Credit Account 156 (Inventory Asset)
+    - TRANSFER: Debit Account 156 (Dest Warehouse), Credit Account 156 (Source Warehouse)
+    - ADJUSTMENT:
+        If quantity > 0: Debit Account 156, Credit Account 338 (Inventory Gain)
+        If quantity < 0: Debit Account 632 (Inventory Spoilage/Loss), Credit Account 156
+    Enforces Sum(Debit) == Sum(Credit) and updates gl_account_balances atomically.
+    """
+    if unit_cost_cents <= 0:
+        raise ValueError("unit_cost_cents must be strictly positive")
+
+    if movement_type in ("STOCK_IN", "STOCK_OUT", "TRANSFER"):
+        if quantity <= 0:
+            raise ValueError("quantity must be strictly positive for this movement type")
+    elif movement_type == "ADJUSTMENT":
+        if quantity == 0:
+            raise ValueError("quantity cannot be zero for ADJUSTMENT")
+    else:
+        raise ValueError(f"Unsupported movement_type: {movement_type}")
+
+    abs_qty = abs(quantity)
+    total_cents = abs_qty * unit_cost_cents
+
+    source_uuid = uuid.uuid4()
+    if reference_id:
+        try:
+            source_uuid = uuid.UUID(str(reference_id))
+        except ValueError:
+            source_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(reference_id))
+
+    journal = GeneralLedgerJournal(
+        id=uuid.uuid4(),
+        source_type="inventory",
+        source_journal_id=source_uuid,
+        correlation_id=str(f"corr-{reference_id}")[:64],
+        posted_at=datetime.now(UTC),
+    )
+    session.add(journal)
+    await session.flush()
+
+    entries: list[GeneralLedgerEntry] = []
+
+    if movement_type == "STOCK_IN":
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="156",
+                debit=total_cents,
+                credit=0,
+            )
+        )
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="331",
+                debit=0,
+                credit=total_cents,
+            )
+        )
+    elif movement_type == "STOCK_OUT":
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="632",
+                debit=total_cents,
+                credit=0,
+            )
+        )
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="156",
+                debit=0,
+                credit=total_cents,
+            )
+        )
+    elif movement_type == "TRANSFER":
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="156",
+                debit=total_cents,
+                credit=0,
+            )
+        )
+        entries.append(
+            GeneralLedgerEntry(
+                id=uuid.uuid4(),
+                journal_id=journal.id,
+                account_code="156",
+                debit=0,
+                credit=total_cents,
+            )
+        )
+    elif movement_type == "ADJUSTMENT":
+        if quantity > 0:
+            entries.append(
+                GeneralLedgerEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code="156",
+                    debit=total_cents,
+                    credit=0,
+                )
+            )
+            entries.append(
+                GeneralLedgerEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code="338",
+                    debit=0,
+                    credit=total_cents,
+                )
+            )
+        else:
+            entries.append(
+                GeneralLedgerEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code="632",
+                    debit=total_cents,
+                    credit=0,
+                )
+            )
+            entries.append(
+                GeneralLedgerEntry(
+                    id=uuid.uuid4(),
+                    journal_id=journal.id,
+                    account_code="156",
+                    debit=0,
+                    credit=total_cents,
+                )
+            )
+
+    # Validate Double-Entry Invariant: Sum(Debit) == Sum(Credit)
+    total_debit = sum(e.debit for e in entries)
+    total_credit = sum(e.credit for e in entries)
+    if total_debit != total_credit:
+        raise UnbalancedJournalException(
+            f"Unbalanced journal: Debit={total_debit} != Credit={total_credit}"
+        )
+
+    for e in entries:
+        session.add(e)
+    await session.flush()
+
+    # Atomically update gl_account_balances according to normal balance rules
+    for e in entries:
+        acc_res = await session.execute(
+            select(ChartOfAccounts).where(ChartOfAccounts.code == e.account_code)
+        )
+        acc = acc_res.scalars().first()
+        if not acc:
+            raise ValueError(
+                f"Account code {e.account_code} does not exist in Chart of Accounts."
+            )
+
+        bal = await ensure_account_balance(session, e.account_code)
+        if acc.normal_balance == "debit":
+            # Normal Debit: Debit increases (+), Credit decreases (-)
+            delta = e.debit - e.credit
+        else:
+            # Normal Credit: Credit increases (+), Debit decreases (-)
+            delta = e.credit - e.debit
+
+        bal.ledger_balance += delta
+        bal.available_balance = bal.ledger_balance - bal.hold_balance
+        bal.version += 1
+        bal.updated_at = datetime.now(UTC)
+
+    await session.flush()
+    return journal
+
 
 _INVENTORY_ACCOUNTS = {account[0] for account in BASE_CHART_OF_ACCOUNTS}
 _INVENTORY_ACCOUNTS.discard(SIM_OFFSET_ACCOUNT)
@@ -61,7 +283,7 @@ def _validate_posting(source_type: str, entries: list[Any]) -> list[tuple[str, D
         credit_total += credit
 
     if debit_total != credit_total:
-        raise ValueError("general-ledger posting is not balanced")
+        raise UnbalancedJournalException("general-ledger posting is not balanced")
     return posting
 
 

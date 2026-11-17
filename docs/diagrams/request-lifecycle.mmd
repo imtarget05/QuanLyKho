@@ -1,0 +1,40 @@
+%%{init: {'theme': 'base'}}%%
+flowchart LR
+    subgraph Client ["Khách hàng / Nhân viên"]
+        UI[App / Web]
+    end
+
+    subgraph Edge ["Edge / Ingress"]
+        CF[Cloudflare / Nginx Ingress]
+        WAF[WAF / Rate-limit]
+    end
+
+    subgraph API ["API Layer (FastAPI)"]
+        GW[API Gateway / Correlation ID]
+        AUTH[AuthN / AuthZ (RBAC)]
+        IDEM[Idempotency Middleware]
+    end
+
+    subgraph Biz ["Business Logic"]
+        INV[Inventory Service]
+        CAS[Cash Sim Service]
+        APP[Approval / Maker-Checker]
+    end
+
+    subgraph Data ["Data Layer"]
+        PG[(PostgreSQL 16)]
+        REDIS[(Redis / Outbox / SSE)]
+    end
+
+    UI --> CF --> WAF --> GW --> AUTH --> IDEM --> INV
+    IDEM --> CAS
+    IDEM --> APP
+    INV --> PG
+    CAS --> PG
+    APP --> PG
+    INV -.->|Outbox event| REDIS
+    REDIS -.->|SSE push| UI
+
+    style UI fill:#e1f5fe
+    style PG fill:#fff3e0
+    style REDIS fill:#fff3e0

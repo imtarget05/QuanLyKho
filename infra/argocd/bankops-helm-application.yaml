@@ -1,0 +1,191 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bankops-helm-production
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: bankops-helm-production
+    app.kubernetes.io/part-of: bankops-system
+    delivery: helm
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: bankops-portfolio
+  source:
+    repoURL: "https://github.com/imtarget05/QuanLyKho.git"
+    targetRevision: main
+    path: infra/helm/bankops
+    helm:
+      releaseName: bankops
+      values: |
+        namespace: quanlykho
+        image:
+          tag: "sha-{{ .Values.image.tag }}"  # overridden by CI with real short SHA
+          pullPolicy: IfNotPresent
+        api:
+          replicas: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+        worker:
+          replicas: 2
+        frontend:
+          replicas: 2
+        postgres:
+          persistence:
+            enabled: true
+            storageClass: "fast-ssd"
+            size: "20Gi"
+        config:
+          APP_ENV: "production"
+          LOG_LEVEL: "INFO"
+          ALLOWED_ORIGINS: '["https://quanlykho.internal"]'
+        ingress:
+          enabled: true
+          className: nginx
+          host: bankops.yourbank.com
+          tls:
+            enabled: true
+            secretName: bankops-tls-cert
+        networkPolicy:
+          enabled: true
+        # NOTE: secrets are injected via --set-string in CI or ExternalSecrets,
+        # not committed here.
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: quanlykho
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bankops-helm-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: bankops-helm-staging
+    app.kubernetes.io/part-of: bankops-system
+    delivery: helm
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: bankops-portfolio
+  source:
+    repoURL: "https://github.com/imtarget05/QuanLyKho.git"
+    targetRevision: main
+    path: infra/helm/bankops
+    helm:
+      releaseName: bankops-staging
+      values: |
+        namespace: quanlykho-staging
+        image:
+          tag: "sha-latest"
+          pullPolicy: IfNotPresent
+        api:
+          replicas: 2
+        worker:
+          replicas: 1
+        frontend:
+          replicas: 1
+        postgres:
+          persistence:
+            enabled: true
+            storageClass: "standard"
+            size: "5Gi"
+        config:
+          APP_ENV: "staging"
+          LOG_LEVEL: "INFO"
+        ingress:
+          enabled: true
+          className: nginx
+          host: staging.quanlykho.internal
+          tls:
+            enabled: true
+            secretName: bankops-tls-cert
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: quanlykho-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bankops-helm-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: bankops-helm-dev
+    app.kubernetes.io/part-of: bankops-system
+    delivery: helm
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: bankops-portfolio
+  source:
+    repoURL: "https://github.com/imtarget05/QuanLyKho.git"
+    targetRevision: main
+    path: infra/helm/bankops
+    helm:
+      releaseName: bankops-dev
+      values: |
+        namespace: quanlykho-dev
+        image:
+          tag: "local"
+          pullPolicy: Never
+        api:
+          replicas: 1
+        worker:
+          replicas: 1
+        frontend:
+          replicas: 1
+        postgres:
+          persistence:
+            enabled: false
+        config:
+          APP_ENV: "demo"
+          LOG_LEVEL: "DEBUG"
+        ingress:
+          enabled: false
+        migration:
+          enabled: true
+        backup:
+          enabled: false
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: quanlykho-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true

@@ -14,7 +14,7 @@ bởi migration `027_idempotency_keys` (alembic).
 """
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, text
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.base import Base
@@ -29,15 +29,22 @@ class IdempotencyKey(Base):
     key = Column(String(128), nullable=False, unique=True)
     scope = Column(String(128), nullable=False, default="")
     request_hash = Column(String(64), nullable=False)
+    request_path = Column(String(255), nullable=True)
+    status = Column(String(32), nullable=False, default="PENDING", server_default="PENDING")
     status_code = Column(Integer, nullable=True)
     response_body = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         Index("ix_idempotency_keys_expires_at", "expires_at"),
+        Index("ix_idempotency_keys_status", "status"),
     )
 
     def __repr__(self) -> str:
         return f"<IdempotencyKey {self.key} scope={self.scope}>"
+
+
+IdempotencyKeyRecord = IdempotencyKey
+

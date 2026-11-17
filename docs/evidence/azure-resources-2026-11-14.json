@@ -1,0 +1,44 @@
+[
+  {
+    "location": "eastus",
+    "name": "bankopseaststore",
+    "state": "Succeeded",
+    "type": "Microsoft.Storage/storageAccounts"
+  },
+  {
+    "location": "eastus",
+    "name": "vnet-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.Network/virtualNetworks"
+  },
+  {
+    "location": "eastus",
+    "name": "redis-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.Cache/Redis"
+  },
+  {
+    "location": "eastus",
+    "name": "kv-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.KeyVault/vaults"
+  },
+  {
+    "location": "eastus",
+    "name": "law-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.OperationalInsights/workspaces"
+  },
+  {
+    "location": "eastus",
+    "name": "MSCI-eastus-aks-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.Insights/dataCollectionRules"
+  },
+  {
+    "location": "eastus",
+    "name": "aks-rg-bankops-eastus",
+    "state": "Succeeded",
+    "type": "Microsoft.ContainerService/managedClusters"
+  }
+]

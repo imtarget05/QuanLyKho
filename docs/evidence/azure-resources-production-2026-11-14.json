@@ -1,0 +1,38 @@
+[
+  {
+    "location": "eastus",
+    "name": "stbankopsprodeus",
+    "state": "Succeeded",
+    "type": "Microsoft.Storage/storageAccounts"
+  },
+  {
+    "location": "eastus",
+    "name": "vnet-rg-bkpe",
+    "state": "Succeeded",
+    "type": "Microsoft.Network/virtualNetworks"
+  },
+  {
+    "location": "eastus",
+    "name": "kv-rg-bkpe",
+    "state": "Succeeded",
+    "type": "Microsoft.KeyVault/vaults"
+  },
+  {
+    "location": "eastus",
+    "name": "redis-rg-bkpe",
+    "state": "Succeeded",
+    "type": "Microsoft.Cache/Redis"
+  },
+  {
+    "location": "eastus",
+    "name": "MSCI-eastus-aks-rg-bkpe",
+    "state": "Succeeded",
+    "type": "Microsoft.Insights/dataCollectionRules"
+  },
+  {
+    "location": "eastus",
+    "name": "aks-rg-bkpe",
+    "state": "Succeeded",
+    "type": "Microsoft.ContainerService/managedClusters"
+  }
+]

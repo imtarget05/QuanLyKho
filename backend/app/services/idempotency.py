@@ -296,6 +296,7 @@ async def store_response(db: Any, key: str, body_hash: str, status: int, body: d
         .where(IdempotencyKey.key == key)
         .values(
             request_hash=body_hash,
+            status="COMPLETED",
             status_code=status,
             response_body=body,
             updated_at=now,
@@ -308,6 +309,7 @@ async def store_response(db: Any, key: str, body_hash: str, status: int, body: d
         key=key,
         scope="",
         request_hash=body_hash,
+        status="COMPLETED",
         status_code=status,
         response_body=body,
         created_at=now,

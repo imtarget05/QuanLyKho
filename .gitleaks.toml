@@ -1,0 +1,79 @@
+[rules]
+  [[rules]]
+    id = "bankops-signing-key"
+    description = "Detect BankOps signing key placeholder"
+    regex = '''CHANGE_ME_GENERATE_32_BYTE_RANDOM_SIGNING_KEY'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "bankops-db-password"
+    description = "Detect BankOps DB password placeholder"
+    regex = '''CHANGE_ME_PASSWORD'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "bankops-supervisor-pin"
+    description = "Detect BankOps supervisor PIN placeholder"
+    regex = '''CHANGE_ME_SUPERVISOR_PIN'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "bankops-cf-token"
+    description = "Detect Cloudflare token placeholder"
+    regex = '''CHANGE_ME_CF_API_TOKEN'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "bankops-aws-key"
+    description = "Detect AWS/S3 key placeholder"
+    regex = '''CHANGE_ME_R2_KEY_ID'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-aws-key"
+    description = "Generic AWS access key"
+    regex = '''AKIA[0-9A-Z]{16}'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-aws-secret"
+    description = "Generic AWS secret key"
+    regex = '''(?i)aws_secret_access_key[^\\n]{0,40}?[A-Za-z0-9/+=]{40}'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-slack"
+    description = "Slack webhook"
+    regex = '''https://hooks\.slack\.com/services/T[a-zA-Z0-9_]{8,}/B[a-zA-Z0-9_]{8,}/[a-zA-Z0-9_]{24,}'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-github-token"
+    description = "GitHub token"
+    regex = '''ghp_[A-Za-z0-9]{36,}'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-stripe"
+    description = "Stripe live key"
+    regex = '''sk_live_[A-Za-z0-9]{24,}'''
+    secretGroup = 1
+
+  [[rules]]
+    id = "generic-gcp-key"
+    description = "GCP API key"
+    regex = '''AIza[0-9A-Za-z\\-_]{35,}'''
+    secretGroup = 1
+
+[paths]
+  # Ignore lock files, vendor, docs with examples, and test fixtures
+  ignore_paths = [
+    'backend/poetry.lock',
+    'infra/hf-llm-space/model/**',
+    'frontend/**/node_modules/**',
+    '**/*.example*',
+    '**/sample-data/**',
+    'docs/**',
+    'tests/**',
+    '.git/**',
+  ]
