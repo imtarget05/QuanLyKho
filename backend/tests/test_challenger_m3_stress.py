@@ -55,9 +55,10 @@ from app.services.outbox_service import (
     register_outbox_subscriber,
 )
 
-POSTGRES_TEST_URL = os.environ.get(
-    "DATABASE_URL_TEST",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/bankops_test",
+POSTGRES_TEST_URL = (
+    os.environ.get("DATABASE_URL_TEST")
+    or os.environ.get("DATABASE_URL")
+    or "postgresql+asyncpg://postgres:postgres@localhost:5432/bankops_test"
 )
 
 

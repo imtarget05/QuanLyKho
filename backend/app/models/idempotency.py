@@ -14,7 +14,7 @@ bởi migration `027_idempotency_keys` (alembic).
 """
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, text
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.base import Base
@@ -33,8 +33,8 @@ class IdempotencyKey(Base):
     status = Column(String(32), nullable=False, default="PENDING", server_default="PENDING")
     status_code = Column(Integer, nullable=True)
     response_body = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
