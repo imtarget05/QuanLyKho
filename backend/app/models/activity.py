@@ -1,8 +1,10 @@
 """Activity and audit models."""
+import uuid
 from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Column,
     DateTime,
     ForeignKey,
@@ -20,7 +22,7 @@ from app.db.base import Base, TimestampMixin, utc_now
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
-    id: str = Column(UUID(as_uuid=True), primary_key=True)
+    id: str = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     actor_id: str = Column(UUID(as_uuid=True), ForeignKey("iam_users.id"), nullable=True)
     action: str = Column(String(128), nullable=False)
     subject: str = Column(String(128), nullable=False)
@@ -28,6 +30,9 @@ class AuditEvent(Base):
     after_hash: str = Column(String(128), nullable=True)
     request_id: str = Column(String(64), nullable=True)
     occurred_at: datetime = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    previous_hash: str = Column(String(128), nullable=True)
+    chain_hash: str = Column(String(128), nullable=True)
+    hash_seq: int = Column(BigInteger, nullable=True)
     metadata_json: dict = Column(JSON, nullable=True)
 
     def __repr__(self):
@@ -56,7 +61,7 @@ def _block_audit_delete(mapper, connection, target):  # noqa: ARG001
 class OutboxEvent(Base):
     __tablename__ = "outbox_events"
 
-    id: str = Column(UUID(as_uuid=True), primary_key=True)
+    id: str = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type: str = Column(String(128), nullable=False)
     aggregate_id: str = Column(String(128), nullable=False)
     payload_json: dict = Column(JSON, nullable=False)

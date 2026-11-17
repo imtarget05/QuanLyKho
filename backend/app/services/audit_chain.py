@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -123,6 +124,7 @@ async def append_audit_event(
     )
 
     event = AuditEvent(
+        id=uuid.uuid4(),
         actor_id=actor_id,
         action=action,
         subject=subject,
