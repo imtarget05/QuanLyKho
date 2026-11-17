@@ -54,6 +54,7 @@ BASE_CHART_OF_ACCOUNTS = (
     ("152", "Raw materials", "asset", "debit", False),
     ("156", "Merchandise inventory", "asset", "debit", False),
     ("331", "Trade payables", "liability", "credit", False),
+    ("338", "Inventory surplus and other payables", "liability", "credit", False),
     ("511", "Sales revenue", "revenue", "credit", False),
     ("632", "Cost of goods sold", "expense", "debit", False),
     (
