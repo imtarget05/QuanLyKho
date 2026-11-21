@@ -1,5 +1,7 @@
 # Recruiter evidence — QuanLyKho
 
+Current evidence branch: [`7a63cd6`](https://github.com/imtarget05/QuanLyKho/commit/7a63cd6b3e65acc3b4c47911bb0384857b55d903) in [draft PR #31](https://github.com/imtarget05/QuanLyKho/pull/31). Its [CI test run](https://github.com/imtarget05/QuanLyKho/actions/runs/44907646642) reports **1,285 passed, 8 skipped, 1 xfailed** on the backend, with the other configured CI jobs passing. This is evidence for the PR branch, distinct from the public `main` baseline below.
+
 Public baseline: [`2e753d1cf3025342f6e6fd5424a5634852fac49c`](https://github.com/imtarget05/QuanLyKho/commit/2e753d1cf3025342f6e6fd5424a5634852fac49c). These results are from the [GitHub Actions CI run on 2026-11-17](https://github.com/imtarget05/QuanLyKho/actions/runs/44129715048), not from the current uncommitted local worktree.
 
 | CI job | Evidence |
