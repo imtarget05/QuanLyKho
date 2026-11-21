@@ -6,8 +6,8 @@
 [![SQLAlchemy 2.0](https://img.shields.io/badge/SQLAlchemy-2.0.35+-red.svg)](https://www.sqlalchemy.org)
 [![Docker](https://img.shields.io/badge/Docker-Multi--stage_Non--root-2496ED.svg?logo=docker&logoColor=white)](backend/Dockerfile)
 [![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_Job-orange.svg?logo=argo&logoColor=white)](infra/k8s/base/migration-job.yaml)
-[![Backend Tests](https://img.shields.io/badge/Backend_Tests-Verified_at_f65f962-success.svg)](docs/portfolio/baseline-f65f962.md)
-[![Frontend Tests](https://img.shields.io/badge/Frontend_Tests-355_Passed_|_0_Failed-success.svg)](docs/portfolio/baseline-f65f962.md)
+[![Backend Tests](https://img.shields.io/badge/Backend_Tests-1285_Passed-success.svg)](docs/portfolio/recruiter-evidence-2026-11-21.md)
+[![Frontend Tests](https://img.shields.io/badge/Frontend_Tests-355_Passed_|_0_Failed-success.svg)](docs/portfolio/recruiter-evidence-2026-11-21.md)
 [![Ruff](https://img.shields.io/badge/Linter-Ruff_0.17.0_Clean-black.svg)](backend/pyproject.toml)
 [![Security Guard](https://img.shields.io/badge/Secrets_Guard-Passed-brightgreen.svg)](scripts/check_no_secrets.py)
 
@@ -47,8 +47,8 @@ QuanLyKho was built from first principles to solve these challenges using bank-g
 +-----------------------------------+--------------------------------------------------------------+
 | Metric / Component                | Verified Status                                              |
 +-----------------------------------+--------------------------------------------------------------+
-| Backend Test Suite                | Verified at f65f962: 2 demo integration tests passed (maker-checker, idempotency, atomic posting) |
-| Frontend Test Suite               | 355 PASSED, 0 FAILED (verified at f65f962) |
+| Backend Test Suite                | CI at 2e753d1: 1,285 passed, 8 skipped, 1 xfailed |
+| Frontend Test Suite               | CI at 2e753d1: 355 passed, 0 failed |
 | Static Code Analysis              | Ruff 0.17.0: 100% clean (backend/ & ai/)                     |
 | Security & Secret Guard           | Automated scanner: 0 credential patterns in tracked files    |
 | Database Schema Migrations        | 33 sequential zero-downtime Alembic migrations (001 to 034, 023 omitted) |
@@ -293,7 +293,7 @@ To maintain strict engineering integrity, every architectural claim is verified 
 | **12** | **Database Migrations** | 33 sequential zero-downtime Alembic migrations (spanning 001 to 034, 023 omitted) managing UUIDs, CheckConstraints, and partial indexes | `backend/alembic/versions/` (33 files from `001_initial.py` to `034_general_ledger_coa.py`) | `alembic upgrade head`<br>`pytest tests/test_migration_cost_price.py` |
 | **13** | **GitOps & Delivery** | Multi-stage Docker container (non-root `appuser`), ArgoCD migration job decoupling, fail-fast signing key check | `backend/Dockerfile:1-50`<br>`backend/entrypoint.sh:18-43, 45-51`<br>`infra/k8s/base/migration-job.yaml:1-47` | `docker build backend/`<br>`kubectl kustomize infra/k8s/base` |
 | **14** | **Observability** | End-to-end OpenTelemetry instrumentation for FastAPI routes, SQLAlchemy queries, and worker queue loops | `backend/app/api/telemetry.py:1-120`<br>`backend/app/worker.py:34-46, 426-444`<br>`backend/pyproject.toml:26-33` | `pytest tests/test_observability.py` |
-| **15** | **Test Discipline** | Verified at f65f962: 2 backend demo tests passed (maker-checker, idempotency, atomic posting); 355 frontend tests passed; Ruff 0.17.0 clean; automated secret scan in CI | `backend/tests/test_portfolio_ai_checker_demo.py`<br>`frontend/test/` (355 unit tests)<br>`.github/workflows/ci.yml:1-122` | `pytest tests/test_portfolio_ai_checker_demo.py`<br>`flutter test`<br>`ruff check backend/ ai/`<br>`python3 scripts/check_no_secrets.py` |
+| **15** | **Test Discipline** | CI at 2e753d1: 1,285 backend passed, 8 skipped, 1 xfailed; 355 frontend passed; lint and secret guard jobs passed | `backend/tests/`<br>`frontend/test/`<br>`.github/workflows/ci.yml` | [CI run 44129715048](https://github.com/imtarget05/QuanLyKho/actions/runs/44129715048) |
 
 ---
 
@@ -305,11 +305,11 @@ The platform enforces rigorous automated testing across state transitions, race 
 
 ```
 ========================================================================================
-LIVE VERIFICATION RUN (2026-11-12, commit f65f962):
-Backend:  2 demo tests passed (maker-checker, idempotency, atomic posting) at f65f962
-Frontend: 355 passed, 0 failed in 1m 15s (Flutter test)
-Linter:   Ruff 0.17.0 clean (All checks passed across backend/ and ai/)
-Secrets:  Secret guard scanner passed (0 credential patterns detected)
+GITHUB ACTIONS CI (2026-11-17, commit 2e753d1):
+Backend:  1,285 passed, 8 skipped, 1 xfailed (541.68s)
+Frontend: 355 passed, 0 failed
+Lint and secret-guard jobs: passed
+Source:   https://github.com/imtarget05/QuanLyKho/actions/runs/44129715048
 ========================================================================================
 ```
 
@@ -328,7 +328,8 @@ REDIS_URL="redis://127.0.0.1:56379/0" \
 APP_ENV=demo DEMO_MODE=true \
 poetry run pytest tests -q
 
-# Expected Output: 2 demo tests passed (maker-checker, idempotency, atomic posting); flutter test: 355 passed
+# Published CI baseline at 2e753d1: 1,285 passed, 8 skipped, 1 xfailed.
+# Local counts may differ when the uncommitted working tree changes.
 ```
 
 #### 2. Frontend Test Suite
@@ -438,7 +439,7 @@ QuanLyKho/
 │   │   ├── services/                    # General ledger posting, approval events, PIN
 │   │   ├── worker.py                    # SKIP LOCKED asynchronous job processor
 │   │   └── main.py                      # FastAPI application entrypoint
-│   ├── tests/                           # 2 demo integration tests verified at f65f962 (maker-checker, idempotency, atomic posting)
+│   ├── tests/                           # Backend suite; CI at 2e753d1: 1,285 passed
 │   ├── Dockerfile                       # Hardened multi-stage non-root container
 │   ├── entrypoint.sh                    # Secret fail-fast & ArgoCD migration decoupling
 │   ├── pyproject.toml                   # Poetry canonical dependencies & toolchain
