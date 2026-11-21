@@ -18,3 +18,12 @@ At this public SHA, concrete regression cases include `test_two_checkers_concurr
 1. Show a maker creating a request and a different checker approving it; explain the server-side self-approval guard.
 2. Show the resulting ledger entries and audit event, then a reversal that preserves the original journal.
 3. Open the CI run above and point to the exact SHA and backend test summary. Describe any concurrency or branch-scope cases that still need dedicated proof.
+
+With a disposable `bankops_test` PostgreSQL database and the documented demo environment, the executable proof is:
+
+```sh
+cd backend
+poetry run pytest tests/test_portfolio_ai_checker_demo.py tests/test_acceptance_qa.py -q
+```
+
+This runs the maker/checker/audit demo and the acceptance cases for concurrent approval and ledger reversal. It must not point at a development or production database.
