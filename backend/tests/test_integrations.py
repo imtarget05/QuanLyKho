@@ -14,29 +14,29 @@ import httpx
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str) -> dict[str, str]:
-    r = client.post(
+async def _login(client, username: str) -> dict[str, str]:
+    r = await client.post(
         "/auth/login", data={"username": username, "password": DEMO_PASSWORD}
     )
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
-def _seed_sku_and_loc(client, headers: dict[str, str]) -> tuple[str, str]:
-    items = client.get("/inventory/items", headers=headers).json()["items"]
-    locs = client.get("/inventory/locations", headers=headers).json()["locations"]
+async def _seed_sku_and_loc(client, headers: dict[str, str]) -> tuple[str, str]:
+    items = (await client.get("/inventory/items", headers=headers)).json()["items"]
+    locs = (await client.get("/inventory/locations", headers=headers)).json()["locations"]
     sku = next(i["sku"] for i in items if not i.get("tracked_serial"))
     loc_code = locs[0]["code"]
     return sku, loc_code
 
 
 class TestIntegrationsUploadAndConfirm:
-    def test_csv_upload_with_invalid_row_isolates_errors_and_blocks_confirm(
+    async def test_csv_upload_with_invalid_row_isolates_errors_and_blocks_confirm(
         self, client
     ):
         """G1: Dòng lỗi không chặn dòng hợp lệ lúc preview, nhưng chặn confirm."""
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
         unique_tag = uuid.uuid4().hex[:8]
         csv_bytes = (
             "sku,location_code,quantity,source_row_key\n"
@@ -44,7 +44,7 @@ class TestIntegrationsUploadAndConfirm:
             f"INVALID_SKU_{unique_tag},{loc_code},-3,bad-{unique_tag}\n"
         ).encode()
 
-        up = client.post(
+        up = await client.post(
             "/integrations/uploads",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             files={"file": ("mixed.csv", io.BytesIO(csv_bytes), "text/csv")},
@@ -57,24 +57,24 @@ class TestIntegrationsUploadAndConfirm:
         run_id = body["run_id"]
 
         # Preview via both canonical and alias routes
-        prev1 = client.get(f"/integrations/runs/{run_id}/preview", headers=h)
-        prev2 = client.get(f"/integration-runs/{run_id}/staging", headers=h)
+        prev1 = await client.get(f"/integrations/runs/{run_id}/preview", headers=h)
+        prev2 = await client.get(f"/integration-runs/{run_id}/staging", headers=h)
         assert prev1.status_code == 200 and prev2.status_code == 200
         assert prev1.json()["invalid_count"] == 1
         assert prev2.json()["valid_count"] == 1
 
         # Confirm must reject because invalid_count > 0
-        conf = client.post(
+        conf = await client.post(
             f"/integrations/runs/{run_id}/confirm",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
         assert conf.status_code == 409
         assert conf.json()["error"]["code"] == "CONFIRM_HAS_ERRORS"
 
-    def test_json_upload_dedup_and_confirm_creates_draft_not_ledger(self, client):
+    async def test_json_upload_dedup_and_confirm_creates_draft_not_ledger(self, client):
         """Upload hợp lệ -> confirm tạo InventoryRequest draft, dedup theo fingerprint."""
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
         tag = uuid.uuid4().hex[:8]
         payload_bytes = json.dumps(
             {
@@ -89,7 +89,7 @@ class TestIntegrationsUploadAndConfirm:
             }
         ).encode("utf-8")
 
-        up1 = client.post(
+        up1 = await client.post(
             "/integrations/uploads",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             files={
@@ -105,7 +105,7 @@ class TestIntegrationsUploadAndConfirm:
         run_id = b1["run_id"]
 
         # Re-uploading identical content deduplicates by fingerprint
-        up2 = client.post(
+        up2 = await client.post(
             "/integrations/uploads",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             files={
@@ -119,12 +119,12 @@ class TestIntegrationsUploadAndConfirm:
 
         # Movements before confirm
         mv_before = len(
-            client.get("/inventory/movements", headers=h).json().get("movements", [])
+            (await client.get("/inventory/movements", headers=h)).json().get("movements", [])
         )
 
         # Confirm creates draft request(s) and replays on same Idempotency-Key
         idem_key = str(uuid.uuid4())
-        c1 = client.post(
+        c1 = await client.post(
             f"/integration-runs/{run_id}/confirm",
             headers={**h, "Idempotency-Key": idem_key},
         )
@@ -133,7 +133,7 @@ class TestIntegrationsUploadAndConfirm:
         assert cb1["status"] == "confirmed"
         assert len(cb1["draft_requests"]) == 1
 
-        c_replay = client.post(
+        c_replay = await client.post(
             f"/integration-runs/{run_id}/confirm",
             headers={**h, "Idempotency-Key": idem_key},
         )
@@ -141,7 +141,7 @@ class TestIntegrationsUploadAndConfirm:
         assert c_replay.json()["draft_requests"] == cb1["draft_requests"]
 
         # Confirm with a different Idempotency-Key returns 409 STATE_CONFLICT
-        c_dup = client.post(
+        c_dup = await client.post(
             f"/integration-runs/{run_id}/confirm",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -150,20 +150,20 @@ class TestIntegrationsUploadAndConfirm:
 
         # No movement was written directly to ledger
         mv_after = len(
-            client.get("/inventory/movements", headers=h).json().get("movements", [])
+            (await client.get("/inventory/movements", headers=h)).json().get("movements", [])
         )
         assert mv_after == mv_before
 
 
 class TestGoogleSheetsAndWebhooks:
-    def test_google_sheets_fetch_mocked_and_validation(self, client, monkeypatch):
+    async def test_google_sheets_fetch_mocked_and_validation(self, client, monkeypatch):
         from app.config import settings
 
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
 
         # Invalid sheet_id -> 422 INVALID_SHEET_ID
-        bad = client.post(
+        bad = await client.post(
             "/integrations/google-sheets/fetch",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={"sheet_id": "bad!id", "tab": "Sheet1"},
@@ -203,7 +203,7 @@ class TestGoogleSheetsAndWebhooks:
         monkeypatch.setattr(
             "app.api.routes.integrations.httpx.AsyncClient", _FakeAsyncClient
         )
-        ok = client.post(
+        ok = await client.post(
             "/integrations/google-sheets/fetch",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -217,17 +217,17 @@ class TestGoogleSheetsAndWebhooks:
         assert obody["invalid_count"] == 0
         assert obody["status"] == "staged"
 
-    def test_apps_script_webhook_hmac_replay_and_dedup(self, client, monkeypatch):
+    async def test_apps_script_webhook_hmac_replay_and_dedup(self, client, monkeypatch):
         from app.config import settings
 
         secret = "test-webhook-hmac-secret"
         monkeypatch.setattr(settings, "apps_script_webhook_secret", secret)
 
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
 
         # Create an apps_script connection
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={"type": "apps_script", "name": "Test Apps Script"},
@@ -256,7 +256,7 @@ class TestGoogleSheetsAndWebhooks:
         ).hexdigest()
 
         # 1. Bad signature -> 401 WEBHOOK_BAD_SIGNATURE
-        r_bad_sig = client.post(
+        r_bad_sig = await client.post(
             f"/integrations/webhooks/{conn_id}",
             content=raw_payload,
             headers={
@@ -273,7 +273,7 @@ class TestGoogleSheetsAndWebhooks:
         old_sig = hmac.new(
             secret.encode(), f"{old_ts}.".encode() + raw_payload, hashlib.sha256
         ).hexdigest()
-        r_replay = client.post(
+        r_replay = await client.post(
             f"/integrations/webhooks/{conn_id}",
             content=raw_payload,
             headers={
@@ -286,7 +286,7 @@ class TestGoogleSheetsAndWebhooks:
         assert r_replay.json()["error"]["code"] == "WEBHOOK_REPLAY"
 
         # 3. Valid webhook -> 200 staged
-        r_ok = client.post(
+        r_ok = await client.post(
             f"/integrations/webhooks/{conn_id}",
             content=raw_payload,
             headers={
@@ -300,7 +300,7 @@ class TestGoogleSheetsAndWebhooks:
         run_id = r_ok.json()["run_id"]
 
         # 4. Duplicate webhook push -> deduplicated=True
-        r_dup = client.post(
+        r_dup = await client.post(
             f"/integrations/webhooks/{conn_id}",
             content=raw_payload,
             headers={
@@ -317,12 +317,12 @@ class TestGoogleSheetsAndWebhooks:
 class TestConnectionManagement:
     """Tests for GET /connections/{id}, POST /connections/{id}/test, POST /connections/{id}/schema."""
 
-    def test_get_connection_detail(self, client, monkeypatch):
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+    async def test_get_connection_detail(self, client, monkeypatch):
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
 
         # Create a connection
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={"type": "apps_script", "name": "Test Conn"},
@@ -332,7 +332,7 @@ class TestConnectionManagement:
         assert conn_r.json()["status"] == "pending_test"
 
         # GET connection detail
-        detail = client.get(f"/integrations/connections/{conn_id}", headers=h)
+        detail = await client.get(f"/integrations/connections/{conn_id}", headers=h)
         assert detail.status_code == 200, detail.text
         body = detail.json()
         assert body["id"] == conn_id
@@ -343,23 +343,23 @@ class TestConnectionManagement:
         assert "last_error" in body
         assert "schema" in body
 
-    def test_get_connection_not_found(self, client):
-        h = _login(client, "demo_maker")
-        r = client.get(f"/integrations/connections/{uuid.uuid4()}", headers=h)
+    async def test_get_connection_not_found(self, client):
+        h = await _login(client, "demo_maker")
+        r = await client.get(f"/integrations/connections/{uuid.uuid4()}", headers=h)
         assert r.status_code == 404
         assert r.json()["error"]["code"] == "NOT_FOUND"
 
-    def test_get_connection_invalid_uuid(self, client):
-        h = _login(client, "demo_maker")
-        r = client.get("/integrations/connections/not-a-uuid", headers=h)
+    async def test_get_connection_invalid_uuid(self, client):
+        h = await _login(client, "demo_maker")
+        r = await client.get("/integrations/connections/not-a-uuid", headers=h)
         assert r.status_code == 422
         assert r.json()["error"]["code"] == "INVALID_UUID"
 
-    def test_test_connection_missing_api_key(self, monkeypatch, client):
-        h = _login(client, "demo_maker")
+    async def test_test_connection_missing_api_key(self, monkeypatch, client):
+        h = await _login(client, "demo_maker")
         monkeypatch.setattr("app.config.settings.google_sheets_api_key", "")
 
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -371,7 +371,7 @@ class TestConnectionManagement:
         assert conn_r.status_code == 201
         conn_id = conn_r.json()["id"]
 
-        r = client.post(
+        r = await client.post(
             f"/integrations/connections/{conn_id}/test",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -381,13 +381,13 @@ class TestConnectionManagement:
         assert body["status"] == "error"
         assert "GOOGLE_SHEETS_API_KEY" in body["error"]
 
-    def test_test_connection_invalid_sheet_id(self, client, monkeypatch):
+    async def test_test_connection_invalid_sheet_id(self, client, monkeypatch):
         from app.config import settings
 
-        h = _login(client, "demo_maker")
+        h = await _login(client, "demo_maker")
         monkeypatch.setattr(settings, "google_sheets_api_key", "fake-key")
 
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -398,7 +398,7 @@ class TestConnectionManagement:
         )
         conn_id = conn_r.json()["id"]
 
-        r = client.post(
+        r = await client.post(
             f"/integrations/connections/{conn_id}/test",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -407,10 +407,10 @@ class TestConnectionManagement:
         assert body["ok"] is False
         assert body["error"] == "INVALID_SHEET_ID"
 
-    def test_test_connection_network_error(self, monkeypatch, client):
+    async def test_test_connection_network_error(self, monkeypatch, client):
         from app.config import settings
 
-        h = _login(client, "demo_maker")
+        h = await _login(client, "demo_maker")
         monkeypatch.setattr(settings, "google_sheets_api_key", "fake-key")
 
         class _RaiseHTTPError:
@@ -430,7 +430,7 @@ class TestConnectionManagement:
             "app.api.routes.integrations.httpx.AsyncClient", _RaiseHTTPError
         )
 
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -441,7 +441,7 @@ class TestConnectionManagement:
         )
         conn_id = conn_r.json()["id"]
 
-        r = client.post(
+        r = await client.post(
             f"/integrations/connections/{conn_id}/test",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -451,10 +451,10 @@ class TestConnectionManagement:
         assert body["status"] == "error"
         assert "Network error" in body["error"]
 
-    def test_test_connection_success(self, monkeypatch, client):
+    async def test_test_connection_success(self, monkeypatch, client):
         from app.config import settings
 
-        h = _login(client, "demo_maker")
+        h = await _login(client, "demo_maker")
         monkeypatch.setattr(settings, "google_sheets_api_key", "fake-key")
 
         class _FakeResp:
@@ -481,7 +481,7 @@ class TestConnectionManagement:
             "app.api.routes.integrations.httpx.AsyncClient", _FakeClient
         )
 
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -492,7 +492,7 @@ class TestConnectionManagement:
         )
         conn_id = conn_r.json()["id"]
 
-        r = client.post(
+        r = await client.post(
             f"/integrations/connections/{conn_id}/test",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -502,16 +502,16 @@ class TestConnectionManagement:
         assert body["status"] == "connected"
         assert body["error"] is None
 
-        detail = client.get(f"/integrations/connections/{conn_id}", headers=h)
+        detail = await client.get(f"/integrations/connections/{conn_id}", headers=h)
         assert detail.json()["last_tested_at"] is not None
         assert detail.json()["status"] == "connected"
 
-    def test_get_run_detail(self, client):
+    async def test_get_run_detail(self, client):
         """GET /integrations/runs/{id} trả về thông tin chi tiết run."""
         import io
 
-        h = _login(client, "demo_maker")
-        sku, loc_code = _seed_sku_and_loc(client, h)
+        h = await _login(client, "demo_maker")
+        sku, loc_code = await _seed_sku_and_loc(client, h)
         payload_bytes = json.dumps(
             {
                 "rows": [
@@ -525,7 +525,7 @@ class TestConnectionManagement:
             }
         ).encode()
 
-        up = client.post(
+        up = await client.post(
             "/integrations/uploads",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             files={
@@ -536,7 +536,7 @@ class TestConnectionManagement:
         assert up.status_code == 200, up.text
         run_id = up.json()["run_id"]
 
-        r = client.get(f"/integrations/runs/{run_id}", headers=h)
+        r = await client.get(f"/integrations/runs/{run_id}", headers=h)
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["run_id"] == run_id
@@ -547,23 +547,23 @@ class TestConnectionManagement:
         assert body["source_fingerprint"] is not None
         assert len(body["rows"]) == 1
 
-    def test_get_run_not_found(self, client):
-        h = _login(client, "demo_maker")
-        r = client.get(f"/integrations/runs/{uuid.uuid4()}", headers=h)
+    async def test_get_run_not_found(self, client):
+        h = await _login(client, "demo_maker")
+        r = await client.get(f"/integrations/runs/{uuid.uuid4()}", headers=h)
         assert r.status_code == 404
 
-    def test_connection_schema_json_upload(self, client):
+    async def test_connection_schema_json_upload(self, client):
         """POST /connections/{id}/schema với json_upload trả về columns từ sample row."""
-        h = _login(client, "demo_maker")
+        h = await _login(client, "demo_maker")
 
-        conn_r = client.post(
+        conn_r = await client.post(
             "/integrations/connections",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={"type": "csv_upload", "name": "CSV Schema Test"},
         )
         conn_id = conn_r.json()["id"]
 
-        r = client.post(
+        r = await client.post(
             f"/integrations/connections/{conn_id}/schema",
             headers={**h, "Idempotency-Key": str(uuid.uuid4())},
             json={"rows": [{"sku": "ABC", "location_code": "WH1", "quantity": 5}]},

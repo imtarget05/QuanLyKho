@@ -1,5 +1,4 @@
 """Test change password and change PIN endpoints."""
-import asyncio
 import re
 
 import pytest
@@ -22,9 +21,9 @@ def non_demo_mode(monkeypatch):
     return settings
 
 
-def test_change_password_flow(client):
+async def test_change_password_flow(client):
     # 1. Login with demo_maker
-    login_resp = client.post(
+    login_resp = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": DEMO_PASSWORD},
     )
@@ -33,7 +32,7 @@ def test_change_password_flow(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     # 2. Try changing password with wrong old password -> 400
-    bad_resp = client.post(
+    bad_resp = await client.post(
         "/api/v1/auth/change-password",
         headers=headers,
         json={"old_password": "WrongPassword123!", "new_password": "NewSecretPassword123!"},
@@ -43,7 +42,7 @@ def test_change_password_flow(client):
 
     # 3. Change password successfully
     new_pass = "BrandNewPass2026!"
-    ok_resp = client.post(
+    ok_resp = await client.post(
         "/api/v1/auth/change-password",
         headers=headers,
         json={"old_password": DEMO_PASSWORD, "new_password": new_pass},
@@ -52,14 +51,14 @@ def test_change_password_flow(client):
     assert "Đổi mật khẩu thành công" in ok_resp.json()["message"]
 
     # 4. Verify login with old password fails
-    old_login = client.post(
+    old_login = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": DEMO_PASSWORD},
     )
     assert old_login.status_code == 401
 
     # 5. Verify login with new password succeeds
-    new_login = client.post(
+    new_login = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": new_pass},
     )
@@ -68,7 +67,7 @@ def test_change_password_flow(client):
 
     # Revert password back to DEMO_PASSWORD so other test suites stay idempotent
     rev_token = new_login.json()["access_token"]
-    revert_resp = client.post(
+    revert_resp = await client.post(
         "/api/v1/auth/change-password",
         headers={"Authorization": f"Bearer {rev_token}"},
         json={"old_password": new_pass, "new_password": DEMO_PASSWORD},
@@ -76,9 +75,9 @@ def test_change_password_flow(client):
     assert revert_resp.status_code == 200
 
 
-def test_change_pin_flow(client):
+async def test_change_pin_flow(client):
     # 1. Login with demo_checker
-    login_resp = client.post(
+    login_resp = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_checker", "password": DEMO_PASSWORD},
     )
@@ -87,7 +86,7 @@ def test_change_pin_flow(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     # 2. Try with wrong account password -> 400
-    wrong_resp = client.post(
+    wrong_resp = await client.post(
         "/api/v1/auth/change-pin",
         headers=headers,
         json={"current_password": "WrongPassword999!", "new_pin": "654321"},
@@ -96,7 +95,7 @@ def test_change_pin_flow(client):
     assert "Mật khẩu tài khoản không đúng" in wrong_resp.json()["error"]["message"]
 
     # 3. Try with invalid pin format (not 6 digits) -> 422
-    invalid_resp = client.post(
+    invalid_resp = await client.post(
         "/api/v1/auth/change-pin",
         headers=headers,
         json={"current_password": DEMO_PASSWORD, "new_pin": "1234"},
@@ -104,7 +103,7 @@ def test_change_pin_flow(client):
     assert invalid_resp.status_code == 422
 
     # 4. Change pin successfully to '777888'
-    ok_resp = client.post(
+    ok_resp = await client.post(
         "/api/v1/auth/change-pin",
         headers=headers,
         json={"current_password": DEMO_PASSWORD, "new_pin": "777888"},
@@ -129,7 +128,7 @@ def test_change_pin_flow(client):
     verify_supervisor_pin("777888", settings, user=user)
 
     # Revert pin back to '123456'
-    rev_resp = client.post(
+    rev_resp = await client.post(
         "/api/v1/auth/change-pin",
         headers=headers,
         json={"current_password": DEMO_PASSWORD, "new_pin": "123456"},
@@ -137,9 +136,9 @@ def test_change_pin_flow(client):
     assert rev_resp.status_code == 200
 
 
-def test_forgot_password_and_reset_flow(client, demo_mode):
+async def test_forgot_password_and_reset_flow(client, demo_mode):
     # 1. Request reset for non-existent user -> 404
-    bad_req = client.post(
+    bad_req = await client.post(
         "/api/v1/auth/forgot-password",
         json={"username": "non_existent_user_999"},
     )
@@ -147,7 +146,7 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
     assert "Không tìm thấy tài khoản" in bad_req.json()["error"]["message"]
 
     # 2. Request OTP for demo_maker -> 200 (demo mode: OTP được trả lại cho QA)
-    forgot_resp = client.post(
+    forgot_resp = await client.post(
         "/api/v1/auth/forgot-password",
         json={"username": "demo_maker"},
     )
@@ -158,7 +157,7 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
     assert len(otp) == 6
 
     # 3. Reset with wrong OTP -> 400
-    wrong_otp_resp = client.post(
+    wrong_otp_resp = await client.post(
         "/api/v1/auth/reset-password",
         json={"username": "demo_maker", "otp": "000000", "new_password": "NewResetPassword2026!"},
     )
@@ -167,7 +166,7 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
 
     # 4. Reset with valid OTP -> 200
     new_password = "NewResetPassword2026!"
-    ok_reset = client.post(
+    ok_reset = await client.post(
         "/api/v1/auth/reset-password",
         json={"username": "demo_maker", "otp": otp, "new_password": new_password},
     )
@@ -175,14 +174,14 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
     assert "Khôi phục mật khẩu thành công" in ok_reset.json()["message"]
 
     # 5. Verify old password no longer works
-    old_login = client.post(
+    old_login = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": DEMO_PASSWORD},
     )
     assert old_login.status_code == 401
 
     # 6. Verify new password works
-    new_login = client.post(
+    new_login = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": new_password},
     )
@@ -191,7 +190,7 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
 
     # Revert password back to DEMO_PASSWORD
     rev_token = new_login.json()["access_token"]
-    revert_resp = client.post(
+    revert_resp = await client.post(
         "/api/v1/auth/change-password",
         headers={"Authorization": f"Bearer {rev_token}"},
         json={"old_password": new_password, "new_password": DEMO_PASSWORD},
@@ -199,9 +198,9 @@ def test_forgot_password_and_reset_flow(client, demo_mode):
     assert revert_resp.status_code == 200
 
 
-def test_update_profile_flow(client):
+async def test_update_profile_flow(client):
     # 1. Login with demo_maker
-    login_resp = client.post(
+    login_resp = await client.post(
         "/api/v1/auth/login",
         data={"username": "demo_maker", "password": DEMO_PASSWORD},
     )
@@ -211,7 +210,7 @@ def test_update_profile_flow(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     # 2. Validation error: empty display_name
-    bad_resp = client.put(
+    bad_resp = await client.put(
         "/api/v1/auth/me",
         headers=headers,
         json={"display_name": "   "},
@@ -220,7 +219,7 @@ def test_update_profile_flow(client):
 
     # 3. Update profile successfully via /api/v1/auth/me
     updated_name = "Nguyễn Hoàng An (Trưởng GDV)"
-    ok_resp = client.put(
+    ok_resp = await client.put(
         "/api/v1/auth/me",
         headers=headers,
         json={
@@ -237,12 +236,12 @@ def test_update_profile_flow(client):
     assert data["phone_number"] == "0912 345 678"
 
     # 4. Verify GET /api/v1/auth/me returns updated display_name
-    me_resp = client.get("/api/v1/auth/me", headers=headers)
+    me_resp = await client.get("/api/v1/auth/me", headers=headers)
     assert me_resp.status_code == 200
     assert me_resp.json()["display_name"] == updated_name
 
     # 5. Verify alias PUT /api/v1/me works
-    alias_resp = client.put(
+    alias_resp = await client.put(
         "/api/v1/me",
         headers=headers,
         json={"display_name": "Nguyễn Hoàng An (Maker Lead)"},
@@ -251,7 +250,7 @@ def test_update_profile_flow(client):
     assert alias_resp.json()["display_name"] == "Nguyễn Hoàng An (Maker Lead)"
 
     # 6. Revert back to original display name
-    revert_resp = client.put(
+    revert_resp = await client.put(
         "/api/v1/auth/me",
         headers=headers,
         json={"display_name": orig_display_name},
@@ -266,13 +265,13 @@ def test_update_profile_flow(client):
 # ---------------------------------------------------------------------------
 
 
-def test_forgot_password_returns_no_otp_outside_demo_mode(client, non_demo_mode):
+async def test_forgot_password_returns_no_otp_outside_demo_mode(client, non_demo_mode):
     """Ngoài demo mode, response KHÔNG được chứa OTP.
 
     Nếu OTP nằm trong response, bất kỳ ai cũng đọc được OTP của tài khoản
     khác rồi gọi /auth/reset-password để chiếm tài khoản.
     """
-    resp = client.post(
+    resp = await client.post(
         "/api/v1/auth/forgot-password",
         json={"username": "demo_maker"},
     )
@@ -283,9 +282,9 @@ def test_forgot_password_returns_no_otp_outside_demo_mode(client, non_demo_mode)
     assert not re.search(r"\b\d{6}\b", repr(data)), data
 
 
-def test_forgot_password_returns_otp_only_in_demo_mode(client, demo_mode):
+async def test_forgot_password_returns_otp_only_in_demo_mode(client, demo_mode):
     """Demo mode bật tường minh -> vẫn trả otp_demo cho luồng QA."""
-    resp = client.post(
+    resp = await client.post(
         "/api/v1/auth/forgot-password",
         json={"username": "demo_maker"},
     )
@@ -296,7 +295,7 @@ def test_forgot_password_returns_otp_only_in_demo_mode(client, demo_mode):
 
 
 @pytest.mark.parametrize("demo_enabled", [True, False])
-def test_demo_checker_has_no_synthetic_admin_roles(demo_enabled, monkeypatch):
+async def test_demo_checker_has_no_synthetic_admin_roles(demo_enabled, monkeypatch):
     """Backdoor theo username đã bị gỡ.
 
     `demo_checker` không được tự sinh role `admin`/`approver` hay capability
@@ -333,14 +332,14 @@ def test_demo_checker_has_no_synthetic_admin_roles(demo_enabled, monkeypatch):
                 await db.rollback()
             return roles, caps
 
-    roles, caps = asyncio.run(_run())
+    roles, caps = await _run()
     assert "admin" not in roles
     assert "approver" not in roles
     assert "iam:admin" not in caps
     assert "admin:user_management" not in caps
 
 
-def test_authenticate_user_has_no_password_bypass():
+async def test_authenticate_user_has_no_password_bypass():
     """Không bypass mật khẩu: hash trong DB là nguồn sự thật duy nhất.
 
     Trước đây `demo_checker` được nhận mọi mật khẩu (`DemoPass123!`) kể cả
@@ -368,12 +367,12 @@ def test_authenticate_user_has_no_password_bypass():
                 await db.rollback()  # giữ nguyên DB test
             return bypass, legit
 
-    bypass, legit = asyncio.run(_run())
+    bypass, legit = await _run()
     assert bypass is None, "authenticate_user vẫn bypass mật khẩu theo username"
     assert legit is not None
 
 
-def test_non_demo_env_without_signing_key_fails_fast(monkeypatch):
+async def test_non_demo_env_without_signing_key_fails_fast(monkeypatch):
     """Môi trường non-demo thiếu BANKOPS_SIGNING_KEY -> fail fast lúc khởi động."""
     from app.config import Settings
 
@@ -384,7 +383,7 @@ def test_non_demo_env_without_signing_key_fails_fast(monkeypatch):
         settings.assert_runtime_secrets()
 
 
-def test_non_demo_env_with_signing_key_passes(monkeypatch):
+async def test_non_demo_env_with_signing_key_passes(monkeypatch):
     from app.config import Settings
 
     monkeypatch.setenv("BANKOPS_SIGNING_KEY", "test-signing-key-value")
@@ -393,7 +392,7 @@ def test_non_demo_env_with_signing_key_passes(monkeypatch):
     assert settings.signing_key == "test-signing-key-value"
 
 
-def test_demo_mode_requires_explicit_opt_in(monkeypatch):
+async def test_demo_mode_requires_explicit_opt_in(monkeypatch):
     """Demo mode mặc định TẮT; bật cần APP_ENV=demo + DEMO_MODE=true."""
     import app.config
     from app.config import Settings
@@ -416,7 +415,7 @@ def test_demo_mode_requires_explicit_opt_in(monkeypatch):
     assert Settings(app_env="demo", demo_mode=False).is_demo_mode is False
 
 
-def test_demo_mode_can_be_enabled_by_env(monkeypatch):
+async def test_demo_mode_can_be_enabled_by_env(monkeypatch):
     """DEMO_MODE=true trong env là cách bật tường minh ở môi trường demo."""
     from app.config import Settings
 

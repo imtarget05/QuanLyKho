@@ -18,10 +18,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import uuid
 from typing import Any
 
 from qlk_ingest import config as cfg
 from qlk_ingest import staging
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
 def _etl_engine():
@@ -349,6 +351,19 @@ def detect_drift(
         feature_cols=feature_cols,
     )
 
+    # Emit drift event to the transactional outbox when distribution shift is
+    # confirmed. Outbox emission is best-effort: it must never fail the drift
+    # task itself (detection result is still returned to XCom).
+    if result["drift_result"]["drifted"]:
+        _emit_drift_outbox_event(
+            database_url=database_url,
+            dataset=DATASET,
+            drift_result=result["drift_result"],
+            recommendation=result["recommendation"],
+            reference_rows=len(ref_df),
+            current_rows=len(cur_df),
+        )
+
     # Push summary to XCom for visibility
     return {
         "drifted": result["drift_result"]["drifted"],
@@ -365,6 +380,56 @@ def detect_drift(
         "threshold_psi": drift_detection.PSI_THRESHOLD,
         "ks_confirm_alpha": drift_detection.KS_CONFIRM_ALPHA,
     }
+
+
+def _emit_drift_outbox_event(
+    database_url: str,
+    dataset: str,
+    drift_result: dict,
+    recommendation: str,
+    reference_rows: int,
+    current_rows: int,
+) -> None:
+    """Best-effort emission of a drift-detected event to the outbox."""
+    try:
+        from app.services.outbox_service import emit_outbox_event
+
+        async def _emit() -> None:
+            async_engine = create_async_engine(database_url)
+            session_factory = async_sessionmaker(
+                bind=async_engine, class_=AsyncSession, expire_on_commit=False
+            )
+            async with session_factory() as session:
+                await emit_outbox_event(
+                    session=session,
+                    topic="ml.drift.detected",
+                    event_type="ml.demand_forecast.drift",
+                    aggregate_id=str(dataset),
+                    payload={
+                        "drift_type": drift_result.get("drift_type"),
+                        "overall_psi": drift_result.get("psi"),
+                        "psi_threshold": drift_result.get("details", {}).get("psi_threshold"),
+                        "affected_features": drift_result.get("affected_features"),
+                        "data_drift_features": drift_result.get("details", {}).get(
+                            "data_drift_features"
+                        ),
+                        "concept_drift_features": drift_result.get("details", {}).get(
+                            "concept_drift_features"
+                        ),
+                        "recommendation": recommendation,
+                        "reference_rows": reference_rows,
+                        "current_rows": current_rows,
+                    },
+                    trace_id=str(uuid.uuid4()),
+                )
+                await session.commit()
+            await async_engine.dispose()
+
+        import asyncio
+
+        asyncio.run(_emit())
+    except Exception as exc:  # noqa: BLE001 — outbox emission must not fail drift task
+        logger.warning("Failed to emit drift outbox event: %s", exc)
 
 
 def dump_json(payload: Any) -> str:

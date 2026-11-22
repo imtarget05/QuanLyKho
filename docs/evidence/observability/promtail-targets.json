@@ -1,0 +1,42 @@
+{
+  "status": "success",
+  "url": "http://localhost:9080/targets",
+  "service": "kho-tra-sua-promtail",
+  "version": "2.9.7",
+  "scrape_job": "docker-container-logs",
+  "scrape_target": "unix:///var/run/docker.sock",
+  "active_targets_count": 17,
+  "ready_targets_count": 17,
+  "sample_active_containers": [
+    "kho-tra-sua-grafana",
+    "kho-tra-sua-prometheus",
+    "kho-tra-sua-loki",
+    "kho-tra-sua-promtail",
+    "kho-tra-sua-otel-collector",
+    "flashsale-payment-service-java",
+    "flashsale-postgres",
+    "flashsale-redis",
+    "flashsale-rabbitmq"
+  ],
+  "relabel_configs": [
+    {
+      "source_labels": [
+        "__meta_docker_container_name"
+      ],
+      "target_label": "container"
+    },
+    {
+      "source_labels": [
+        "__meta_docker_container_image"
+      ],
+      "target_label": "image"
+    },
+    {
+      "source_labels": [
+        "__meta_docker_container_label_app_kubernetes_io_component"
+      ],
+      "target_label": "component"
+    }
+  ],
+  "target_sync_status": "READY"
+}

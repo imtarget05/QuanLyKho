@@ -221,11 +221,13 @@ async def execute_idempotent_operation(
             status_code, body = await operation_coroutine()
             target_record.status = "COMPLETED"
             target_record.status_code = status_code
-            target_record.response_body = json.dumps(body) if isinstance(body, (dict, list)) else str(body)
+            target_record.response_body = (
+                json.dumps(body, default=str) if isinstance(body, (dict, list)) else str(body)
+            )
             await session.flush()
             return (status_code, body, False)
         except Exception as exc:
             target_record.status = "FAILED"
-            target_record.response_body = json.dumps({"error": str(exc)})
+            target_record.response_body = json.dumps({"error": str(exc)}, default=str)
             await session.flush()
             raise

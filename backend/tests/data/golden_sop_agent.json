@@ -1,0 +1,91 @@
+{
+  "name": "QuanLyKho SOP agent golden dataset",
+  "version": 1,
+  "description": "Golden queries for the SOP retrieval agent (ai_agent.py). Categories: abstain / grounded / write_pending. Judge: rule-based classification of agent result.",
+  "cases": [
+    {
+      "id": "sop-001",
+      "query": "mua bitcoin dau tu",
+      "category": "abstain",
+      "expect": {
+        "abstained": true,
+        "sources_empty": true,
+        "hitl_pending": false,
+        "write_action_none": true
+      },
+      "note": "Câu hỏi ngoài SOP kho -> agent phai tu choi (abstention)"
+    },
+    {
+      "id": "sop-002",
+      "query": "nhap hang het han lam sao",
+      "category": "grounded",
+      "expect": {
+        "abstained": false,
+        "sources_nonempty": true,
+        "hitl_pending": false,
+        "write_action_none": true
+      },
+        "note": "Tra cuu SOP FEFO -> agent tra loi, trich dan nghien cuu, khong hitl"
+    },
+    {
+      "id": "sop-003",
+      "query": "quy trinh kiem soat kep maker checker",
+      "category": "grounded",
+      "expect": {
+        "abstained": false,
+        "sources_nonempty": true,
+        "hitl_pending": false,
+        "write_action_none": true
+      },
+        "note": "Tra cuu SOP kiem soat kep -> agent tra loi, trich dan nghien cuu"
+    },
+    {
+      "id": "sop-004",
+      "query": "diep chinh ton kho mat hang A",
+      "category": "write_pending",
+      "expect": {
+        "hitl_pending": true,
+        "write_action_type": "adjust_inventory",
+        "sources_empty": true,
+        "auto_executed": false
+      },
+      "note": "Hanh dich ghi -> phai pendu duyet HITL, khong tu thuc thi"
+    },
+    {
+      "id": "sop-005",
+      "query": "gui email thong bao cho quan ly",
+      "category": "write_pending",
+      "expect": {
+        "hitl_pending": true,
+        "write_action_type": "send_email",
+        "sources_empty": true,
+        "auto_executed": false
+      },
+      "note": "Gui email -> phai pendu duyet HITL"
+    },
+    {
+      "id": "sop-006",
+      "query": "tao ticket ho tro nhap hang",
+      "category": "write_pending",
+      "expect": {
+        "hitl_pending": true,
+        "write_action_type": "create_ticket",
+        "sources_empty": true,
+        "auto_executed": false
+      },
+      "note": "Tao ticket -> phai pendu duyet HITL"
+    },
+    {
+      "id": "sop-007",
+      "query": "xu ly lech kiem kho min max",
+      "category": "grounded",
+      "expect": {
+        "abstained": false,
+        "sources_nonempty": true,
+        "hitl_pending": false,
+        "write_action_none": true
+      },
+      "note": "Tra cuu SOP chenh lech kiem kho -> agent tra loi"
+    }
+  ]
+}

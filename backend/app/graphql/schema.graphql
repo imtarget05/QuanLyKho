@@ -1,0 +1,249 @@
+"""GraphQL schema for QuanLyKho banking & inventory domain.
+
+Replaces REST API banking endpoints. All mutations are idempotent via
+Idempotency-Key HTTP header. All writes go through ACID transaction with
+double-entry ledger + outbox + audit hash-chain.
+"""
+
+scalar Decimal
+scalar DateTime
+scalar UUID
+
+type Query {
+  account(id: UUID!): Account
+  accounts(limit: Int = 50, offset: Int = 0): [Account!]!
+  balance(accountId: UUID!): BalanceTier
+  ledgerEntry(id: UUID!): LedgerEntry
+  ledgerEntries(accountCode: String, limit: Int = 50, offset: Int = 0): [LedgerEntry!]!
+  saga(id: UUID!): SagaInstance
+  sagas(limit: Int = 50, offset: Int = 0): [SagaInstance!]!
+  auditEntry(id: ID!): AuditEntry
+  auditTrail(entityType: String, entityId: String, limit: Int = 50, offset: Int = 0): AuditTrailConnection!
+  outboxEvent(id: UUID!): OutboxEvent
+  outboxEvents(topic: String, status: String, limit: Int = 50, offset: Int = 0): [OutboxEvent!]!
+  verifyAuditChain(subject: String): Boolean!
+  health: Health!
+}
+
+type Mutation {
+  createTransaction(input: CreateTransactionInput!): TransactionPayload!
+  transferFunds(input: TransferFundsInput!): TransferPayload!
+  adjustInventory(input: AdjustInventoryInput!): InventoryAdjustmentPayload!
+  executeSaga(input: ExecuteSagaInput!): SagaPayload!
+  emitOutboxEvent(input: EmitOutboxEventInput!): OutboxEventPayload!
+  verifyAuditChainSubject(subject: String!): VerifyAuditChainPayload!
+}
+
+type Subscription {
+  sagaStatus(sagaId: UUID!): SagaInstance!
+  newOutboxEvent: OutboxEvent!
+}
+
+type Account {
+  id: UUID!
+  code: String!
+  name: String
+  accountType: String!
+  normalBalance: String!
+  currency: String!
+  ledgerBalance: Decimal!
+  availableBalance: Decimal!
+  holdBalance: Decimal!
+  version: Int!
+  updatedAt: DateTime!
+  ledgerEntries(limit: Int = 100): [LedgerEntry!]!
+}
+
+type BalanceTier {
+  accountId: UUID!
+  accountCode: String!
+  ledgerBalance: Decimal!
+  availableBalance: Decimal!
+  holdBalance: Decimal!
+  memoBalance: Decimal
+  version: Int!
+  updatedAt: DateTime!
+}
+
+type LedgerEntry {
+  id: UUID!
+  journalId: UUID!
+  accountCode: String!
+  debit: Decimal!
+  credit: Decimal!
+  postedAt: DateTime!
+}
+
+type TransactionPayload {
+  success: Boolean!
+  transactionId: UUID!
+  journalId: UUID!
+  debitTotal: Decimal!
+  creditTotal: Decimal!
+  isReplay: Boolean!
+  message: String
+}
+
+type TransferPayload {
+  success: Boolean!
+  sagaId: UUID
+  status: String!
+  message: String
+  sourceBalance: BalanceSummary
+  destBalance: BalanceSummary
+}
+
+type BalanceSummary {
+  accountId: UUID!
+  ledgerBalance: Decimal!
+  availableBalance: Decimal!
+  version: Int!
+}
+
+type InventoryAdjustmentPayload {
+  success: Boolean!
+  movementId: UUID!
+  journalId: UUID!
+  message: String
+}
+
+type SagaPayload {
+  success: Boolean!
+  sagaId: UUID!
+  sagaName: String!
+  status: String!
+  completedSteps: [String!]!
+  failedStep: String
+  error: String
+  isReplay: Boolean!
+}
+
+type SagaInstance {
+  id: UUID!
+  sagaName: String!
+  sagaType: String
+  status: String!
+  currentStep: String
+  errorMessage: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  steps: [SagaStepLog!]!
+}
+
+type SagaStepLog {
+  id: UUID!
+  stepName: String!
+  status: String!
+  stepIndex: Int!
+  executedAt: DateTime
+  completedAt: DateTime
+  errorMessage: String
+}
+
+type AuditEntry {
+  id: ID!
+  eventId: UUID!
+  actorId: String!
+  action: String!
+  entityType: String!
+  entityId: String!
+  statePayload: String
+  payloadHash: String!
+  prevHash: String!
+  currentHash: String!
+  timestamp: DateTime!
+}
+
+type AuditTrailConnection {
+  entries: [AuditEntry!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+type OutboxEvent {
+  id: UUID!
+  topic: String!
+  eventType: String!
+  aggregateId: String!
+  payload: String
+  traceId: String!
+  status: String!
+  attempts: Int!
+  createdAt: DateTime!
+  publishedAt: DateTime
+}
+
+type OutboxEventPayload {
+  success: Boolean!
+  eventId: UUID!
+  topic: String!
+  status: String!
+}
+
+type VerifyAuditChainPayload {
+  subject: String!
+  isValid: Boolean!
+  brokenId: ID
+  reason: String
+}
+
+type Health {
+  status: String!
+  service: String!
+  timestamp: DateTime!
+}
+
+# ============================================================================
+# INPUTS
+# ============================================================================
+
+input CreateTransactionInput {
+  idempotencyKey: String
+  entries: [LedgerEntryInput!]!
+  description: String
+  reference: String
+}
+
+input LedgerEntryInput {
+  accountCode: String!
+  debit: Decimal
+  credit: Decimal
+}
+
+input TransferFundsInput {
+  sourceAccountId: UUID!
+  destAccountId: UUID!
+  amount: Decimal!
+  description: String
+  reference: String
+  idempotencyKey: String
+}
+
+input AdjustInventoryInput {
+  movementType: String!
+  productId: String!
+  quantity: Int!
+  unitCostCents: Int
+  referenceId: String
+  warehouseId: String!
+  destWarehouseId: String
+  description: String
+  idempotencyKey: String
+}
+
+input ExecuteSagaInput {
+  sagaName: String!
+  sourceAccountId: UUID!
+  destAccountId: UUID!
+  amountCents: Int!
+  transferId: String
+  idempotencyKey: String
+}
+
+input EmitOutboxEventInput {
+  topic: String!
+  eventType: String!
+  aggregateId: String!
+  payload: String
+  traceId: String
+}

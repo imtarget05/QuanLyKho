@@ -335,7 +335,7 @@ class InventoryJournal(Base, TimestampMixin):
 
     id: str = Column(UUID(as_uuid=True), primary_key=True)
     request_id: str = Column(
-        UUID(as_uuid=True), ForeignKey("inv_requests.id"), unique=True, nullable=False
+        UUID(as_uuid=True), ForeignKey("inv_requests.id"), unique=True, nullable=True
     )
     posted_at = Column(DateTime(timezone=True), nullable=True)
     reversal_of: str = Column(UUID(as_uuid=True), ForeignKey("inv_journals.id"), nullable=True)

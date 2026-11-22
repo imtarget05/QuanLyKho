@@ -25,6 +25,7 @@ from app.models.inventory import (
     Stocktake,
     StocktakeLine,
 )
+from app.models.order import Order, OrderLine, OrderStatus
 from app.services.approval_events import approval_event_bus
 
 router = APIRouter()
@@ -156,6 +157,35 @@ async def get_approval_inbox(
                 "detail": st.note or f"Kiểm kê {shift_title} ngày {st.business_date or ''}",
             }
         )
+
+    caps = await get_user_capabilities(db, current_user.id)
+    if "retail:order:approve_cancel" in caps:
+        pending_orders = (
+            await db.execute(
+                select(Order).where(
+                    Order.status == OrderStatus.CONFIRMED.value,
+                    Order.approval_required.is_(True),
+                    Order.approval_decision_id.is_(None),
+                )
+            )
+        ).scalars().all()
+        for order in pending_orders:
+            if order.actor_id == current_user.id:
+                continue
+            lines = (
+                await db.execute(select(OrderLine).where(OrderLine.order_id == order.id))
+            ).scalars().all()
+            if allowed_location_ids is not None and any(
+                line.location_id not in allowed_location_ids for line in lines
+            ):
+                continue
+            approvals.append({
+                "id": str(order.id), "kind": "retail_order_cancel",
+                "status": "pending_approval", "maker_id": str(order.actor_id),
+                "maker": users.get(str(order.actor_id), str(order.actor_id)),
+                "impact": f"Hủy đơn {order.total_amount} {order.currency}",
+                "detail": order.cancel_reason or "Yêu cầu hủy đơn",
+            })
 
     return {"approvals": approvals}
 

@@ -22,8 +22,8 @@ from app.services.email_service import EmailSendResult
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
-    r = client.post("/auth/login", data={"username": username, "password": password})
+async def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
+    r = await client.post("/auth/login", data={"username": username, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -35,7 +35,7 @@ def _idem(headers: dict[str, str]) -> dict[str, str]:
 class TestChallengerMilestone1Empirical:
     """Rigorous empirical stress test harness for Milestone 1."""
 
-    def _create_user(
+    async def _create_user(
         self,
         client,
         admin_auth: dict[str, str],
@@ -53,24 +53,24 @@ class TestChallengerMilestone1Empirical:
         if user_email:
             payload["email"] = user_email
 
-        r = client.post("/admin/users", headers=_idem(admin_auth), json=payload)
+        r = await client.post("/admin/users", headers=_idem(admin_auth), json=payload)
         assert r.status_code == 201, r.text
         return r.json()["user"]["id"], username
 
     # --------------------------------------------------------------------------
     # Challenge 1: Already-admin users receiving additional/modified roles
     # --------------------------------------------------------------------------
-    def test_already_admin_granted_additional_roles_never_retriggers(self, client):
+    async def test_already_admin_granted_additional_roles_never_retriggers(self, client):
         """Verify that when an admin user is granted another role (e.g. admin + approver),
 
         no admin promotion email is triggered.
         """
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["admin"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["admin"])
 
         with patch("app.api.routes.admin_users.send_admin_role_granted_email", new_callable=AsyncMock) as mock_email:
             # Transition 1: admin -> admin + approver
-            r1 = client.put(
+            r1 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin", "approver"]},
@@ -81,7 +81,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # Transition 2: admin + approver -> admin + approver + auditor
-            r2 = client.put(
+            r2 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin", "approver", "auditor"]},
@@ -92,7 +92,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # Transition 3: admin + approver + auditor -> admin (dropping non-admin roles)
-            r3 = client.put(
+            r3 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -103,7 +103,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # Transition 4: admin -> admin (idempotent reassignment)
-            r4 = client.put(
+            r4 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -116,14 +116,14 @@ class TestChallengerMilestone1Empirical:
     # --------------------------------------------------------------------------
     # Challenge 2: Non-admin role assignments
     # --------------------------------------------------------------------------
-    def test_non_admin_role_permutations_never_trigger_admin_email(self, client):
+    async def test_non_admin_role_permutations_never_trigger_admin_email(self, client):
         """Verify that assigning any non-admin role or role permutation NEVER triggers admin promotion email."""
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"])
 
         with patch("app.api.routes.admin_users.send_admin_role_granted_email", new_callable=AsyncMock) as mock_email:
             # staff -> auditor
-            r1 = client.put(
+            r1 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["auditor"]},
@@ -133,7 +133,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # auditor -> approver
-            r2 = client.put(
+            r2 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["approver"]},
@@ -143,7 +143,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # approver -> staff + auditor + approver
-            r3 = client.put(
+            r3 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["staff", "auditor", "approver"]},
@@ -155,18 +155,18 @@ class TestChallengerMilestone1Empirical:
     # --------------------------------------------------------------------------
     # Challenge 3: User without email promoted to admin
     # --------------------------------------------------------------------------
-    def test_promote_user_with_no_email_or_empty_email_never_triggers_and_persists(self, client):
+    async def test_promote_user_with_no_email_or_empty_email_never_triggers_and_persists(self, client):
         """Verify that when a user has no email address (empty string):
 
         1. send_admin_role_granted_email is NOT called.
         2. HTTP response is 200 OK.
         3. DB transaction is 100% committed with admin role persisted in PostgreSQL.
         """
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"], email="")
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"], email="")
 
         with patch("app.api.routes.admin_users.send_admin_role_granted_email", new_callable=AsyncMock) as mock_email:
-            r = client.put(
+            r = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -177,7 +177,7 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_not_called()
 
             # Verify persisted in database across fresh GET query
-            get_res = client.get(f"/admin/users?search={username}", headers=admin_auth)
+            get_res = await client.get(f"/admin/users?search={username}", headers=admin_auth)
             assert get_res.status_code == 200
             users = [u for u in get_res.json()["users"] if u["id"] == user_id]
             assert len(users) == 1
@@ -195,20 +195,20 @@ class TestChallengerMilestone1Empirical:
             Exception("Unhandled internal SMTP provider crash"),
         ],
     )
-    def test_db_transaction_100_percent_committed_on_email_exception(self, client, simulated_exception):
+    async def test_db_transaction_100_percent_committed_on_email_exception(self, client, simulated_exception):
         """Stress-test DB resilience when email dispatch raises various harsh exceptions.
 
         The database transaction MUST remain 100% committed, returning HTTP 200.
         """
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"])
 
         with patch(
             "app.api.routes.admin_users.send_admin_role_granted_email",
             new_callable=AsyncMock,
             side_effect=simulated_exception,
         ) as mock_email:
-            r = client.put(
+            r = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -221,19 +221,19 @@ class TestChallengerMilestone1Empirical:
             mock_email.assert_called_once()
 
             # 2. Database transaction MUST be committed to PostgreSQL
-            get_res = client.get(f"/admin/users?search={username}", headers=admin_auth)
+            get_res = await client.get(f"/admin/users?search={username}", headers=admin_auth)
             assert get_res.status_code == 200
             users = [u for u in get_res.json()["users"] if u["id"] == user_id]
             assert len(users) == 1
             assert "admin" in users[0]["roles"]
 
-    def test_dual_email_failure_resilience(self, client):
+    async def test_dual_email_failure_resilience(self, client):
         """Stress-test: when BOTH generic send_email AND send_admin_role_granted_email raise exceptions,
 
         the DB transaction must still be 100% committed and HTTP status 200.
         """
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"])
 
         with (
             patch(
@@ -247,7 +247,7 @@ class TestChallengerMilestone1Empirical:
                 side_effect=ConnectionResetError("Admin grant email peer reset"),
             ),
         ):
-            r = client.put(
+            r = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -256,7 +256,7 @@ class TestChallengerMilestone1Empirical:
             assert "admin" in r.json()["user"]["roles"]
 
             # Verify PostgreSQL state
-            get_res = client.get(f"/admin/users?search={username}", headers=admin_auth)
+            get_res = await client.get(f"/admin/users?search={username}", headers=admin_auth)
             assert get_res.status_code == 200
             users = [u for u in get_res.json()["users"] if u["id"] == user_id]
             assert len(users) == 1
@@ -265,21 +265,21 @@ class TestChallengerMilestone1Empirical:
     # --------------------------------------------------------------------------
     # Challenge 5: Full promotion & demotion lifecycle
     # --------------------------------------------------------------------------
-    def test_admin_promotion_lifecycle(self, client):
+    async def test_admin_promotion_lifecycle(self, client):
         """Test full lifecycle:
 
         1. staff -> admin: TRIGGERS email
         2. admin -> staff: DOES NOT trigger admin email
         3. staff -> admin: TRIGGERS email again
         """
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"])
 
         with patch("app.api.routes.admin_users.send_admin_role_granted_email", new_callable=AsyncMock) as mock_email:
             mock_email.return_value = EmailSendResult(True, "OK")
 
             # Step 1: Promote to admin -> should trigger
-            r1 = client.put(
+            r1 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -289,7 +289,7 @@ class TestChallengerMilestone1Empirical:
 
             # Step 2: Demote to staff -> should NOT trigger
             mock_email.reset_mock()
-            r2 = client.put(
+            r2 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["staff"]},
@@ -299,7 +299,7 @@ class TestChallengerMilestone1Empirical:
 
             # Step 3: Re-promote to admin -> should trigger again
             mock_email.reset_mock()
-            r3 = client.put(
+            r3 = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},

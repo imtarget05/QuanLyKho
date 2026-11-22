@@ -20,8 +20,8 @@ from app.models.iam import User
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
-    r = client.post("/auth/login", data={"username": username, "password": password})
+async def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
+    r = await client.post("/auth/login", data={"username": username, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -31,34 +31,37 @@ def _idem(headers: dict[str, str]) -> dict[str, str]:
 
 
 @pytest.fixture(autouse=True)
-def clean_test_emails():
+async def clean_test_emails():
     """Ensure clean slate for mainguyenbinhtan2005 emails without violating immutable audit logs."""
-    async def _cleanup():
-        async with AsyncSessionLocal() as db:
-            await db.execute(
-                update(User)
-                .where(User.email.like("mainguyenbinhtan2005%"))
-                .values(email=None)
-            )
-            await db.commit()
-
-    asyncio.run(_cleanup())
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            update(User)
+            .where(User.email.like("mainguyenbinhtan2005%"))
+            .values(email=None)
+        )
+        await db.commit()
     yield
-    asyncio.run(_cleanup())
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            update(User)
+            .where(User.email.like("mainguyenbinhtan2005%"))
+            .values(email=None)
+        )
+        await db.commit()
 
 
 class TestAdminProvisionSpecificUser:
-    def test_admin_invites_new_admin_with_specific_email(self, client, monkeypatch):
+    async def test_admin_invites_new_admin_with_specific_email(self, client, monkeypatch):
         """Current admin provisions new admin with email mainguyenbinhtan2005@gmail.com via invite."""
         monkeypatch.setattr("app.config.settings.smtp_user", "test@gmail.com")
         monkeypatch.setattr("app.config.settings.smtp_password", "test_app_pass")
         monkeypatch.setattr("app.services.email_service._send_smtp_sync", lambda **kwargs: (True, "Gửi email thành công"))
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
         username = f"tan_{uuid.uuid4().hex[:6]}"
         target_email = "mainguyenbinhtan2005@gmail.com"
 
         # 1. Provision new admin
-        res = client.post(
+        res = await client.post(
             "/admin/users",
             headers=_idem(admin_auth),
             json={
@@ -86,7 +89,7 @@ class TestAdminProvisionSpecificUser:
 
         # 2. Tan Admin accepts invite and sets password
         new_password = "BinhTanAdminSecret2026!#"
-        accept_res = client.post(
+        accept_res = await client.post(
             "/auth/accept-invite",
             json={
                 "invite_token": invite_token,
@@ -99,7 +102,7 @@ class TestAdminProvisionSpecificUser:
         assert "admin" in accept_body["user"]["roles"]
 
         # 3. Tan Admin logs in with credentials
-        login_res = client.post(
+        login_res = await client.post(
             "/auth/login",
             data={"username": username, "password": new_password},
         )
@@ -108,12 +111,12 @@ class TestAdminProvisionSpecificUser:
 
         # 4. Verify Tan Admin has full admin privileges
         # Can access admin users list
-        users_list = client.get("/admin/users", headers=tan_token)
+        users_list = await client.get("/admin/users", headers=tan_token)
         assert users_list.status_code == 200, users_list.text
 
         # Can manage catalog (create item)
         new_sku = f"ADMIN_TEA_{uuid.uuid4().hex[:6].upper()}"
-        item_res = client.post(
+        item_res = await client.post(
             "/inventory/items",
             headers=_idem(tan_token),
             json={
@@ -127,13 +130,13 @@ class TestAdminProvisionSpecificUser:
         assert item_res.status_code == 201, item_res.text
         assert item_res.json()["sku"] == new_sku
 
-    def test_admin_creates_new_admin_with_temp_password(self, client):
+    async def test_admin_creates_new_admin_with_temp_password(self, client):
         """Current admin provisions new admin with temporary password."""
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
         username = f"tan_temp_{uuid.uuid4().hex[:6]}"
         target_email = "mainguyenbinhtan2005@gmail.com"
 
-        res = client.post(
+        res = await client.post(
             "/admin/users",
             headers=_idem(admin_auth),
             json={
@@ -150,7 +153,7 @@ class TestAdminProvisionSpecificUser:
         assert temp_pass is not None
 
         # Login with temp pass requires password change
-        login_res = client.post(
+        login_res = await client.post(
             "/auth/login",
             data={"username": username, "password": temp_pass},
         )
@@ -161,14 +164,14 @@ class TestAdminProvisionSpecificUser:
         token = {"Authorization": f"Bearer {login_data['access_token']}"}
 
         # Change password
-        ch_res = client.post(
+        ch_res = await client.post(
             "/auth/change-initial-password",
             headers=_idem(token),
             json={"current_password": temp_pass, "new_password": "NewPermanentPass123!#"},
         )
         assert ch_res.status_code == 200
 
-    def test_smtp_status_endpoint(self, client, monkeypatch):
+    async def test_smtp_status_endpoint(self, client, monkeypatch):
         """Admin can check SMTP server connection health."""
         async def _mock_check():
             return {
@@ -181,8 +184,8 @@ class TestAdminProvisionSpecificUser:
             }
 
         monkeypatch.setattr("app.api.routes.admin_users.check_smtp_health", _mock_check)
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/admin/smtp-status", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/admin/smtp-status", headers=admin_auth)
         assert res.status_code == 200, res.text
         data = res.json()
         assert data["configured"] is True

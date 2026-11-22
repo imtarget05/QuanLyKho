@@ -1,0 +1,20 @@
+name = "sop-worker-lab"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+INDEX_DIMENSION = 768
+ENVIRONMENT = "lab"
+
+# Cloudflare D1 Database Binding for SOP Metadata Storage
+[[d1_databases]]
+binding = "DB"
+database_name = "sop-lab-db"
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "migrations"
+
+# Cloudflare Vectorize Index Binding for 768-Dimension Vector Search
+[[vectorize]]
+binding = "VECTORIZE_INDEX"
+index_name = "sop-lab-index"

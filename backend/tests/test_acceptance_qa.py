@@ -24,9 +24,9 @@ class Api:
         self.c = client
         self.tokens: dict[str, str] = {}
 
-    def login(self, username: str, password: str = DEMO_PASSWORD) -> str:
+    async def login(self, username: str, password: str = DEMO_PASSWORD) -> str:
         try:
-            r = self.c.post(
+            r = await self.c.post(
                 "/auth/login", data={"username": username, "password": password}
             )
         except Exception as exc:  # noqa: BLE001 - báo đúng gốc rễ cho người đọc
@@ -52,19 +52,22 @@ class Api:
         self.tokens[username] = token
         return token
 
-    def as_user(self, username: str, password: str = DEMO_PASSWORD) -> Api:
-        self.login(username, password)
+    async def as_user(self, username: str, password: str = DEMO_PASSWORD) -> Api:
+        await self.login(username, password)
         return self
 
     def h(self, username: str) -> dict:
         if username not in self.tokens:
-            self.login(username)
+            raise KeyError(f"User '{username}' is not logged in. Token missing.")
         return {"Authorization": f"Bearer {self.tokens[username]}"}
 
 
-@pytest.fixture(scope="module")
-def api(client) -> Api:
-    return Api(client)
+@pytest.fixture
+async def api(async_client) -> Api:
+    a = Api(async_client)
+    for u in ("demo_maker", "demo_checker", "demo_admin", "demo_auditor"):
+        await a.login(u)
+    return a
 
 
 def _err(resp) -> dict:
@@ -104,23 +107,23 @@ def assert_concurrency_ok(responses, ctx):
 # A1 - người tạo không được tự duyệt
 # --------------------------------------------------------------------------
 class TestA1SelfApproval:
-    def test_inventory_self_approval_forbidden(self, api):
-        m = api.as_user("demo_maker")
-        r = m.c.post(
+    async def test_inventory_self_approval_forbidden(self, api):
+        m = await api.as_user("demo_maker")
+        r = await m.c.post(
             "/inventory/requests",
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "issue", "lines": []},
         )
         assert r.status_code in (200, 201), f"tạo draft thất bại: {r.status_code} {r.text[:300]}"
         req_id = r.json().get("id")
-        sub = m.c.post(
+        sub = await m.c.post(
             f"/inventory/requests/{req_id}/submit",
             headers={**m.h("demo_maker"), "If-Match": str(r.json().get("version", 1))},
         )
         assert sub.status_code in (200, 201), f"submit: {sub.status_code} {sub.text[:300]}"
 
         # cùng user (maker) tự approve
-        ap = m.c.post(
+        ap = await m.c.post(
             f"/inventory/requests/{req_id}/approve",
             headers={
                 **m.h("demo_maker"),
@@ -134,13 +137,13 @@ class TestA1SelfApproval:
         )
         assert_error_code(ap, "SELF_APPROVAL_FORBIDDEN", "A1 inventory")
         # không được post
-        st = m.c.get(f"/inventory/requests/{req_id}", headers=m.h("demo_maker"))
+        st = await m.c.get(f"/inventory/requests/{req_id}", headers=m.h("demo_maker"))
         assert st.json().get("status") != "posted", "A1: phiếu vẫn bị post dù tự duyệt"
 
-    def test_admin_also_cannot_self_approve(self, api):
+    async def test_admin_also_cannot_self_approve(self, api):
         """docs/00 invariant 1: 'kể cả admin'."""
-        a = api.as_user("demo_admin")
-        r = a.c.post(
+        a = await api.as_user("demo_admin")
+        r = await a.c.post(
             "/inventory/requests",
             headers={**a.h("demo_admin"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "adjustment", "reason": "admin self", "lines": []},
@@ -149,14 +152,14 @@ class TestA1SelfApproval:
             f"admin không tạo được draft: {r.status_code} {r.text[:300]}"
         )
         rid = r.json()["id"]
-        submitted = a.c.post(
+        submitted = await a.c.post(
             f"/inventory/requests/{rid}/submit", headers=a.h("demo_admin")
         )
         assert submitted.status_code in (200, 201), (
             f"admin không submit được draft: {submitted.status_code} "
             f"{submitted.text[:300]}"
         )
-        ap = a.c.post(
+        ap = await a.c.post(
             f"/inventory/requests/{rid}/approve",
             headers={**a.h("demo_admin"), "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -170,18 +173,17 @@ class TestA1SelfApproval:
 # A2 - hai checker approve đồng thời
 # --------------------------------------------------------------------------
 class TestA2ConcurrentApprove:
-    def test_two_checkers_concurrent_approve(self, api):
-        import concurrent.futures
+    async def test_two_checkers_concurrent_approve(self, api):
 
-        m = api.as_user("demo_maker")
-        r = m.c.post(
+        m = await api.as_user("demo_maker")
+        r = await m.c.post(
             "/inventory/requests",
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "receipt", "lines": []},
         )
         assert r.status_code in (200, 201), r.text[:300]
         rid = r.json()["id"]
-        m.c.post(
+        await m.c.post(
             f"/inventory/requests/{rid}/submit",
             headers={**m.h("demo_maker"), "If-Match": str(r.json().get("version", 1))},
         )
@@ -190,20 +192,20 @@ class TestA2ConcurrentApprove:
         checkers = ["demo_checker", "demo_approver2"]
         headers_list = []
         for c in checkers:
-            api.login(c)
+            await api.login(c)
             headers_list.append({**api.h(c), "Idempotency-Key": str(uuid.uuid4())})
         assert len(headers_list) == 2
 
-        def call(hdr):
-            return api.c.post(f"/inventory/requests/{rid}/approve", headers=hdr)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-            responses = list(ex.map(call, headers_list))
+        import asyncio
+        responses = await asyncio.gather(*[
+            api.c.post(f"/inventory/requests/{rid}/approve", headers=hdr)
+            for hdr in headers_list
+        ])
 
         assert_concurrency_ok(responses, "A2")
 
         # đúng một movement/journal
-        mv = api.c.get("/inventory/movements", headers=api.h("demo_maker"))
+        mv = await api.c.get("/inventory/movements", headers=api.h("demo_maker"))
         if mv.status_code == 200:
             rows = mv.json().get("movements", [])
             n = len([x for x in rows if x.get("request_id") == rid])
@@ -214,15 +216,15 @@ class TestA2ConcurrentApprove:
 # A3/A4 - idempotency
 # --------------------------------------------------------------------------
 class TestA3A4Idempotency:
-    def test_retry_same_key_same_payload_replays(self, api):
-        m = api.as_user("demo_maker")
+    async def test_retry_same_key_same_payload_replays(self, api):
+        m = await api.as_user("demo_maker")
         key = str(uuid.uuid4())
         payload = {"cashbox_id": "11111111-1111-4111-8111-111111111111",
                    "kind": "receipt", "amount": "100000.00", "reason": "A3"}
         h = {**m.h("demo_maker"), "Idempotency-Key": key}
-        r1 = m.c.post("/cash-sim/requests", headers=h, json=payload)
+        r1 = await m.c.post("/cash-sim/requests", headers=h, json=payload)
         assert r1.status_code in (200, 201), f"A3 lần 1: {r1.status_code} {r1.text[:300]}"
-        r2 = m.c.post("/cash-sim/requests", headers=h, json=payload)
+        r2 = await m.c.post("/cash-sim/requests", headers=h, json=payload)
         assert r2.status_code == r1.status_code, (
             f"A3: lần retry trả {r2.status_code}, lần đầu {r1.status_code} "
             "(mong đợi replay cùng kết quả)"
@@ -232,23 +234,23 @@ class TestA3A4Idempotency:
             "(docs/10 A3; docs/05 bước 2)"
         )
 
-        j = m.c.get("/cash-sim/journals", headers=m.h("demo_maker"))
+        j = await m.c.get("/cash-sim/journals", headers=m.h("demo_maker"))
         if j.status_code == 200:
             rid = r1.json()["id"]
             n = len([x for x in j.json().get("journals", []) if x.get("request_id") == rid])
             assert n <= 1, f"A3: {n} journal cho cùng request -> đã nhân đôi"
 
-    def test_same_key_different_payload_409(self, api):
-        m = api.as_user("demo_maker")
+    async def test_same_key_different_payload_409(self, api):
+        m = await api.as_user("demo_maker")
         key = str(uuid.uuid4())
         h = {**m.h("demo_maker"), "Idempotency-Key": key}
-        r1 = m.c.post(
+        r1 = await m.c.post(
             "/cash-sim/requests", headers=h,
             json={"cashbox_id": "11111111-1111-4111-8111-111111111111",
                   "kind": "receipt", "amount": "100000.00", "reason": "A4-a"},
         )
         assert r1.status_code in (200, 201), r1.text[:300]
-        r2 = m.c.post(
+        r2 = await m.c.post(
             "/cash-sim/requests", headers=h,
             json={"cashbox_id": "11111111-1111-4111-8111-111111111111",
                   "kind": "receipt", "amount": "999999.00", "reason": "A4-b"},
@@ -264,7 +266,7 @@ class TestA3A4Idempotency:
 # I1/I2 - kho
 # --------------------------------------------------------------------------
 class TestI1I2Inventory:
-    def test_issue_more_than_balance_is_409_and_balance_unchanged(self, api):
+    async def test_issue_more_than_balance_is_409_and_balance_unchanged(self, api):
         """I1: xuất quá tồn -> 409, balance giữ nguyên.
 
         Reservation is validated atomically at *submit* time: the whole request
@@ -272,8 +274,8 @@ class TestI1I2Inventory:
         the checker queue. The I1 invariant (balance unchanged) therefore holds
         after a rejected submit.
         """
-        m = api.as_user("demo_maker")
-        before = m.c.get(
+        m = await api.as_user("demo_maker")
+        before = await m.c.get(
             "/inventory/balances",
             headers=m.h("demo_maker"),
             params={"location_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
@@ -282,7 +284,7 @@ class TestI1I2Inventory:
         assert before.status_code == 200, before.text[:300]
         qty_before = before.json()["balances"][0]["quantity"]
 
-        r = m.c.post(
+        r = await m.c.post(
             "/inventory/requests",
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "issue",
@@ -292,13 +294,13 @@ class TestI1I2Inventory:
         )
         assert r.status_code in (200, 201), r.text[:300]
         rid = r.json()["id"]
-        sub = m.c.post(f"/inventory/requests/{rid}/submit", headers=m.h("demo_maker"))
+        sub = await m.c.post(f"/inventory/requests/{rid}/submit", headers=m.h("demo_maker"))
         assert sub.status_code == 409, (
             f"I1: submit xuất quá tồn trả {sub.status_code} (mong đợi 409 INSUFFICIENT_STOCK)"
         )
         assert_error_code(sub, "INSUFFICIENT_STOCK", "I1")
 
-        after = m.c.get(
+        after = await m.c.get(
             "/inventory/balances",
             headers=m.h("demo_maker"),
             params={"location_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
@@ -308,10 +310,10 @@ class TestI1I2Inventory:
             "I1: balance thay đổi dù approve thất bại"
         )
 
-    def test_transfer_creates_two_movements_and_preserves_total(self, api):
+    async def test_transfer_creates_two_movements_and_preserves_total(self, api):
         """I2: chuyển kho -> hai movement, tổng lượng bảo toàn."""
-        m = api.as_user("demo_maker")
-        r = m.c.post(
+        m = await api.as_user("demo_maker")
+        r = await m.c.post(
             "/inventory/requests",
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "transfer",
@@ -322,14 +324,14 @@ class TestI1I2Inventory:
         )
         assert r.status_code in (200, 201), r.text[:300]
         rid = r.json()["id"]
-        m.c.post(f"/inventory/requests/{rid}/submit", headers=m.h("demo_maker"))
-        ap = api.c.post(
+        await m.c.post(f"/inventory/requests/{rid}/submit", headers=m.h("demo_maker"))
+        ap = await api.c.post(
             f"/inventory/requests/{rid}/approve",
             headers={**api.h("demo_checker"), "Idempotency-Key": str(uuid.uuid4())},
         )
         assert ap.status_code in (200, 201), f"I2: approve trả {ap.status_code}: {ap.text[:300]}"
 
-        mv = api.c.get("/inventory/movements", headers=api.h("demo_maker"))
+        mv = await api.c.get("/inventory/movements", headers=api.h("demo_maker"))
         rows = [x for x in mv.json().get("movements", []) if x.get("request_id") == rid]
         assert len(rows) == 2, f"I2: mong đợi 2 movement (source -qty / dest +qty), nhận {len(rows)}"
         total = sum(float(x["quantity_signed"]) for x in rows)
@@ -340,23 +342,23 @@ class TestI1I2Inventory:
 # I3 - serial
 # --------------------------------------------------------------------------
 class TestI3Serial:
-    def test_duplicate_serial_rejected(self, api):
-        m = api.as_user("demo_maker")
+    async def test_duplicate_serial_rejected(self, api):
+        m = await api.as_user("demo_maker")
         serial = f"DEMO-DUP-{uuid.uuid4().hex[:8].upper()}"
         payload = {"item_id": "cccccccc-cccc-4ccc-8ccc-ccccccccccc2",
                    "location_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
                    "serial": serial}
-        r1 = api.c.post("/inventory/assets",
+        r1 = await api.c.post("/inventory/assets",
                         headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
                         json=payload)
         assert r1.status_code in (200, 201), f"I3 tạo lần 1: {r1.status_code} {r1.text[:300]}"
-        r2 = api.c.post("/inventory/assets",
+        r2 = await api.c.post("/inventory/assets",
                         headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
                         json=payload)
         assert r2.status_code == 409, (
             f"I3: tạo serial trùng trả {r2.status_code} (mong đợi 409 DUPLICATE_SERIAL)"
         )
-        assets = api.c.get("/inventory/assets", headers=api.h("demo_maker"),
+        assets = await api.c.get("/inventory/assets", headers=api.h("demo_maker"),
                            params={"serial": serial})
         rows = [a for a in assets.json().get("assets", []) if a.get("serial") == serial]
         assert len(rows) == 1, f"I3: có {len(rows)} asset cùng serial (mong đợi đúng 1)"
@@ -366,9 +368,9 @@ class TestI3Serial:
 # C1/C2/C3 - ledger quỹ
 # --------------------------------------------------------------------------
 class TestC1C2C3Cash:
-    def _create_cash(self, api, maker, kind, amount, reason, supervisor_pin="123456"):
-        m = api.as_user(maker)
-        r = m.c.post(
+    async def _create_cash(self, api, maker, kind, amount, reason, supervisor_pin="123456"):
+        m = await api.as_user(maker)
+        r = await m.c.post(
             "/cash-sim/requests",
             headers={**m.h(maker), "Idempotency-Key": str(uuid.uuid4())},
             json={"cashbox_id": "11111111-1111-4111-8111-111111111111",
@@ -376,24 +378,24 @@ class TestC1C2C3Cash:
         )
         assert r.status_code in (200, 201), f"tạo {kind}: {r.status_code} {r.text[:300]}"
         rid = r.json()["id"]
-        sub = m.c.post(f"/cash-sim/requests/{rid}/submit", headers=m.h(maker))
+        sub = await m.c.post(f"/cash-sim/requests/{rid}/submit", headers=m.h(maker))
         assert sub.status_code in (200, 201), f"submit: {sub.status_code} {sub.text[:300]}"
         payload = {}
         if supervisor_pin is not None:
             payload["supervisor_pin"] = supervisor_pin
-        ap = api.c.post(
+        ap = await api.c.post(
             f"/cash-sim/requests/{rid}/approve",
             headers={**api.h("demo_checker"), "Idempotency-Key": str(uuid.uuid4())},
             json=payload,
         )
         return rid, ap
 
-    def test_payment_beyond_balance_is_409_no_journal(self, api):
+    async def test_payment_beyond_balance_is_409_no_journal(self, api):
         """C1: chi quá quỹ demo -> 409, không journal."""
-        journals_before = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
+        journals_before = await api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
         n_before = len(journals_before.json().get("journals", [])) if journals_before.status_code == 200 else None
 
-        bal_resp = api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
+        bal_resp = await api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
         current_bal = Decimal("0")
         if bal_resp.status_code == 200:
             row = next(
@@ -405,21 +407,21 @@ class TestC1C2C3Cash:
                 current_bal = Decimal(str(row["amount"]))
         excess_amount = str(current_bal + Decimal("1000000000.00"))
 
-        rid, ap = self._create_cash(api, "demo_maker", "payment", excess_amount, "C1 chi qua quy", supervisor_pin="123456")
+        rid, ap = await self._create_cash(api, "demo_maker", "payment", excess_amount, "C1 chi qua quy", supervisor_pin="123456")
         assert ap.status_code == 409, (
             f"C1: chi quá quỹ trả {ap.status_code} (mong đợi 409 INSUFFICIENT_SIM_CASH): "
             f"{ap.text[:300]}"
         )
         assert_error_code(ap, "INSUFFICIENT_SIM_CASH", "C1")
 
-        after = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
+        after = await api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
         n_after = len(after.json().get("journals", [])) if after.status_code == 200 else None
         if n_before is not None and n_after is not None:
             assert n_after == n_before, "C1: journal vẫn được tạo dù approve thất bại"
 
-    def test_receipt_posts_balanced_journal(self, api):
+    async def test_receipt_posts_balanced_journal(self, api):
         """C2: thu hợp lệ -> debit=credit, balance đúng Decimal."""
-        bal_before_resp = api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
+        bal_before_resp = await api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
         assert bal_before_resp.status_code == 200
         row_before = next(
             (b for b in bal_before_resp.json().get("balanes", bal_before_resp.json().get("balances", []))
@@ -428,7 +430,7 @@ class TestC1C2C3Cash:
         )
         before_amt = Decimal(str(row_before["amount"])) if row_before else Decimal("0")
 
-        rid, ap = self._create_cash(api, "demo_maker", "receipt", "1000000.00", "C2 thu hop le")
+        rid, ap = await self._create_cash(api, "demo_maker", "receipt", "1000000.00", "C2 thu hop le")
         assert ap.status_code in (200, 201), (
             f"C2: approve thu trả {ap.status_code}: {ap.text[:300]}"
         )
@@ -439,7 +441,7 @@ class TestC1C2C3Cash:
         if "202" in str(ap.status_code):
             pytest.fail("C2: approve trả 202 dù DB chưa post (docs/06 cấm)")
 
-        jr = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
+        jr = await api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
         assert jr.status_code == 200, jr.text[:300]
         journals = jr.json().get("journals", [])
         mine = [j for j in journals if j.get("request_id") == rid]
@@ -454,7 +456,7 @@ class TestC1C2C3Cash:
         cr = sum(float(e["credit"]) for e in entries)
         assert abs(dr - cr) < 1e-9, f"C2: tổng debit {dr} != tổng credit {cr}"
 
-        bal = api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
+        bal = await api.c.get("/cash-sim/balances", headers=api.h("demo_checker"))
         row = next(
             (b for b in bal.json().get("balanes", bal.json().get("balances", []))
              if b.get("cashbox_id") == "11111111-1111-4111-8111-111111111111"),
@@ -466,19 +468,19 @@ class TestC1C2C3Cash:
             f"C2: balance sau receipt = {row['amount']}, mong đợi {expected_amt}"
         )
 
-    def test_reversal_creates_new_balanced_journal(self, api):
+    async def test_reversal_creates_new_balanced_journal(self, api):
         """C3: reversal -> journal mới cân, original nguyên vẹn."""
-        rid, ap = self._create_cash(api, "demo_maker", "receipt", "500000.00", "C3 goc")
+        rid, ap = await self._create_cash(api, "demo_maker", "receipt", "500000.00", "C3 goc")
         assert ap.status_code in (200, 201), f"C3: không post được phiếu gốc: {ap.text[:300]}"
 
-        rev = api.c.post(
+        rev = await api.c.post(
             f"/cash-sim/requests/{rid}/reverse",
             headers={**api.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"reason": "C3 reversal"},
         )
         assert rev.status_code in (200, 201), f"C3: {rev.status_code} {rev.text[:300]}"
 
-        jr = api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
+        jr = await api.c.get("/cash-sim/journals", headers=api.h("demo_checker"))
         journals = jr.json().get("journals", [])
         orig = next((j for j in journals if j.get("request_id") == rid), None)
         assert orig is not None, "C3: journal gốc biến mất sau reversal"
@@ -496,10 +498,10 @@ class TestC1C2C3Cash:
 # S1 - phân quyền
 # --------------------------------------------------------------------------
 class TestS1Authorization:
-    def test_user_without_scope_gets_403_or_404(self, api):
+    async def test_user_without_scope_gets_403_or_404(self, api):
         """S1: user không có scope -> 403/404 theo policy, không lộ dữ liệu."""
-        a = api.as_user("demo_auditor")  # chỉ có audit.read/inventory.read/cash.read
-        r = a.c.post(
+        a = await api.as_user("demo_auditor")  # chỉ có audit.read/inventory.read/cash.read
+        r = await a.c.post(
             "/cash-sim/requests",
             headers={**a.h("demo_auditor"), "Idempotency-Key": str(uuid.uuid4())},
             json={"cashbox_id": "11111111-1111-4111-8111-111111111111",
@@ -513,10 +515,10 @@ class TestS1Authorization:
         for leak in ("traceback", "sqlalchemy", "password_hash", "select "):
             assert leak not in body, f"S1: response lộ thông tin nội bộ {leak!r}"
 
-    def test_auditor_cannot_approve(self, api):
-        a = api.as_user("demo_auditor")
+    async def test_auditor_cannot_approve(self, api):
+        a = await api.as_user("demo_auditor")
         # inbox là read; kiểm tra approve một phiếu bất kỳ
-        r2 = a.c.post(
+        r2 = await a.c.post(
             "/cash-sim/requests/22222222-2222-4222-8222-222222222222/approve",
             headers={**a.h("demo_auditor"), "Idempotency-Key": str(uuid.uuid4())},
         )
@@ -524,7 +526,7 @@ class TestS1Authorization:
             f"S1: auditor gọi approve trả {r2.status_code}, mong đợi 403 (thiếu cash.approve)"
         )
 
-    def test_unauthenticated_gets_401(self, api):
+    async def test_unauthenticated_gets_401(self, api):
         # chỉ dùng path TỒN TẠI trong OpenAPI; path docs/06 `/me` kiểm riêng bên dưới
         for path in (
             "/inventory/items",
@@ -533,24 +535,24 @@ class TestS1Authorization:
             "/auth/me",
             "/activity",
         ):
-            r = api.c.get(path)
+            r = await api.c.get(path)
             assert r.status_code == 401, (
                 f"S1: GET {path} không kèm token trả {r.status_code}, mong đợi 401 "
                 "(docs/06/08: deny by default)"
             )
 
-    def test_documented_me_path_exists(self, api):
+    async def test_documented_me_path_exists(self, api):
         """docs/06 dòng 9 khai báo `GET /me`; code triển khai `/auth/me` -> lệch contract."""
-        r = api.c.get("/me")
+        r = await api.c.get("/me")
         assert r.status_code != 404, (
             "S1/docs-06: `GET /me` được khai báo trong docs/06 nhưng trả 404; "
             "OpenAPI thực tế chỉ có `GET /auth/me` -> docs và code không khớp nhau."
         )
 
-    def test_object_level_authorization(self, api):
+    async def test_object_level_authorization(self, api):
         """docs/08: 'danh sách/API object-level authorization'."""
-        m = api.as_user("demo_maker")
-        created = m.c.post(
+        m = await api.as_user("demo_maker")
+        created = await m.c.post(
             "/inventory/requests",
             headers={**m.h("demo_maker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"kind": "issue", "lines": []},
@@ -560,8 +562,8 @@ class TestS1Authorization:
             f"{created.status_code} {created.text[:300]}"
         )
         rid = created.json()["id"]
-        o = api.as_user("demo_auditor")
-        r = o.c.get(f"/inventory/requests/{rid}", headers=o.h("demo_auditor"))
+        o = await api.as_user("demo_auditor")
+        r = await o.c.get(f"/inventory/requests/{rid}", headers=o.h("demo_auditor"))
         assert r.status_code in (403, 404), (
             f"S1: user khác scope đọc được object không thuộc quyền "
             f"(GET trả {r.status_code})"
@@ -572,8 +574,8 @@ class TestS1Authorization:
 # R1 - đối soát
 # --------------------------------------------------------------------------
 class TestR1Reconciliation:
-    def test_reconciliation_detects_planted_mismatch(self, api):
-        r = api.c.post(
+    async def test_reconciliation_detects_planted_mismatch(self, api):
+        r = await api.c.post(
             "/reconciliations",
             headers={**api.h("demo_checker"), "Idempotency-Key": str(uuid.uuid4())},
             json={"scope": "cash"},
@@ -602,37 +604,46 @@ class TestR1Reconciliation:
 # E1 - SSE
 # --------------------------------------------------------------------------
 class TestE1SSE:
-    def test_sse_replay_after_reconnect(self, api):
+    async def test_sse_replay_after_reconnect(self, api):
 
         # S7 — SSE stream phát toàn bộ outbox event nên BẮT BUỘC có token +
         # capability (`activity:view` / `audit:view`).
         headers = api.h("demo_maker")
-        with api.c.stream("GET", "/events/stream", headers=headers) as r:
+        async with api.c.stream("GET", "/events/stream", headers=headers) as r:
             assert r.status_code == 200, f"E1: SSE trả {r.status_code}"
             ctype = r.headers.get("content-type", "")
             assert "text/event-stream" in ctype, f"E1: content-type = {ctype!r}"
             assert "access_token" not in str(r.url).lower() and "token=" not in str(r.url).lower(), (
                 "E1: token không được gửi trong URL (docs/06)"
             )
-            chunk = next(r.iter_lines(), "")
+            chunk = ""
+            async for line in r.aiter_lines():
+                if line:
+                    chunk = line
+                    break
             assert chunk, "E1: không nhận được event nào"
 
         # reconnect với cursor quá cũ -> resync_required
-        with api.c.stream(
+        lines = []
+        async with api.c.stream(
             "GET", "/events/stream", params={"cursor": "0" * 32}, headers=headers
         ) as r2:
-            body = "".join(list(r2.iter_lines())[:5])
+            async for line in r2.aiter_lines():
+                lines.append(line)
+                if len(lines) >= 5:
+                    break
+        body = "".join(lines)
         assert "resync_required" in body or "heartbeat" in body, (
             f"E1: replay theo cursor không hoạt động; nhận: {body[:300]!r}"
         )
 
-    def test_sse_requires_authentication(self, api):
+    async def test_sse_requires_authentication(self, api):
         """S7 — không token thì stream phải từ chối (401)."""
-        with api.c.stream("GET", "/events/stream") as r:
+        async with api.c.stream("GET", "/events/stream") as r:
             assert r.status_code == 401, f"E1: SSE không token trả {r.status_code}"
 
-    def test_rest_returns_final_state_after_sse_loss(self, api):
+    async def test_rest_returns_final_state_after_sse_loss(self, api):
         """E1: 'GET trả state cuối' sau khi SSE rớt."""
-        r = api.c.get("/activity", headers=api.h("demo_maker"))
+        r = await api.c.get("/activity", headers=api.h("demo_maker"))
         assert r.status_code == 200, f"E1: GET /activity trả {r.status_code}"
         assert "events" in r.json(), "E1: GET /activity phải trả snapshot feed"

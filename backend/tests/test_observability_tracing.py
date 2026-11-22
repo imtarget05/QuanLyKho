@@ -1,6 +1,6 @@
 import httpx
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import opentelemetry.context as context
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -13,7 +13,7 @@ _provider = TracerProvider()
 _provider.add_span_processor(SimpleSpanProcessor(_exporter))
 
 
-def test_fastapi_trace_honors_w3c_traceparent() -> None:
+async def test_fastapi_trace_honors_w3c_traceparent() -> None:
     _exporter.clear()
 
     app = FastAPI()
@@ -22,11 +22,17 @@ def test_fastapi_trace_honors_w3c_traceparent() -> None:
 
     trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
     parent_span_id = "00f067aa0ba902b7"
-    with TestClient(app) as client:
-        response = client.get(
-            "/health/live",
-            headers={"traceparent": f"00-{trace_id}-{parent_span_id}-01"},
-        )
+    token = context.attach(context.set_value("suppress_instrumentation", True))
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            response = await client.get(
+                "/health/live",
+                headers={"traceparent": f"00-{trace_id}-{parent_span_id}-01"},
+            )
+    finally:
+        context.detach(token)
 
     span = next(span for span in _exporter.get_finished_spans() if span.name == "GET /health/live")
     assert response.status_code == 200
@@ -34,7 +40,7 @@ def test_fastapi_trace_honors_w3c_traceparent() -> None:
     assert f"{span.parent.span_id:016x}" == parent_span_id
 
 
-def test_httpx_dependency_span_inherits_server_trace() -> None:
+async def test_httpx_dependency_span_inherits_server_trace() -> None:
     _exporter.clear()
 
     app = FastAPI()
@@ -48,8 +54,10 @@ def test_httpx_dependency_span_inherits_server_trace() -> None:
             response = await client.get("https://sheets.example.test/health")
         return response.json()
 
-    with TestClient(app) as client:
-        response = client.get("/sync")
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get("/sync")
 
     spans = _exporter.get_finished_spans()
     server_span = next(span for span in spans if span.name == "GET /sync")

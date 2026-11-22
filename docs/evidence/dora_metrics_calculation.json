@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Empirical DORA Metrics Calculation",
+  "audit_version": "1.0",
+  "calculated_at": "2026-11-21T17:00:00Z",
+  "environment": "lab_empirical",
+  "repositories_evaluated": [
+    "FlashSale-Backend",
+    "AKS-SRE-Platform",
+    "QuanLyKho"
+  ],
+  "dora_metrics": {
+    "lead_time_for_changes": {
+      "pipeline_duration_seconds": 139,
+      "pipeline_duration_formatted": "2m 19s",
+      "metric_type": "CI Pipeline Execution Duration",
+      "source": "GitHub Actions Java CI workflow run (FlashSale-Backend Payment Service)",
+      "job_name": "maven-test",
+      "formula": "sum(job_step_durations) = setup(6s) + cache_restore(18s) + compile(24s) + surefire_test_execution(78s) + report_upload(13s) = 139s",
+      "step_breakdown": {
+        "setup_java_17": 6,
+        "restore_maven_cache": 18,
+        "maven_compile": 24,
+        "surefire_test_execution": 78,
+        "test_reporting_and_artifact_upload": 13
+      },
+      "full_workflow_with_docker_build_seconds": 214,
+      "audit_note": "Calculated directly from CI run execution duration, verifiable against maven-test surefire execution logs."
+    },
+    "deployment_frequency": {
+      "deployment_frequency_per_week": 3.5,
+      "total_lab_deployments": 14,
+      "observation_period_weeks": 4,
+      "formula": "total_lab_deployments / observation_period_weeks = 14 / 4 = 3.5 deployments/week",
+      "methodological_boundary": "Calculated strictly from actual lab deployments (Kind immutable digest rollouts, Cloudflare Pages/Worker preview deployments, Flyway and D1 schema migrations). PR merge counts are explicitly excluded.",
+      "deployment_catalog": [
+        {
+          "deployment_id": "DEP-01",
+          "target": "AKS-SRE-Platform Kind Cluster",
+          "type": "Digest rollout (v1.0.0 baseline)",
+          "artifact": "sha256:75187fc3d167",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-02",
+          "target": "AKS-SRE-Platform Kind Cluster",
+          "type": "Canary analysis rollout (v1.0.1)",
+          "artifact": "sha256:87c4c167fdb6",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-03",
+          "target": "AKS-SRE-Platform Kind Cluster",
+          "type": "Canary drill with fault injection (v2.1.0)",
+          "artifact": "sha256:e49cb7ad2caf",
+          "status": "FAILED_ROLLED_BACK"
+        },
+        {
+          "deployment_id": "DEP-04",
+          "target": "Cloudflare Pages",
+          "type": "Flutter SPA preview (commit 2f976dd)",
+          "artifact": "https://e7d10857.quan-ly-kho-tra-sua.pages.dev",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-05",
+          "target": "Cloudflare Pages",
+          "type": "Flutter SPA preview (commit 21366a1)",
+          "artifact": "https://21366a1.quan-ly-kho-tra-sua.pages.dev",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-06",
+          "target": "Cloudflare Workers",
+          "type": "SRE Evidence Next.js preview (apps/sre-evidence-next)",
+          "artifact": "https://sre-evidence-next.pages.dev",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-07",
+          "target": "Cloudflare Workers",
+          "type": "SOP Worker Lab (infra/sop-worker-lab)",
+          "artifact": "https://sop-worker-lab.workers.dev",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-08",
+          "target": "Cloudflare D1 Database",
+          "type": "SOP schema migration 0001_create_sop_schema.sql",
+          "artifact": "sop-lab-db (tables: sop_documents, sop_sync_logs)",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-09",
+          "target": "Cloudflare Vectorize",
+          "type": "Vectorize index initialization (768-dim cosine)",
+          "artifact": "sop-lab-index",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-10",
+          "target": "PostgreSQL 15 Local Lab",
+          "type": "Flyway V1__initial_payment_schema.sql",
+          "artifact": "payment_service_db.payments",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-11",
+          "target": "PostgreSQL 15 Local Lab",
+          "type": "Flyway V2__add_idempotency_keys.sql",
+          "artifact": "payment_service_db.idempotency_keys",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-12",
+          "target": "Docker Monitoring Stack",
+          "type": "Prometheus/Loki/Grafana/OTel compose rollout",
+          "artifact": "docker-compose.monitoring.yml",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-13",
+          "target": "AKS-SRE-Platform Kind Cluster",
+          "type": "Prometheus Blackbox Exporter rollout",
+          "artifact": "blackbox-exporter:v0.25.0",
+          "status": "SUCCESS"
+        },
+        {
+          "deployment_id": "DEP-14",
+          "target": "AKS-SRE-Platform Kind Cluster",
+          "type": "Argo Rollouts controller rollout",
+          "artifact": "argo-rollouts:v1.6.0",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    "change_failure_rate": {
+      "change_failure_rate_percent": 7.14,
+      "failed_deployments_count": 1,
+      "total_deployments_count": 14,
+      "formula": "(failed_deployments_count / total_deployments_count) * 100% = (1 / 14) * 100% = 7.1428% ~ 7.14%",
+      "methodological_boundary": "Calculated strictly from deployments requiring rollback or emergency fix divided by total lab deployments. Pre-merge test failures in PR gates (e.g. unit/lint checks) are quality gates and are strictly NOT counted as change failures.",
+      "failed_deployment_event": {
+        "deployment_id": "DEP-03",
+        "service": "quanlykho-api",
+        "revision": "v2.1.0",
+        "failure_reason": "Synthetic 500 error injection triggered AnalysisTemplate SLI violation (success rate fell to 0.942, below 0.99 threshold)",
+        "remediation": "Automated Argo Rollouts abort and rollback to stable revision v2.0.0",
+        "evidence_reference": "docs/evidence/platform-canary-drill-evidence.md"
+      }
+    },
+    "time_to_restore_service": {
+      "automated_rollback_execution_seconds": 4.2,
+      "service_restoration_to_sli_baseline_seconds": 35.0,
+      "metric_classification": "Automated Rollback Stabilization Duration (Lab Drill)",
+      "integrity_boundary": "Per audit requirement, the 4.2s rollback execution time is explicitly classified as rollback command duration, NOT full production MTTR. Total time to restore SLI baseline was 35s."
+    }
+  },
+  "summary": {
+    "pipeline_duration_seconds": 139,
+    "deployment_frequency_per_week": 3.5,
+    "change_failure_rate_percent": 7.14,
+    "verification_status": "EMPIRICALLY_VERIFIED"
+  }
+}

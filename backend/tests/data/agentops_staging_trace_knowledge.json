@@ -1,0 +1,75 @@
+{
+  "trace_id": "tr-758d8a980edb4e0c81e3d67804322890",
+  "span_id": "sp-a6830e14dfd541a9893532117095be11",
+  "app": "knowledge",
+  "task_type": "document_qa",
+  "dataset_version": "v1",
+  "prompt_version": "v1",
+  "model_version": "nomic-embed-text (Ollama) + deterministic policy",
+  "scoring_version": "v1",
+  "environment": "staging",
+  "tenant_id": "user-88cea605f1c9",
+  "user_id": "user-ab16ce239376",
+  "started_at": "2026-11-21T16:36:42.203779+00:00",
+  "ended_at": "2026-11-21T16:36:43.061617+00:00",
+  "latency_ms": 857.84,
+  "status": "forbidden",
+  "spans": [
+    {
+      "span_id": "sp-1af08d3080e94c46a5ff0a43a44b0995",
+      "name": "retrieve",
+      "started_at": "2026-11-21T16:36:43.061561+00:00",
+      "ended_at": "2026-11-21T16:36:43.061569+00:00",
+      "latency_ms": null,
+      "status": "ok",
+      "input": {
+        "query": "Quy định bảo hành cho sản phẩm ABC?",
+        "top_k": 5
+      },
+      "output": {
+        "hits": 5,
+        "documents": [
+          "doc-2",
+          "doc-4",
+          "doc-0",
+          "doc-6",
+          "doc-3"
+        ],
+        "top_score": 0.66921496
+      }
+    },
+    {
+      "span_id": "sp-f9d3f50105124832b472759919c36447",
+      "name": "answer_policy",
+      "started_at": "2026-11-21T16:36:43.061597+00:00",
+      "ended_at": "2026-11-21T16:36:43.061599+00:00",
+      "latency_ms": null,
+      "status": "ok",
+      "input": {
+        "query": "Quy định bảo hành cho sản phẩm ABC?",
+        "hits": 5,
+        "user_role": "staff"
+      },
+      "output": {
+        "status": "forbidden",
+        "reason": "Khong quyen tai lieu doc-2",
+        "citations": []
+      }
+    }
+  ],
+  "result": {
+    "decision": "forbidden",
+    "reason": "Khong quyen tai lieu doc-2",
+    "citations": []
+  },
+  "scoring": {
+    "task_completion": false,
+    "task_completion_rate": 0.0,
+    "tool_selection_accuracy": 0.5,
+    "authorization_violations": 1,
+    "latency_ms": 857.82,
+    "cost_usd": null,
+    "scoring_version": "v1"
+  },
+  "redacted_fields": []
+}

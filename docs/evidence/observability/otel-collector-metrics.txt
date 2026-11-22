@@ -1,0 +1,27 @@
+# HELP otelcol_exporter_queue_capacity Fixed capacity of the retry queue (in batches)
+# TYPE otelcol_exporter_queue_capacity gauge
+otelcol_exporter_queue_capacity{exporter="loki",service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 1000
+# HELP otelcol_exporter_queue_size Current size of the retry queue (in batches)
+# TYPE otelcol_exporter_queue_size gauge
+otelcol_exporter_queue_size{data_type="logs",exporter="loki",service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 0
+# HELP otelcol_process_cpu_seconds Total CPU user and system time in seconds
+# TYPE otelcol_process_cpu_seconds counter
+otelcol_process_cpu_seconds{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 0.33
+# HELP otelcol_process_memory_rss Total physical memory (resident set size)
+# TYPE otelcol_process_memory_rss gauge
+otelcol_process_memory_rss{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 1.50503424e+08
+# HELP otelcol_process_runtime_heap_alloc_bytes Bytes of allocated heap objects (see 'go doc runtime.MemStats.HeapAlloc')
+# TYPE otelcol_process_runtime_heap_alloc_bytes gauge
+otelcol_process_runtime_heap_alloc_bytes{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 3.8859216e+07
+# HELP otelcol_process_runtime_total_alloc_bytes Cumulative bytes allocated for heap objects (see 'go doc runtime.MemStats.TotalAlloc')
+# TYPE otelcol_process_runtime_total_alloc_bytes counter
+otelcol_process_runtime_total_alloc_bytes{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 5.3692816e+07
+# HELP otelcol_process_runtime_total_sys_memory_bytes Total bytes of memory obtained from the OS (see 'go doc runtime.MemStats.Sys')
+# TYPE otelcol_process_runtime_total_sys_memory_bytes gauge
+otelcol_process_runtime_total_sys_memory_bytes{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 6.1429e+07
+# HELP otelcol_process_uptime Uptime of the process
+# TYPE otelcol_process_uptime counter
+otelcol_process_uptime{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 166.066431049
+# HELP target_info Target metadata
+# TYPE target_info gauge
+target_info{service_instance_id="720f5732-98ca-4fc8-a7bc-ab11006a603d",service_name="otelcol-contrib",service_version="0.106.0"} 1

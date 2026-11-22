@@ -21,8 +21,8 @@ DEMO_PASSWORD = "DemoPass123!"
 LOCATION_BAR = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1"
 
 
-def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
-    response = client.post("/auth/login", data={"username": username, "password": password})
+async def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
+    response = await client.post("/auth/login", data={"username": username, "password": password})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -31,19 +31,19 @@ def _write_headers(headers: dict[str, str]) -> dict[str, str]:
     return {**headers, "Idempotency-Key": str(uuid.uuid4())}
 
 
-def _create_request(client, headers: dict[str, str], location_id: str = LOCATION_BAR):
-    return client.post(
+async def _create_request(client, headers: dict[str, str], location_id: str = LOCATION_BAR):
+    return await client.post(
         "/inventory/requests",
         headers=_write_headers(headers),
         json={"kind": "issue", "source_id": location_id, "lines": []},
     )
 
 
-def _page_ids(client, headers: dict[str, str]) -> set[str]:
+async def _page_ids(client, headers: dict[str, str]) -> set[str]:
     ids: set[str] = set()
     cursor = None
     while True:
-        response = client.get(
+        response = await client.get(
             "/inventory/requests",
             headers=headers,
             params={"limit": 100, **({"cursor": cursor} if cursor else {})},
@@ -57,7 +57,7 @@ def _page_ids(client, headers: dict[str, str]) -> set[str]:
 
 
 @pytest.fixture
-def isolated_manager():
+async def isolated_manager():
     """Create a manager and location in a branch unrelated to BAR-MAIN."""
     branch_id = uuid.uuid4()
     user_id = uuid.uuid4()
@@ -65,119 +65,115 @@ def isolated_manager():
     username = f"uat_manager_{uuid.uuid4().hex[:12]}"
     password = f"Uat-{uuid.uuid4().hex}!"
 
-    async def _insert() -> None:
-        async with AsyncSessionLocal() as db:
-            db.add(Branch(id=branch_id, code=f"UAT-{uuid.uuid4().hex[:10]}", name="UAT isolated branch"))
-            db.add(User(
-                id=user_id,
-                username=username,
-                password_hash=get_password_hash(password),
-                status="active",
-                display_name_demo="UAT manager",
-                branch_id=branch_id,
-            ))
-            db.add(UserRole(user_id=user_id, role_code="inventory_manager"))
-            db.add(Location(
-                id=location_id,
-                code=f"UAT-{uuid.uuid4().hex[:10]}",
-                name="UAT isolated location",
-                active=True,
-                branch_id=branch_id,
-            ))
-            await db.commit()
+    async with AsyncSessionLocal() as db:
+        db.add(Branch(id=branch_id, code=f"UAT-{uuid.uuid4().hex[:10]}", name="UAT isolated branch"))
+        db.add(User(
+            id=user_id,
+            username=username,
+            password_hash=get_password_hash(password),
+            status="active",
+            display_name_demo="UAT manager",
+            branch_id=branch_id,
+        ))
+        db.add(UserRole(user_id=user_id, role_code="inventory_manager"))
+        db.add(Location(
+            id=location_id,
+            code=f"UAT-{uuid.uuid4().hex[:10]}",
+            name="UAT isolated location",
+            active=True,
+            branch_id=branch_id,
+        ))
+        await db.commit()
 
-    asyncio.run(_insert())
     return username, password, str(location_id)
 
 
-def _role_only_user(role: str) -> tuple[str, str]:
+async def _role_only_user(role: str) -> tuple[str, str]:
     user_id = uuid.uuid4()
     username = f"uat_{role}_{uuid.uuid4().hex[:12]}"
     password = f"Uat-{uuid.uuid4().hex}!"
 
-    async def _insert() -> None:
-        async with AsyncSessionLocal() as db:
-            db.add(User(
-                id=user_id,
-                username=username,
-                password_hash=get_password_hash(password),
-                status="active",
-                display_name_demo=f"UAT {role} only",
-            ))
-            db.add(UserRole(user_id=user_id, role_code=role))
-            await db.commit()
+    async with AsyncSessionLocal() as db:
+        db.add(User(
+            id=user_id,
+            username=username,
+            password_hash=get_password_hash(password),
+            status="active",
+            display_name_demo=f"UAT {role} only",
+        ))
+        db.add(UserRole(user_id=user_id, role_code=role))
+        await db.commit()
 
-    asyncio.run(_insert())
     return username, password
 
 
 @pytest.fixture
-def admin_only(client):
+async def admin_only():
     """Admin must not gain create permission only through a second staff role."""
-    return _role_only_user("admin")
+    return await _role_only_user("admin")
 
 
 @pytest.fixture
-def approver_only(client):
-    return _role_only_user("approver")
+async def approver_only():
+    return await _role_only_user("approver")
 
 
-def test_role_matrix_create_and_auditor_read_without_write(client, isolated_manager, approver_only):
+async def test_role_matrix_create_and_auditor_read_without_write(client, isolated_manager, approver_only):
     """Staff and manager create; auditor reads another user's request only."""
-    maker = _login(client, "demo_maker")
-    checker = _login(client, *approver_only)
-    auditor = _login(client, "demo_auditor")
-    manager = _login(client, isolated_manager[0], isolated_manager[1])
+    maker = await _login(client, "demo_maker")
+    checker = await _login(client, *approver_only)
+    auditor = await _login(client, "demo_auditor")
+    manager = await _login(client, isolated_manager[0], isolated_manager[1])
 
-    created = _create_request(client, maker)
+    created = await _create_request(client, maker)
     assert created.status_code == 201, created.text
     req_id = created.json()["id"]
 
-    manager_created = _create_request(client, manager, isolated_manager[2])
+    manager_created = await _create_request(client, manager, isolated_manager[2])
     assert manager_created.status_code == 201, manager_created.text
 
     # Approver is a checker role, not a creator; auditor is read-only.
-    assert _create_request(client, checker).status_code == 403
-    assert _create_request(client, auditor).status_code == 403
-    assert req_id in _page_ids(client, auditor)
-    assert client.get(f"/inventory/requests/{req_id}", headers=auditor).status_code == 200
+    assert (await _create_request(client, checker)).status_code == 403
+    assert (await _create_request(client, auditor)).status_code == 403
+    assert req_id in (await _page_ids(client, auditor))
+    assert (await client.get(f"/inventory/requests/{req_id}", headers=auditor)).status_code == 200
 
 
-def test_admin_only_role_can_create_request(client, admin_only):
-    admin = _login(client, *admin_only)
-    created = _create_request(client, admin)
+async def test_admin_only_role_can_create_request(client, admin_only):
+    admin = await _login(client, *admin_only)
+    created = await _create_request(client, admin)
     assert created.status_code == 201, created.text
 
 
-def test_branch_scope_denies_manager_cross_branch_read_write_and_approval(client, isolated_manager):
-    maker = _login(client, "demo_maker")
-    manager = _login(client, isolated_manager[0], isolated_manager[1])
-    created = _create_request(client, maker)
+async def test_branch_scope_denies_manager_cross_branch_read_write_and_approval(client, isolated_manager):
+    maker = await _login(client, "demo_maker")
+    manager = await _login(client, isolated_manager[0], isolated_manager[1])
+    created = await _create_request(client, maker)
     assert created.status_code == 201, created.text
     req_id = created.json()["id"]
 
-    assert _create_request(client, manager, LOCATION_BAR).status_code == 404
-    assert client.get(f"/inventory/requests/{req_id}", headers=manager).status_code == 404
-    assert req_id not in _page_ids(client, manager)
-    denied = client.post(
+    assert (await _create_request(client, manager, LOCATION_BAR)).status_code == 404
+    assert (await client.get(f"/inventory/requests/{req_id}", headers=manager)).status_code == 404
+    assert req_id not in (await _page_ids(client, manager))
+    denied = await client.post(
         f"/inventory/requests/{req_id}/approve",
         headers=_write_headers(manager),
     )
     assert denied.status_code == 404
 
 
-def test_admin_cannot_approve_own_submitted_request(client, admin_only):
+async def test_admin_cannot_approve_own_submitted_request(client, admin_only):
     """Maker != checker still applies when the maker has approval capability."""
-    admin = _login(client, *admin_only)
-    created = _create_request(client, admin)
+    admin = await _login(client, *admin_only)
+    created = await _create_request(client, admin)
     assert created.status_code == 201, created.text
     req_id = created.json()["id"]
-    submitted = client.post(
+    submitted = await client.post(
         f"/inventory/requests/{req_id}/submit",
         headers=_write_headers(admin),
     )
     assert submitted.status_code == 200, submitted.text
-    denied = client.post(
+    denied = await client.post(
         f"/inventory/requests/{req_id}/approve",
         headers=_write_headers(admin),
     )
@@ -185,14 +181,14 @@ def test_admin_cannot_approve_own_submitted_request(client, admin_only):
     assert denied.json()["error"]["code"] == "SELF_APPROVAL_FORBIDDEN"
 
 
-def test_checker_approves_staff_receipt_while_auditor_cannot(client):
-    maker = _login(client, "demo_maker")
-    checker = _login(client, "demo_checker")
-    auditor = _login(client, "demo_auditor")
-    items = client.get("/inventory/items", headers=maker)
+async def test_checker_approves_staff_receipt_while_auditor_cannot(client):
+    maker = await _login(client, "demo_maker")
+    checker = await _login(client, "demo_checker")
+    auditor = await _login(client, "demo_auditor")
+    items = await client.get("/inventory/items", headers=maker)
     assert items.status_code == 200, items.text
     item_id = items.json()["items"][0]["id"]
-    created = client.post(
+    created = await client.post(
         "/inventory/requests",
         headers=_write_headers(maker),
         json={
@@ -209,18 +205,18 @@ def test_checker_approves_staff_receipt_while_auditor_cannot(client):
     )
     assert created.status_code == 201, created.text
     request_id = created.json()["id"]
-    submitted = client.post(
+    submitted = await client.post(
         f"/inventory/requests/{request_id}/submit",
         headers=_write_headers(maker),
     )
     assert submitted.status_code == 200, submitted.text
 
-    denied = client.post(
+    denied = await client.post(
         f"/inventory/requests/{request_id}/approve",
         headers=_write_headers(auditor),
     )
     assert denied.status_code == 403
-    approved = client.post(
+    approved = await client.post(
         f"/inventory/requests/{request_id}/approve",
         headers=_write_headers(checker),
     )

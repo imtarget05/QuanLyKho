@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.api.routes import ai_forecasting
 from app.api.routes.auth_utils import get_current_user_with_capabilities
@@ -16,7 +16,7 @@ from app.models.iam import User
 
 
 @pytest.fixture
-def client() -> TestClient:
+async def client() -> AsyncClient:
     app = FastAPI()
     app.include_router(ai_forecasting.router)
 
@@ -24,21 +24,23 @@ def client() -> TestClient:
         return User(id=1, username="tester"), ["inventory:view_balances"]
 
     app.dependency_overrides[get_current_user_with_capabilities] = _override
-    return TestClient(app)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+        c.app = app
+        yield c
 
 
 class TestReorderPointEndpoint:
-    def test_requires_authentication(self, client: TestClient):
+    async def test_requires_authentication(self, client: AsyncClient):
         app = client.app
         app.dependency_overrides.clear()
-        resp = client.post(
+        resp = await client.post(
             "/ai/reorder-point",
             json={"forecast_values": [10, 12, 11], "lead_time_days": 3},
         )
         assert resp.status_code in (401, 403, 422)
 
-    def test_returns_reorder_recommendation(self, client: TestClient):
-        resp = client.post(
+    async def test_returns_reorder_recommendation(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={
                 "forecast_values": [40, 50, 60, 50, 45, 55, 50, 45, 55, 50],
@@ -55,22 +57,22 @@ class TestReorderPointEndpoint:
         assert body["risk_level"] in {"critical", "warning", "healthy"}
         assert body["suggested_order_quantity"] > 0
 
-    def test_rejects_non_positive_lead_time(self, client: TestClient):
-        resp = client.post(
+    async def test_rejects_non_positive_lead_time(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={"forecast_values": [10, 12], "lead_time_days": 0},
         )
         assert resp.status_code == 422
 
-    def test_rejects_empty_forecast(self, client: TestClient):
-        resp = client.post(
+    async def test_rejects_empty_forecast(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={"forecast_values": [], "lead_time_days": 3},
         )
         assert resp.status_code == 422
 
-    def test_rejects_invalid_service_level(self, client: TestClient):
-        resp = client.post(
+    async def test_rejects_invalid_service_level(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={
                 "forecast_values": [10, 12],
@@ -80,8 +82,8 @@ class TestReorderPointEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_rejects_negative_current_stock(self, client: TestClient):
-        resp = client.post(
+    async def test_rejects_negative_current_stock(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={
                 "forecast_values": [10, 12],
@@ -91,8 +93,8 @@ class TestReorderPointEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_rejects_unknown_fields(self, client: TestClient):
-        resp = client.post(
+    async def test_rejects_unknown_fields(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/reorder-point",
             json={
                 "forecast_values": [10, 12],
@@ -104,8 +106,8 @@ class TestReorderPointEndpoint:
 
 
 class TestAnomalyEndpoint:
-    def test_detects_spike(self, client: TestClient):
-        resp = client.post(
+    async def test_detects_spike(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/anomaly",
             json={
                 "actual_demand": 200,
@@ -119,8 +121,8 @@ class TestAnomalyEndpoint:
         assert body["direction"] == "spike"
         assert body["severity"] == "high"
 
-    def test_normal_demand_is_not_anomaly(self, client: TestClient):
-        resp = client.post(
+    async def test_normal_demand_is_not_anomaly(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/anomaly",
             json={
                 "actual_demand": 102,
@@ -133,8 +135,8 @@ class TestAnomalyEndpoint:
         assert body["is_anomaly"] is False
         assert body["direction"] == "normal"
 
-    def test_zero_variance_returns_consistent_payload(self, client: TestClient):
-        resp = client.post(
+    async def test_zero_variance_returns_consistent_payload(self, client: AsyncClient):
+        resp = await client.post(
             "/ai/anomaly",
             json={
                 "actual_demand": 100,

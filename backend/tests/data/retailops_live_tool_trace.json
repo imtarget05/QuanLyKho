@@ -1,0 +1,42 @@
+{
+  "evidence_level": "LOCAL_REAL_MODEL_AND_TEST_DB",
+  "model": "qwen2.5:1.5b",
+  "cases": [
+    {
+      "case": "stock",
+      "intent": "check_stock",
+      "intent_source": "model",
+      "tool_calls": [
+        "get_stock"
+      ],
+      "model_latency_ms": 2003.53
+    },
+    {
+      "case": "draft",
+      "intent": "draft_order",
+      "intent_source": "model",
+      "tool_calls": [
+        "draft_order"
+      ],
+      "model_latency_ms": 828.52
+    },
+    {
+      "case": "status",
+      "intent": "order_status",
+      "intent_source": "model",
+      "tool_calls": [
+        "get_order"
+      ],
+      "model_latency_ms": 945.58
+    },
+    {
+      "case": "cancel",
+      "intent": "cancel_request",
+      "intent_source": "model",
+      "tool_calls": [
+        "cancel_order"
+      ],
+      "model_latency_ms": 758.54
+    }
+  ]
+}

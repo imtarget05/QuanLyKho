@@ -70,7 +70,15 @@ def train_demand_forecast_model(train: pd.DataFrame, test: pd.DataFrame, experim
 
     import os
 
-    artifact_root = os.getenv("MLFLOW_ARTIFACT_ROOT", "/data/mlruns" if os.path.exists("/data") else "./mlruns")
+    from app.services.ml_registry import set_tracking_uri
+
+    # C1: MLflow luôn dùng tracking store cục bộ (mặc định SQLite) thay vì phụ
+    # thuộc trạng thái ambient. `./mlruns` chỉ còn là artifact root — nhờ vậy
+    # các thư mục artifact cũ không bị mlflow file-store nhầm thành experiment
+    # thiếu `meta.yaml`.
+    set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///./mlflow.db"))
+
+    artifact_root = os.getenv("MLFLOW_ARTIFACT_ROOT", "./mlruns")
     client = mlflow.tracking.MlflowClient()
     exp = client.get_experiment_by_name(experiment_name)
     if exp is None:

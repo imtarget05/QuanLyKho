@@ -1,0 +1,168 @@
+{
+  "suite": "QuanLyKho SOP Cloudflare Worker Lab Verification",
+  "timestamp": "2026-11-21T22:53:07.367Z",
+  "project_path": "QuanLyKho/infra/sop-worker-lab",
+  "environment": {
+    "node_version": "v26.5.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "adr_compliance": {
+    "adr_0001": "Verified - Standalone lab isolated from retired cloudflare-worker",
+    "retired_worker_path": "QuanLyKho/infra/cloudflare-worker",
+    "retired_worker_modified": false
+  },
+  "steps": [
+    {
+      "step": "D1_MIGRATION",
+      "migration_file": "migrations/0001_create_sop_schema.sql",
+      "status": "PASSED",
+      "table": "sop_documents",
+      "columns": [
+        "id",
+        "code",
+        "title",
+        "category",
+        "source_file",
+        "section",
+        "content",
+        "vector_id",
+        "created_at"
+      ]
+    },
+    {
+      "step": "HEALTH_CHECK",
+      "status": "PASSED",
+      "response": {
+        "status": "healthy",
+        "lab": "sop-worker-lab",
+        "environment": "lab",
+        "dimension": 768,
+        "bindings": {
+          "d1": {
+            "configured": true,
+            "healthy": true,
+            "database": "sop-lab-db",
+            "error": null
+          },
+          "vectorize": {
+            "configured": true,
+            "healthy": true,
+            "index": "sop-lab-index",
+            "dimension": 768,
+            "error": null
+          }
+        },
+        "timestamp": "2026-11-21T22:53:07.385Z"
+      }
+    },
+    {
+      "step": "DIMENSION_MISMATCH_REJECTION",
+      "status": "PASSED",
+      "cases": [
+        {
+          "input_dimension": 512,
+          "expected_dimension": 768,
+          "http_status": 400,
+          "error_code": "DIMENSION_MISMATCH"
+        },
+        {
+          "input_dimension": 1536,
+          "expected_dimension": 768,
+          "http_status": 400,
+          "error_code": "DIMENSION_MISMATCH"
+        },
+        {
+          "input_dimension": 256,
+          "expected_dimension": 768,
+          "http_status": 400,
+          "error_code": "DIMENSION_MISMATCH"
+        }
+      ]
+    },
+    {
+      "step": "DATASET_SEEDING",
+      "status": "PASSED",
+      "seeded_count": 4,
+      "documents": [
+        {
+          "id": "doc-sop-01",
+          "code": "SOP-01",
+          "title": "Quy trình kiểm soát kép Maker - Checker và thẩm quyền duyệt phiếu",
+          "category": "Dual Control",
+          "vector_id": "vec-sop-01"
+        },
+        {
+          "id": "doc-sop-02",
+          "code": "SOP-02",
+          "title": "Công thức đối soát và bàn giao ca trực",
+          "category": "Shift Handover",
+          "vector_id": "vec-sop-02"
+        },
+        {
+          "id": "doc-sop-03",
+          "code": "SOP-03",
+          "title": "Quy định xử lý chạm định mức Min/Max và lệch kiểm kê",
+          "category": "Inventory Safety",
+          "vector_id": "vec-sop-03"
+        },
+        {
+          "id": "doc-sop-04",
+          "code": "SOP-04",
+          "title": "Quy chuẩn bảo quản và quản lý hạn sử dụng FEFO",
+          "category": "FEFO Expiration",
+          "vector_id": "vec-sop-04"
+        }
+      ]
+    },
+    {
+      "step": "DOCUMENT_RETRIEVAL",
+      "status": "PASSED",
+      "listed_count": 4,
+      "sampled_documents": [
+        "SOP-01",
+        "SOP-04"
+      ]
+    },
+    {
+      "step": "VECTOR_SEARCH_RETRIEVAL",
+      "status": "PASSED",
+      "queries": [
+        {
+          "query": "FEFO",
+          "top_match_code": "SOP-04",
+          "top_match_title": "Quy chuẩn bảo quản và quản lý hạn sử dụng FEFO",
+          "category": "FEFO Expiration",
+          "score": 0.1457
+        },
+        {
+          "query": "Maker-Checker",
+          "top_match_code": "SOP-01",
+          "top_match_title": "Quy trình kiểm soát kép Maker - Checker và thẩm quyền duyệt phiếu",
+          "category": "Dual Control",
+          "score": 0.3928
+        },
+        {
+          "query": "Shift Handover",
+          "top_match_code": "SOP-02",
+          "top_match_title": "Công thức đối soát và bàn giao ca trực",
+          "category": "Shift Handover",
+          "score": 0.4963
+        },
+        {
+          "query": "Min/Max Safety",
+          "top_match_code": "SOP-03",
+          "top_match_title": "Quy định xử lý chạm định mức Min/Max và lệch kiểm kê",
+          "category": "Inventory Safety",
+          "score": 0.2515
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "status": "PASSED",
+    "duration_ms": 28,
+    "total_steps": 6,
+    "all_assertions_passed": true
+  }
+}

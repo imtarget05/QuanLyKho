@@ -1,0 +1,22 @@
+{
+  "name": "sop-worker-lab",
+  "version": "1.0.0",
+  "description": "Standalone Cloudflare Worker SOP Retrieval Lab for QuanLyKho (D1 + Vectorize)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/sop_lab.test.ts"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.125.0"
+  }
+}

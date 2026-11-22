@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.api.observability import (
     configure_metrics,
@@ -11,7 +11,7 @@ from app.api.observability import (
 )
 
 
-def test_http_metrics_use_route_templates_not_raw_paths() -> None:
+async def test_http_metrics_use_route_templates_not_raw_paths() -> None:
     app = FastAPI()
     configure_metrics(app)
 
@@ -19,9 +19,9 @@ def test_http_metrics_use_route_templates_not_raw_paths() -> None:
     async def get_order(order_id: str) -> dict[str, str]:
         return {"status": "found"}
 
-    with TestClient(app) as client:
-        response = client.get("/orders/order-secret-8421")
-        metrics = client.get("/metrics", follow_redirects=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.get("/orders/order-secret-8421")
+        metrics = await client.get("/metrics", follow_redirects=False)
 
     assert response.status_code == 200
     assert metrics.status_code == 200
@@ -31,13 +31,13 @@ def test_http_metrics_use_route_templates_not_raw_paths() -> None:
     assert "quanlykho_http_requests_in_flight 0.0" in metrics.text
 
 
-def test_reconciliation_metric_uses_bounded_business_labels() -> None:
+async def test_reconciliation_metric_uses_bounded_business_labels() -> None:
     app = FastAPI()
     configure_metrics(app)
     record_reconciliation_result("inventory", "exception")
 
-    with TestClient(app) as client:
-        response = client.get("/metrics")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.get("/metrics")
 
     assert response.status_code == 200
     sample = next(line for line in response.text.splitlines() if line.startswith("quanlykho_reconciliation_runs_total{"))
@@ -46,14 +46,14 @@ def test_reconciliation_metric_uses_bounded_business_labels() -> None:
     assert sample.endswith(" 1.0")
 
 
-def test_approval_metrics_track_decision_and_pending_time() -> None:
+async def test_approval_metrics_track_decision_and_pending_time() -> None:
     app = FastAPI()
     configure_metrics(app)
     submitted_at = datetime.now(UTC) - timedelta(seconds=30)
     record_approval_decision("cash", "approved", submitted_at)
 
-    with TestClient(app) as client:
-        metrics = client.get("/metrics").text
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        metrics = (await client.get("/metrics")).text
 
     decision = next(line for line in metrics.splitlines() if line.startswith("quanlykho_approval_decisions_total{"))
     pending = next(line for line in metrics.splitlines() if line.startswith("quanlykho_approval_pending_seconds_count{"))
@@ -64,13 +64,13 @@ def test_approval_metrics_track_decision_and_pending_time() -> None:
     assert pending.endswith(" 1.0")
 
 
-def test_external_dependency_metric_uses_bounded_result_categories() -> None:
+async def test_external_dependency_metric_uses_bounded_result_categories() -> None:
     app = FastAPI()
     configure_metrics(app)
     record_external_dependency("google_sheets", "rate_limited")
 
-    with TestClient(app) as client:
-        metrics = client.get("/metrics").text
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        metrics = (await client.get("/metrics")).text
 
     sample = next(line for line in metrics.splitlines() if line.startswith("quanlykho_external_dependency_results_total{"))
     assert 'provider="google_sheets"' in sample

@@ -14,7 +14,7 @@ def reset_redis_state(monkeypatch):
     auth_utils._login_failures.clear()
 
 
-def test_production_requires_tls_redis_url(monkeypatch):
+async def test_production_requires_tls_redis_url(monkeypatch):
     monkeypatch.setattr(settings, "app_env", "production")
     monkeypatch.setattr(settings, "redis_url", "")
     monkeypatch.setenv("REDIS_URL", "")
@@ -25,7 +25,7 @@ def test_production_requires_tls_redis_url(monkeypatch):
     assert exc_info.value.status_code == 503
 
 
-def test_production_redis_operation_failure_does_not_fall_back_to_memory(
+async def test_production_redis_operation_failure_does_not_fall_back_to_memory(
     monkeypatch,
 ):
     monkeypatch.setattr(settings, "app_env", "production")
@@ -41,7 +41,7 @@ def test_production_redis_operation_failure_does_not_fall_back_to_memory(
     assert "alice|192.0.2.1" not in auth_utils._login_failures
 
 
-def test_test_environment_keeps_in_memory_rate_limit_fallback(monkeypatch):
+async def test_test_environment_keeps_in_memory_rate_limit_fallback(monkeypatch):
     monkeypatch.setattr(settings, "app_env", "test")
     monkeypatch.setattr(settings, "redis_url", "")
     monkeypatch.setenv("REDIS_URL", "")

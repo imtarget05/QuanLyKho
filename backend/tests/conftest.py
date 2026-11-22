@@ -89,19 +89,27 @@ async def async_client(app):
         yield client
 
 
-@pytest.fixture(scope="session")
-def client(app):
+@pytest.fixture
+async def client(app):
     """HTTP client against the real app. Needs a reachable database for /health/ready."""
-    from fastapi.testclient import TestClient
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        yield client
 
+
+@pytest.fixture(autouse=True, scope="session")
+def dispose_engine_teardown():
+    """Ensure async SQLAlchemy engines are disposed properly during teardown."""
+    yield
     try:
-        with TestClient(app) as c:
-            yield c
-    except BaseException as exc:  # noqa: BLE001
-        pytest.fail(
-            f"Không khởi động được ASGI app (startup hook): {type(exc).__name__}: {exc}",
-            pytrace=False,
-        )
+        import asyncio
+
+        from app.database import engine
+
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(engine.dispose())
+        loop.close()
+    except Exception:
+        pass
 
 
 @pytest.fixture

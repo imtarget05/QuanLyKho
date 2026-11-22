@@ -1,9 +1,11 @@
 """Quản Lý Kho Trà Sữa API Application."""
+import asyncio
 import logging
+import os
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
@@ -19,6 +21,7 @@ from app.api.request_context import correlation_id_var, request_id_var
 from app.api.routes import (
     activity,
     admin_users,
+    agent,
     ai,
     ai_forecasting,
     approvals,
@@ -36,9 +39,12 @@ from app.api.routes import (
     intake,
     integrations,
     inventory,
+    ml,
     notifications,
+    orders,
     reconciliations,
     reports,
+    retail_agent,
 )
 from app.api.structured_logging import configure_json_logging
 from app.api.telemetry import (
@@ -48,6 +54,7 @@ from app.api.telemetry import (
 )
 from app.config import settings
 from app.database import init_db
+from app.graphql.router import graphql_endpoint
 
 PUBLIC_WEB_ORIGIN = "https://quan-ly-kho-tra-sua.tanmainguyenbinh.workers.dev"
 
@@ -60,11 +67,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Initialize database on startup (lifespan thay on_event deprecated)."""
     configure_json_logging()
     await init_db()
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    from app.services.retail_agent.retention import retention_loop
+
+    checkpoint_url = settings.database_url.replace("postgresql+psycopg2://", "postgresql://").replace(
+        "postgresql+asyncpg://", "postgresql://"
+    )
     from app.database import engine
 
     instrument_sqlalchemy(engine, tracer_provider=tracer_provider)
     try:
-        yield
+        async with AsyncPostgresSaver.from_conn_string(
+            checkpoint_url, serde=JsonPlusSerializer(allowed_msgpack_modules=[])
+        ) as checkpointer:
+            await checkpointer.setup()
+            retail_agent.set_checkpointer(checkpointer)
+            retention_days = int(os.getenv("RETAIL_AGENT_CHECKPOINT_RETENTION_DAYS", "30"))
+            if retention_days < 1:
+                raise ValueError("RETAIL_AGENT_CHECKPOINT_RETENTION_DAYS must be positive")
+            retention_task = asyncio.create_task(
+                retention_loop(checkpointer, checkpoint_url, retention_days)
+            )
+            try:
+                yield
+            finally:
+                retention_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await retention_task
     finally:
         tracer_provider.shutdown()
 
@@ -284,8 +315,10 @@ register_error_handlers(app)
 
 def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True) -> None:
     target.include_router(ai.router, tags=["ai"], include_in_schema=include_in_schema)
+    target.include_router(agent.router, tags=["agent"], include_in_schema=include_in_schema)
     target.include_router(ai_forecasting.router, tags=["ai-forecasting"], include_in_schema=include_in_schema)
     target.include_router(health.router, prefix="/health", tags=["health"], include_in_schema=include_in_schema)
+    target.include_router(ml.router, tags=["ml-serving"], include_in_schema=include_in_schema)
     target.include_router(auth.router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
     target.include_router(auth_google.router, prefix="/auth", tags=["auth"], include_in_schema=include_in_schema)
     target.include_router(admin_users.router, tags=["admin"], include_in_schema=include_in_schema)
@@ -299,6 +332,8 @@ def _mount_routes(target: FastAPI | APIRouter, *, include_in_schema: bool = True
     target.include_router(events.router, tags=["events"], include_in_schema=include_in_schema)
     target.include_router(reports.router, prefix="/reports", tags=["reports"], include_in_schema=include_in_schema)
     target.include_router(notifications.router, prefix="/notifications", tags=["notifications"], include_in_schema=include_in_schema)
+    target.include_router(orders.router, tags=["retail-orders"], include_in_schema=include_in_schema)
+    target.include_router(retail_agent.router, tags=["retail-agent"], include_in_schema=include_in_schema)
     target.include_router(etl.router, tags=["etl"], include_in_schema=include_in_schema)
     target.include_router(exports.router, tags=["exports"], include_in_schema=include_in_schema)
     target.include_router(integrations.router, tags=["integrations"], include_in_schema=include_in_schema)
@@ -315,3 +350,6 @@ _mount_routes(app, include_in_schema=True)
 api_v1_router = APIRouter(prefix="/api/v1")
 _mount_routes(api_v1_router, include_in_schema=False)
 app.include_router(api_v1_router, include_in_schema=False)
+
+# GraphQL endpoint (thay thế REST banking) — mount trực tiếp trên app
+app.add_api_route("/graphql", graphql_endpoint, methods=["POST"], tags=["graphql"])

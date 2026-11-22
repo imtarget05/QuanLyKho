@@ -7,14 +7,14 @@ from decimal import Decimal
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str) -> dict[str, str]:
-    r = client.post("/auth/login", data={"username": username, "password": DEMO_PASSWORD})
+async def _login(client, username: str) -> dict[str, str]:
+    r = await client.post("/auth/login", data={"username": username, "password": DEMO_PASSWORD})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
 class TestReportsUnit:
-    def test_severity_thresholds_cover_all_levels(self):
+    async def test_severity_thresholds_cover_all_levels(self):
         from app.api.routes.reports import _severity
 
         assert _severity(None, 30, 60, 90) == "critical"
@@ -29,12 +29,12 @@ class TestReportsUnit:
 
 
 class TestReportsIntegration:
-    def test_inventory_daily_and_monthly_aggregation(self, client):
-        maker_h = _login(client, "demo_maker")
-        checker_h = _login(client, "demo_checker")
+    async def test_inventory_daily_and_monthly_aggregation(self, client):
+        maker_h = await _login(client, "demo_maker")
+        checker_h = await _login(client, "demo_checker")
 
-        items_r = client.get("/inventory/items", headers=maker_h)
-        locs_r = client.get("/inventory/locations", headers=maker_h)
+        items_r = await client.get("/inventory/items", headers=maker_h)
+        locs_r = await client.get("/inventory/locations", headers=maker_h)
         assert items_r.status_code == 200 and locs_r.status_code == 200
         item_id = next(
             i["id"] for i in items_r.json()["items"] if not i.get("tracked_serial")
@@ -42,7 +42,7 @@ class TestReportsIntegration:
         loc_id = locs_r.json()["locations"][0]["id"]
 
         # Create, submit, approve a receipt of 7 units
-        req_r = client.post(
+        req_r = await client.post(
             "/inventory/requests",
             headers={**maker_h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -54,18 +54,18 @@ class TestReportsIntegration:
         )
         assert req_r.status_code in (200, 201), req_r.text
         rid = req_r.json()["id"]
-        sub_r = client.post(
+        sub_r = await client.post(
             f"/inventory/requests/{rid}/submit",
             headers={**maker_h, "If-Match": "1"},
         )
         assert sub_r.status_code == 200, sub_r.text
-        app_r = client.post(
+        app_r = await client.post(
             f"/inventory/requests/{rid}/approve",
             headers={**checker_h, "Idempotency-Key": str(uuid.uuid4())},
         )
         assert app_r.status_code == 200, app_r.text
 
-        daily = client.get("/reports/inventory-daily", headers=maker_h)
+        daily = await client.get("/reports/inventory-daily", headers=maker_h)
         assert daily.status_code == 200, daily.text
         dbody = daily.json()
         assert dbody.get("simulation") is True
@@ -77,7 +77,7 @@ class TestReportsIntegration:
             Decimal(latest["inbound_qty"]) - Decimal(latest["outbound_qty"])
         )
 
-        monthly = client.get("/reports/inventory-monthly", headers=maker_h)
+        monthly = await client.get("/reports/inventory-monthly", headers=maker_h)
         assert monthly.status_code == 200, monthly.text
         mbody = monthly.json()
         assert mbody.get("simulation") is True
@@ -86,18 +86,18 @@ class TestReportsIntegration:
         assert len(mb["bucket"]) == 7  # YYYY-MM
         assert Decimal(mb["inbound_qty"]) >= Decimal("7")
 
-    def test_cashflow_daily_and_monthly_single_leg_accounting(self, client):
-        maker_h = _login(client, "demo_maker")
-        checker_h = _login(client, "demo_checker")
+    async def test_cashflow_daily_and_monthly_single_leg_accounting(self, client):
+        maker_h = await _login(client, "demo_maker")
+        checker_h = await _login(client, "demo_checker")
 
-        before_r = client.get("/reports/cashflow-daily", headers=checker_h)
+        before_r = await client.get("/reports/cashflow-daily", headers=checker_h)
         assert before_r.status_code == 200
         before_in = sum(
             Decimal(b["total_in"]) for b in before_r.json().get("buckets", [])
         )
 
         # Post a receipt of 250000.00 VND
-        cr = client.post(
+        cr = await client.post(
             "/cash-sim/requests",
             headers={**maker_h, "Idempotency-Key": str(uuid.uuid4())},
             json={
@@ -109,15 +109,15 @@ class TestReportsIntegration:
         )
         assert cr.status_code in (200, 201), cr.text
         cid = cr.json()["id"]
-        sub = client.post(f"/cash-sim/requests/{cid}/submit", headers=maker_h)
+        sub = await client.post(f"/cash-sim/requests/{cid}/submit", headers=maker_h)
         assert sub.status_code == 200
-        ap = client.post(
+        ap = await client.post(
             f"/cash-sim/requests/{cid}/approve",
             headers={**checker_h, "Idempotency-Key": str(uuid.uuid4())},
         )
         assert ap.status_code == 200
 
-        after_r = client.get("/reports/cashflow-daily", headers=checker_h)
+        after_r = await client.get("/reports/cashflow-daily", headers=checker_h)
         assert after_r.status_code == 200
         abody = after_r.json()
         assert abody.get("simulation") is True
@@ -126,16 +126,16 @@ class TestReportsIntegration:
         # Must increase by exactly 250000.00 (not 500000.00 from double-counting both legs)
         assert after_in - before_in == Decimal("250000.00")
 
-        monthly_r = client.get("/reports/cashflow-monthly", headers=checker_h)
+        monthly_r = await client.get("/reports/cashflow-monthly", headers=checker_h)
         assert monthly_r.status_code == 200
         mbody = monthly_r.json()
         assert mbody.get("simulation") is True
         assert mbody.get("currency") == "VND"
         assert sum(Decimal(b["total_in"]) for b in mbody.get("buckets", [])) == after_in
 
-    def test_stagnation_report_and_invalid_date_filter(self, client):
-        maker_h = _login(client, "demo_maker")
-        stag = client.get(
+    async def test_stagnation_report_and_invalid_date_filter(self, client):
+        maker_h = await _login(client, "demo_maker")
+        stag = await client.get(
             "/reports/stagnation?watch_days=30&stagnant_days=60&critical_days=90",
             headers=maker_h,
         )
@@ -148,7 +148,7 @@ class TestReportsIntegration:
             assert item["severity"] in ("normal", "watch", "stagnant", "critical")
             assert Decimal(item["quantity"]) > 0
 
-        bad_date = client.get(
+        bad_date = await client.get(
             "/reports/inventory-daily?date_from=not-a-date",
             headers=maker_h,
         )

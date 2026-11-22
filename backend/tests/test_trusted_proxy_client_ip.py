@@ -30,7 +30,7 @@ class _FakeRequest:
             self.headers["x-forwarded-for"] = xff
 
 
-def test_without_trusted_proxy_config_xff_is_ignored(monkeypatch):
+async def test_without_trusted_proxy_config_xff_is_ignored(monkeypatch):
     """Mặc định KHÔNG tin header -> IP lấy từ kết nối thật."""
     monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
     monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
@@ -41,7 +41,7 @@ def test_without_trusted_proxy_config_xff_is_ignored(monkeypatch):
     )
 
 
-def test_trusted_proxy_count_resolves_real_client_ip(monkeypatch):
+async def test_trusted_proxy_count_resolves_real_client_ip(monkeypatch):
     """`TRUSTED_PROXY_COUNT=1` -> IP client là hop gần nhất trong XFF."""
     monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_COUNT", "1")
@@ -50,7 +50,7 @@ def test_trusted_proxy_count_resolves_real_client_ip(monkeypatch):
     assert client_ip(req) == "203.0.113.7"
 
 
-def test_trusted_proxy_count_two_hops(monkeypatch):
+async def test_trusted_proxy_count_two_hops(monkeypatch):
     """`TRUSTED_PROXY_COUNT=2` -> bỏ qua 2 hop proxy, lấy IP client thật."""
     monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_COUNT", "2")
@@ -59,7 +59,7 @@ def test_trusted_proxy_count_two_hops(monkeypatch):
     assert client_ip(req) == "203.0.113.7"
 
 
-def test_trusted_proxy_count_requires_enough_hops(monkeypatch):
+async def test_trusted_proxy_count_requires_enough_hops(monkeypatch):
     """Chuỗi XFF không đủ hop -> fail-closed, giữ IP peer."""
     monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_COUNT", "3")
@@ -69,7 +69,7 @@ def test_trusted_proxy_count_requires_enough_hops(monkeypatch):
     )
 
 
-def test_trusted_proxy_ips_list(monkeypatch):
+async def test_trusted_proxy_ips_list(monkeypatch):
     """`TRUSTED_PROXY_IPS` -> chỉ tin XFF khi peer là proxy đáng tin."""
     monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.1,10.0.0.2")
@@ -79,7 +79,7 @@ def test_trusted_proxy_ips_list(monkeypatch):
     )
 
 
-def test_trusted_proxy_ips_peer_not_trusted_ignores_xff(monkeypatch):
+async def test_trusted_proxy_ips_peer_not_trusted_ignores_xff(monkeypatch):
     """Peer KHÔNG nằm trong danh sách proxy -> bỏ qua XFF (chống giả mạo)."""
     monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.1")
@@ -87,7 +87,7 @@ def test_trusted_proxy_ips_peer_not_trusted_ignores_xff(monkeypatch):
     assert client_ip(req) == "203.0.113.66"
 
 
-def test_trusted_proxy_ips_supports_cidr(monkeypatch):
+async def test_trusted_proxy_ips_supports_cidr(monkeypatch):
     """Danh sách proxy nhận cả CIDR."""
     monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
     monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.0/24")
@@ -95,14 +95,14 @@ def test_trusted_proxy_ips_supports_cidr(monkeypatch):
     assert client_ip(req) == "203.0.113.7"
 
 
-def test_no_xff_header_falls_back_to_peer(monkeypatch):
+async def test_no_xff_header_falls_back_to_peer(monkeypatch):
     """Không có header -> IP peer."""
     monkeypatch.setenv("TRUSTED_PROXY_COUNT", "1")
     req = _FakeRequest("192.0.2.9")
     assert client_ip(req) == "192.0.2.9"
 
 
-def test_request_without_client_falls_back_to_unknown(monkeypatch):
+async def test_request_without_client_falls_back_to_unknown(monkeypatch):
     """Request không có `client` -> 'unknown' (không crash)."""
     monkeypatch.delenv("TRUSTED_PROXY_IPS", raising=False)
     monkeypatch.delenv("TRUSTED_PROXY_COUNT", raising=False)
@@ -122,7 +122,7 @@ class TestAuthRouteUsesSharedClientIp:
     fail-closed; `auth.py` phải dùng chính hàm đó (một nguồn duy nhất).
     """
 
-    def test_auth_module_delegates_to_shared_helper(self, monkeypatch):
+    async def test_auth_module_delegates_to_shared_helper(self, monkeypatch):
         """`_client_ip` của route auth = `auth_utils.client_ip` (nguồn duy nhất)."""
         from app.api.routes.auth import _client_ip as auth_client_ip
 
@@ -144,7 +144,7 @@ class TestAuthRouteUsesSharedClientIp:
         monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.0/24")
         assert auth_client_ip(_FakeRequest("10.0.0.5", "203.0.113.7")) == "203.0.113.7"
 
-    def test_auth_module_does_not_duplicate_xff_policy(self):
+    async def test_auth_module_does_not_duplicate_xff_policy(self):
         """`auth.py` không được tự đọc `request.client.host` (chính sách nhân bản)."""
         import pathlib
 
@@ -161,7 +161,7 @@ class TestAuthRouteUsesSharedClientIp:
             "trust-proxy chỉ nằm trong `auth_utils.client_ip`"
         )
 
-    def test_login_rate_limit_keyed_by_resolved_client_ip(self, client, monkeypatch):
+    async def test_login_rate_limit_keyed_by_resolved_client_ip(self, client, monkeypatch):
         """Rate-limit login phải khoá theo IP ĐÃ GIẢI QUYẾT (fail-closed).
 
         Không cấu hình proxy đáng tin -> mọi request dùng chung IP peer ->
@@ -177,9 +177,9 @@ class TestAuthRouteUsesSharedClientIp:
 
         # 5 lần sai -> lần sau phải bị 429
         for _ in range(5):
-            r = client.post("/api/v1/auth/login", json=payload)
+            r = await client.post("/api/v1/auth/login", json=payload)
             assert r.status_code in (401, 429), r.text
-        blocked = client.post("/api/v1/auth/login", json=payload)
+        blocked = await client.post("/api/v1/auth/login", json=payload)
         assert blocked.status_code == 429, (
             "sau 5 lần sai cùng IP peer thì phải bị rate-limit: "
             f"{blocked.status_code} {blocked.text}"
@@ -187,7 +187,7 @@ class TestAuthRouteUsesSharedClientIp:
 
         # IP khác (client tự gán XFF) -> KHÔNG được dùng để né rate-limit:
         # không có proxy đáng tin thì IP lấy từ peer -> vẫn bị khoá.
-        spoofed = client.post(
+        spoofed = await client.post(
             "/api/v1/auth/login",
             json=payload,
             headers={"X-Forwarded-For": "203.0.113.7"},
@@ -198,7 +198,7 @@ class TestAuthRouteUsesSharedClientIp:
             f"{spoofed.status_code} {spoofed.text}"
         )
 
-    def test_login_rate_limit_separates_trusted_proxy_clients(
+    async def test_login_rate_limit_separates_trusted_proxy_clients(
         self, client, monkeypatch
     ):
         """Có proxy đáng tin -> 2 IP client thật là 2 bucket riêng."""
@@ -211,13 +211,13 @@ class TestAuthRouteUsesSharedClientIp:
         payload = {"username": username, "password": "wrong-password"}
 
         for _ in range(5):
-            r = client.post(
+            r = await client.post(
                 "/api/v1/auth/login",
                 json=payload,
                 headers={"X-Forwarded-For": "203.0.113.7"},
             )
             assert r.status_code in (401, 429), r.text
-        blocked = client.post(
+        blocked = await client.post(
             "/api/v1/auth/login",
             json=payload,
             headers={"X-Forwarded-For": "203.0.113.7"},
@@ -225,7 +225,7 @@ class TestAuthRouteUsesSharedClientIp:
         assert blocked.status_code == 429, blocked.text
 
         # IP client KHÁC (qua cùng proxy) -> bucket riêng -> chỉ 401
-        other = client.post(
+        other = await client.post(
             "/api/v1/auth/login",
             json=payload,
             headers={"X-Forwarded-For": "198.51.100.2"},

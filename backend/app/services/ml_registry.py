@@ -131,13 +131,8 @@ def _get_latest_run_id(model_name: str = MODEL_NAME) -> str | None:
         return None
     versions.sort(key=lambda v: int(v.version), reverse=True)
     latest = versions[0]
-    source = latest.source  # e.g., "mlflow-artifacts:/.../run_id/artifacts/model"
-    if "mlflow-artifacts:" in source:
-        parts = source.split("/")
-        for part in parts:
-            if len(part) == 32 and all(c in "0123456789abcdef" for c in part.lower()):
-                return part
-    return None
+    # ModelVersion exposes run_id directly (works for SQLite + file artifact stores)
+    return latest.run_id
 
 
 def promote_model_with_r2_gate(

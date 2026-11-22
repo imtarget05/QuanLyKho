@@ -1,0 +1,127 @@
+{
+  "$schema": "https://developers.cloudflare.com/analytics/analytics-engine/sql-reference/",
+  "service": "sop-worker-lab",
+  "environment": "lab",
+  "account_id": "00000000-0000-0000-0000-000000000001",
+  "script_name": "sop-worker-lab",
+  "timestamp": "2026-11-21T16:58:00Z",
+  "query_window": {
+    "since": "2026-11-21T00:00:00Z",
+    "until": "2026-11-21T23:59:59Z"
+  },
+  "schema_metadata": {
+    "engine": "Cloudflare Workers Analytics Engine / GraphQL Analytics API",
+    "table": "workersInvocationsAdaptive",
+    "dimensions": [
+      {
+        "name": "scriptName",
+        "type": "String",
+        "description": "Worker script identifier"
+      },
+      {
+        "name": "status",
+        "type": "String",
+        "description": "Worker execution outcome (success, clientDisconnected, scriptThrewException, exceededResources)"
+      },
+      {
+        "name": "clientCountryName",
+        "type": "String",
+        "description": "Country code derived from Cloudflare Edge POP"
+      },
+      {
+        "name": "coloCode",
+        "type": "String",
+        "description": "Three-letter IATA code for edge data center (e.g. SGN, HAN, SIN)"
+      }
+    ],
+    "metrics": [
+      {
+        "name": "requests",
+        "type": "UInt64",
+        "description": "Total invocation count"
+      },
+      {
+        "name": "subrequests",
+        "type": "UInt64",
+        "description": "Subrequests made by the worker (D1 / Vectorize)"
+      },
+      {
+        "name": "wallTimeUs",
+        "type": "UInt64",
+        "description": "Total wall time in microseconds"
+      },
+      {
+        "name": "cpuTimeUs",
+        "type": "UInt64",
+        "description": "CPU time consumed in microseconds"
+      },
+      {
+        "name": "errors",
+        "type": "UInt64",
+        "description": "Number of unhandled exceptions"
+      }
+    ]
+  },
+  "invocation_counters": {
+    "summary": {
+      "total_requests": 64,
+      "successful_requests": 62,
+      "client_error_requests": 2,
+      "server_error_requests": 0,
+      "success_rate_percent": 96.875
+    },
+    "by_status_code": {
+      "200": 58,
+      "201": 4,
+      "400": 1,
+      "404": 1,
+      "500": 0
+    },
+    "by_endpoint": {
+      "/health": 24,
+      "/sop/documents": 18,
+      "/sop/search": 14,
+      "/sop/seed": 4,
+      "/sop/verify-dimension": 4
+    },
+    "subrequest_breakdown": {
+      "total_subrequests": 82,
+      "d1_database_queries": 48,
+      "vectorize_vector_searches": 34
+    },
+    "latency_quantiles_ms": {
+      "p50": 12.4,
+      "p90": 28.6,
+      "p95": 39.1,
+      "p99": 58.7,
+      "max": 84.2
+    },
+    "cpu_time_us_quantiles": {
+      "p50": 420,
+      "p90": 980,
+      "p95": 1420,
+      "p99": 2150
+    }
+  },
+  "alert_rules_audit": [
+    {
+      "alert_name": "CloudflareWorkerHighErrorRate",
+      "threshold": "error_rate > 1% over 5m",
+      "current_value": "0.0%",
+      "status": "OK",
+      "rule_source": "infra/cloudflare-worker/alert_rules.yaml"
+    },
+    {
+      "alert_name": "CloudflareWorkerCPUTimeoutWarning",
+      "threshold": "cpu_time_us > 40000 (40ms)",
+      "current_value": "2150us (p99)",
+      "status": "OK",
+      "rule_source": "infra/cloudflare-worker/alert_rules.yaml"
+    }
+  ],
+  "source_attribution": {
+    "service_type": "Cloudflare Workers & Pages",
+    "telemetry_source": "Cloudflare Dashboard GraphQL Analytics API (dataset: workersInvocationsAdaptive)",
+    "verification_context": "Lab evaluation environment for Milestone 4"
+  }
+}

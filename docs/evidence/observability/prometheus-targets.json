@@ -1,0 +1,118 @@
+{
+  "status": "success",
+  "data": {
+    "activeTargets": [
+      {
+        "discoveredLabels": {
+          "__address__": "api:8000",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "15s",
+          "__scrape_timeout__": "10s",
+          "app": "bankops",
+          "component": "api",
+          "job": "bankops-api"
+        },
+        "labels": {
+          "app": "bankops",
+          "component": "api",
+          "instance": "api:8000",
+          "job": "bankops-api"
+        },
+        "scrapePool": "bankops-api",
+        "scrapeUrl": "http://api:8000/metrics",
+        "globalUrl": "http://api:8000/metrics",
+        "lastError": "Get \"http://api:8000/metrics\": dial tcp: lookup api on 127.0.0.11:53: no such host",
+        "lastScrape": "2026-11-21T16:58:38.231373303Z",
+        "lastScrapeDuration": 0.0102995,
+        "health": "down",
+        "scrapeInterval": "15s",
+        "scrapeTimeout": "10s"
+      },
+      {
+        "discoveredLabels": {
+          "__address__": "worker:8000",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "15s",
+          "__scrape_timeout__": "10s",
+          "app": "bankops",
+          "component": "worker",
+          "job": "bankops-worker"
+        },
+        "labels": {
+          "app": "bankops",
+          "component": "worker",
+          "instance": "worker:8000",
+          "job": "bankops-worker"
+        },
+        "scrapePool": "bankops-worker",
+        "scrapeUrl": "http://worker:8000/metrics",
+        "globalUrl": "http://worker:8000/metrics",
+        "lastError": "Get \"http://worker:8000/metrics\": dial tcp: lookup worker on 127.0.0.11:53: no such host",
+        "lastScrape": "2026-11-21T16:58:29.425673882Z",
+        "lastScrapeDuration": 0.006183625,
+        "health": "down",
+        "scrapeInterval": "15s",
+        "scrapeTimeout": "10s"
+      },
+      {
+        "discoveredLabels": {
+          "__address__": "otel-collector:8888",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "15s",
+          "__scrape_timeout__": "10s",
+          "app": "bankops",
+          "component": "otel-collector",
+          "job": "otel-collector"
+        },
+        "labels": {
+          "app": "bankops",
+          "component": "otel-collector",
+          "instance": "otel-collector:8888",
+          "job": "otel-collector"
+        },
+        "scrapePool": "otel-collector",
+        "scrapeUrl": "http://otel-collector:8888/metrics",
+        "globalUrl": "http://otel-collector:8888/metrics",
+        "lastError": "",
+        "lastScrape": "2026-11-21T16:58:36.593608552Z",
+        "lastScrapeDuration": 0.001325583,
+        "health": "up",
+        "scrapeInterval": "15s",
+        "scrapeTimeout": "10s"
+      },
+      {
+        "discoveredLabels": {
+          "__address__": "localhost:9090",
+          "__metrics_path__": "/metrics",
+          "__scheme__": "http",
+          "__scrape_interval__": "15s",
+          "__scrape_timeout__": "10s",
+          "job": "prometheus"
+        },
+        "labels": {
+          "instance": "localhost:9090",
+          "job": "prometheus"
+        },
+        "scrapePool": "prometheus",
+        "scrapeUrl": "http://localhost:9090/metrics",
+        "globalUrl": "http://fe26f79f6920:9090/metrics",
+        "lastError": "",
+        "lastScrape": "2026-11-21T16:58:34.688540718Z",
+        "lastScrapeDuration": 0.004063833,
+        "health": "up",
+        "scrapeInterval": "15s",
+        "scrapeTimeout": "10s"
+      }
+    ],
+    "droppedTargets": [],
+    "droppedTargetCounts": {
+      "bankops-api": 0,
+      "bankops-worker": 0,
+      "otel-collector": 0,
+      "prometheus": 0
+    }
+  }
+}

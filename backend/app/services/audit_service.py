@@ -159,13 +159,16 @@ async def record_audit_entry(
         payload_hash=payload_hash,
     )
 
+    # Normalise Decimal/date/UUID... để cột JSON luôn serialize được.
+    serialisable_payload = json.loads(json.dumps(state_payload, default=str))
+
     entry = AuditEntry(
         event_id=str(uuid.uuid4()),
         actor_id=actor_id,
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        state_payload=state_payload,
+        state_payload=serialisable_payload,
         payload_hash=payload_hash,
         prev_hash=prev_hash,
         current_hash=curr_hash,

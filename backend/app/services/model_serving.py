@@ -1,14 +1,11 @@
 # Model Serving (Phase M — S7)
-#
 # Production model serving: loads the Production-stage model from MLflow Model
 # Registry and serves demand-forecast predictions via a FastAPI endpoint.
 #
 # Dependencies (already in pyproject.toml):
 #   - mlflow, pandas, scikit-learn
-
 from __future__ import annotations
 
-import mlflow
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
@@ -16,7 +13,6 @@ from pydantic import BaseModel, Field
 
 from app.services.ml_registry import (
     MODEL_NAME,
-    get_current_model_version,
     set_tracking_uri,
 )
 
@@ -37,52 +33,64 @@ class DemandForecastResponse(BaseModel):
 
 # ── Model loader ───────────────────────────────────────────────────────────────
 class ModelServer:
-    """
-    Loads the Production-stage DemandForecastModel from MLflow Model Registry.
+    """Loads the Production-stage DemandForecastModel from MLflow Model Registry.
+
     Falls back to the most recent registered version if none is in Production.
     """
 
-    def __init__(self, tracking_uri: str = "sqlite:///./mlflow.db"):
+    def __init__(self, tracking_uri: str = "sqlite:///./mlflow.db") -> None:
         self.tracking_uri = tracking_uri
-        self.model = None
+        self.model = None          # lazy-loaded
         self.model_version: int | None = None
         self.model_stage: str | None = None
-        self._load_production_model()
+        self._loaded = False
+        # Do NOT call _load_production_model() here — it triggers alembic migrations.
+        # The model will be loaded on first .predict() call.
 
     def _load_production_model(self) -> None:
+        """Load the Production model (or fallback). Called lazily by .predict().
+
+        Ưu tiên đúng version đang ở stage ``Production`` (để rollback có hiệu
+        lực với serving); chỉ khi không có version nào trong Production mới
+        fallback sang version mới nhất đã đăng ký.
+        """
+        if self._loaded:
+            return
         set_tracking_uri(self.tracking_uri)
+
+        from app.services.ml_registry import (
+            get_current_model_version,
+            list_model_versions,
+        )
+
         current = get_current_model_version(MODEL_NAME)
         version = current.get("version")
-
-        if version is None:
-            # No Production model — fall back to latest registered version
-            from app.services.ml_registry import list_model_versions
-
+        if version is not None:
+            stage = current.get("stage") or "Production"
+        else:
+            # Không có Production → fallback bản mới nhất đã đăng ký.
             versions = list_model_versions(MODEL_NAME)
-            if versions:
-                version = versions[0]["version"]
-                self.model_stage = versions[0]["stage"]
-            else:
+            if not versions:
                 raise RuntimeError(
                     f"No registered model versions found for '{MODEL_NAME}'. "
                     "Train and register a model first."
                 )
-        else:
-            self.model_stage = current.get("stage", "Production")
+            versions.sort(key=lambda v: int(v["version"]), reverse=True)
+            version = int(versions[0]["version"])
+            stage = versions[0].get("stage", "None")
 
-        self.model_version = version
         model_uri = f"models:/{MODEL_NAME}/{version}"
         self.model = mlflow.sklearn.load_model(model_uri)
+        self.model_version = int(version)
+        self.model_stage = stage
+        self._loaded = True
 
     def predict(self, request: DemandForecastRequest) -> DemandForecastResponse:
-        """
-        Generate demand forecasts for the requested number of periods.
-        Uses the same feature engineering as training (month sin/cos + trend).
-        """
+        """Generate demand forecasts for the requested number of periods."""
         if self.model is None:
-            raise RuntimeError("Model not loaded")
+            self._load_production_model()
 
-        # Build future feature matrix: month sin/cos + scaled trend index
+        # Build feature matrix: month sin/cos + scaled trend index
         t = np.arange(self.model_version or 1, (self.model_version or 1) + request.periods)
         months = ((t % 12) + 1).astype(float)
 

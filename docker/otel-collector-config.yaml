@@ -13,16 +13,18 @@ receivers:
 
 exporters:
   prometheus:
-    endpoint: 0.0.0.0:8888
+    endpoint: 0.0.0.0:8889
     namespace: bankops
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
+  debug:
+    verbosity: basic
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [loki]
+      exporters: [debug]
     metrics:
       receivers: [otlp]
       exporters: [prometheus]

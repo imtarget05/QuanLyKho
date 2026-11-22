@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from conftest import BACKEND_DIR, REPO_DIR
 
@@ -39,7 +40,7 @@ def _prefix_for(filename: str) -> str:
 
 # --------------------------------------------------------------- B03: auth --
 class TestAuthRBAC:
-    def test_auth_utils_module_is_valid_python(self):
+    async def test_auth_utils_module_is_valid_python(self):
         import py_compile
 
         from conftest import BACKEND_DIR as B
@@ -53,7 +54,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_get_db_must_be_a_bare_async_generator(self):
+    async def test_get_db_must_be_a_bare_async_generator(self):
         """Lỗi đã xác minh: `Depends(get_db)` 500 toàn bộ nếu `get_db` bị bọc
         `@asynccontextmanager`.
 
@@ -70,7 +71,6 @@ class TestAuthRBAC:
         import inspect
 
         from fastapi import Depends, FastAPI
-        from fastapi.testclient import TestClient
         from sqlalchemy.ext.asyncio import AsyncSession
 
         import app.database as db
@@ -84,9 +84,9 @@ class TestAuthRBAC:
         async def probe(s: AsyncSession = Depends(db.get_db)):  # noqa: B008 - idiomatic FastAPI
             return {"ok": True}
 
-        with TestClient(mini, raise_server_exceptions=True) as c:
+        async with AsyncClient(transport=ASGITransport(app=mini), base_url="http://testserver") as c:
             try:
-                c.get("/probe")
+                await c.get("/probe")
             except TypeError as exc:
                 pytest.fail(
                     "app/database.py:get_db đang được bọc `@asynccontextmanager` nhưng "
@@ -101,7 +101,7 @@ class TestAuthRBAC:
             except Exception:  # noqa: BLE001 - chạy được thì đã không phải lỗi này
                 pass
 
-    def test_login_token_subject_is_json_serializable(self):
+    async def test_login_token_subject_is_json_serializable(self):
         """`create_access_token` phải chịu được `sub` là UUID.
 
         `auth.py:44` truyền `user.id` (UUID từ DB) vào `sub`, nhưng
@@ -129,7 +129,7 @@ class TestAuthRBAC:
         if not isinstance(token, str) or not token:
             pytest.fail("create_access_token không trả về JWT string", pytrace=False)
 
-    def test_get_current_user_rejects_refresh_tokens(self):
+    async def test_get_current_user_rejects_refresh_tokens(self):
         """Access-only endpoint phải từ chối refresh token (phân biệt `type`).
 
         `create_refresh_token` gắn `type=refresh`, nhưng `get_current_user`
@@ -151,7 +151,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_login_with_wrong_password_returns_401_not_500(self, client):
+    async def test_login_with_wrong_password_returns_401_not_500(self, client):
         """Sai credentials phải 401 + envelope, không bao giờ 500.
 
         Hiện tại: user không tồn tại -> 401 đúng; user có thật + sai mật khẩu
@@ -164,7 +164,7 @@ class TestAuthRBAC:
             ("demo_maker", "SaiMatKhau123!"),  # user do seed tạo (sample-data)
         ]
         for username, password in cases:
-            resp = client.post(
+            resp = await client.post(
                 "/auth/login", data={"username": username, "password": password}
             )
             if resp.status_code == 500:
@@ -182,7 +182,7 @@ class TestAuthRBAC:
                     pytrace=False,
                 )
 
-    def test_session_middleware_is_used_or_removed(self):
+    async def test_session_middleware_is_used_or_removed(self):
         """`SessionMiddleware` đã mount thì phải được dùng, không thì gỡ.
 
         `app/main.py:36` mount `SessionMiddleware(secret_key=settings.session_secret)`
@@ -207,7 +207,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_auth_secrets_are_not_known_defaults(self):
+    async def test_auth_secrets_are_not_known_defaults(self):
         """JWT signing key và session secret không được là giá trị công khai đã biết trong mã nguồn.
 
         Thực tế (`app/config.py`): `signing_key` trả `""` ở demo khi không set
@@ -238,7 +238,7 @@ class TestAuthRBAC:
         if problems:
             pytest.fail("\n".join(problems), pytrace=False)
 
-    def test_logout_uses_defined_symbol(self):
+    async def test_logout_uses_defined_symbol(self):
         """auth.py tham chiếu `oauth2_scheme` trong Depends() mà không import nó."""
         src = (ROUTES_DIR / "auth.py").read_text()
         if "oauth2_scheme" not in src:
@@ -261,7 +261,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_no_hardcoded_signing_secret_fallback(self):
+    async def test_no_hardcoded_signing_secret_fallback(self):
         """docs/08: không đưa secret ra log/URL; token không được ký bằng secret mặc định."""
         cfg = (BACKEND_DIR / "app" / "config.py").read_text()
         # NOTE (vòng 5): secret đã bị đổi tên + đổi quote nên 2 grep dưới từng
@@ -281,7 +281,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_cors_wildcard_with_credentials_is_rejected(self):
+    async def test_cors_wildcard_with_credentials_is_rejected(self):
         """docs/08: 'security headers/CORS cụ thể', không wildcard + credentials.
 
         Chặn cả `allow_origins=["*"]` và `allow_origin_regex` (regex chấp nhận mọi
@@ -300,7 +300,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_rate_limit_login_is_actually_enforced(self):
+    async def test_rate_limit_login_is_actually_enforced(self):
         cfg = (BACKEND_DIR / "app" / "config.py").read_text()
         auth = (ROUTES_DIR / "auth.py").read_text()
         if "rate_limit_login_attempts" in cfg and "rate_limit" not in auth.lower():
@@ -311,7 +311,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_refresh_endpoint_and_rotation_exist(self):
+    async def test_refresh_endpoint_and_rotation_exist(self):
         """docs/06: POST /auth/refresh; docs/08: refresh rotation và revoke."""
         if not any(
             m == "POST" and p.rstrip("/").endswith("/refresh")
@@ -323,7 +323,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_logout_actually_revokes(self):
+    async def test_logout_actually_revokes(self):
         src = (ROUTES_DIR / "auth.py").read_text()
         logout_body = src.split("@router.post(\"/logout\")", 1)[-1].split("@router", 1)[0]
         if "revoke" not in logout_body and "delete" not in logout_body and "denylist" not in logout_body:
@@ -333,7 +333,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_capability_checks_are_enforced_on_protected_routes(self):
+    async def test_capability_checks_are_enforced_on_protected_routes(self):
         """`require_capability` được định nghĩa nhưng có route nào dùng không?"""
         # chỉ đếm chỗ gọi, không tính dòng import
         callers = []
@@ -350,7 +350,7 @@ class TestAuthRBAC:
                 pytrace=False,
             )
 
-    def test_approvals_inbox_requires_approve_capability(self):
+    async def test_approvals_inbox_requires_approve_capability(self):
         """docs/06: GET /approvals/inbox permission `*.approve`."""
         src = (ROUTES_DIR / "approvals.py").read_text()
         if "require_capability" not in src and "approve" not in src:
@@ -364,7 +364,7 @@ class TestAuthRBAC:
 class TestPasswordCrypto:
     """passlib 1.7.4 không đọc được bcrypt >= 4.1 (đã xác minh với bcrypt 5.0.0)."""
 
-    def test_get_password_hash_and_verify_roundtrip(self):
+    async def test_get_password_hash_and_verify_roundtrip(self):
         """Hash + verify phải chạy được với mọi mật khẩu.
 
         Đã xác minh thực nghiệm (cả Python 3.11 + bcrypt 5.0.0 lẫn 3.14):
@@ -427,7 +427,7 @@ class TestApiSurfaceVsDocs:
         ("POST", "/cash-sim/requests/{id}/reject"),
     ]
 
-    def test_required_write_endpoints_exist(self):
+    async def test_required_write_endpoints_exist(self):
         have = {(m, p) for m, p, _ in _route_table()}
         # FastAPI path param tên khác nhau được chấp nhận
         missing = []
@@ -445,7 +445,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_no_write_endpoint_is_a_stub(self):
+    async def test_no_write_endpoint_is_a_stub(self):
         """Endpoint write phải có logic nghiệp vụ, không trả object rỗng."""
         found = 0
         for f in sorted(ROUTES_DIR.glob("*.py")):
@@ -469,7 +469,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_missing_module_endpoints(self):
+    async def test_missing_module_endpoints(self):
         """Các module docs/06 khai báo nhưng chưa có route nào."""
         prefixes = {p for _, p, _ in _route_table()}
         expected = ["/integrations", "/integration-runs", "/reconciliations", "/audit-events", "/events"]
@@ -489,7 +489,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_idempotency_key_is_required_on_write_commands(self):
+    async def test_idempotency_key_is_required_on_write_commands(self):
         """docs/06 + docs/05 bước 1-2: mọi write có X-Request-ID, create/submit/approve cần Idempotency-Key."""
         srcs = "\n".join(f.read_text() for f in ROUTES_DIR.glob("*.py"))
         if "idempotency" not in srcs.lower():
@@ -500,7 +500,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_if_match_version_is_enforced(self):
+    async def test_if_match_version_is_enforced(self):
         srcs = "\n".join(f.read_text() for f in ROUTES_DIR.glob("*.py"))
         if "if-match" not in srcs.lower() and "if_match" not in srcs.lower():
             pytest.fail(
@@ -510,7 +510,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_maker_checker_is_enforced(self):
+    async def test_maker_checker_is_enforced(self):
         """Invariant 1 (docs/00): created_by != approved_by, kể cả admin."""
         srcs = "\n".join(f.read_text() for f in ROUTES_DIR.glob("*.py"))
         if "approved_by" not in srcs and "approver_id" not in srcs:
@@ -520,7 +520,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_error_body_follows_contract(self):
+    async def test_error_body_follows_contract(self):
         """docs/06: `{"error":{"code","message","request_id","details"}}`."""
         # NOTE (vòng 7): từng xanh giả vì 1 file (`auth_google.py`, do reviewer
         # viết tính năng) có envelope trong khi cả app vẫn trả `detail`.
@@ -543,7 +543,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_sse_endpoint_matches_contract(self):
+    async def test_sse_endpoint_matches_contract(self):
         """docs/06 SSE: GET /events/stream?cursor=, Last-Event-ID, resync_required."""
         src = (ROUTES_DIR / "activity.py").read_text()
         problems = []
@@ -564,7 +564,7 @@ class TestApiSurfaceVsDocs:
                 pytrace=False,
             )
 
-    def test_pagination_and_cursor_contract(self):
+    async def test_pagination_and_cursor_contract(self):
         srcs = "\n".join(f.read_text() for f in ROUTES_DIR.glob("*.py"))
         if "cursor" not in srcs:
             pytest.fail(
@@ -586,7 +586,7 @@ class TestSchemaVsDocs04:
         "activity_events", "reconciliation_runs", "reconciliation_exceptions",
     ]
 
-    def test_required_tables_are_modelled(self, models):
+    async def test_required_tables_are_modelled(self, models):
         """`models` fixture sẽ fail sớm nếu model module không import được."""
         from app.db.base import Base
 
@@ -598,7 +598,7 @@ class TestSchemaVsDocs04:
                 pytrace=False,
             )
 
-    def test_timestamps_are_timestamptz_not_string(self):
+    async def test_timestamps_are_timestamptz_not_string(self):
         """docs/04: `created_at/updated_at timestamptz` UTC; không lưu thời điểm dạng text."""
         bad = []
         for f in MODELS_DIR.glob("*.py"):
@@ -614,7 +614,7 @@ class TestSchemaVsDocs04:
                 pytrace=False,
             )
 
-    def test_money_and_quantity_check_constraints(self):
+    async def test_money_and_quantity_check_constraints(self):
         """docs/04: amount > 0, quantity >= 0, debit/credit >= 0, exactly one positive."""
         # docs/04: quantity >= 0 (inv_balances), amount >= 0 (cash_balances)
         src = "\n".join(f.read_text() for f in MODELS_DIR.glob("*.py"))
@@ -628,7 +628,7 @@ class TestSchemaVsDocs04:
         if problems:
             pytest.fail("Ràng buộc dữ liệu thiếu:\n  - " + "\n  - ".join(problems), pytrace=False)
 
-    def test_ledger_double_entry_exists(self):
+    async def test_ledger_double_entry_exists(self):
         """Invariant 3 (docs/00) + docs/04 section Ledger quỹ mô phỏng."""
         models_src = "\n".join(f.read_text() for f in MODELS_DIR.glob("*.py"))
         app_src = "\n".join(
@@ -644,7 +644,7 @@ class TestSchemaVsDocs04:
                 pytrace=False,
             )
 
-    def test_movement_unique_and_balance_guard(self):
+    async def test_movement_unique_and_balance_guard(self):
         """docs/04: unique(request_id,line_id,location_id) cho inv_movements."""
         inv = (MODELS_DIR / "inventory.py").read_text()
         movement_block = inv.split("class Movement", 1)[-1].split("class ", 1)[0]
@@ -655,7 +655,7 @@ class TestSchemaVsDocs04:
                 pytrace=False,
             )
 
-    def test_approval_unique_final_decision(self):
+    async def test_approval_unique_final_decision(self):
         """docs/04: approval_decisions ... unique final decision per subject."""
         src = (MODELS_DIR / "approval.py").read_text()
         if "UniqueConstraint" not in src:
@@ -665,7 +665,7 @@ class TestSchemaVsDocs04:
                 pytrace=False,
             )
 
-    def test_audit_append_only_guard(self):
+    async def test_audit_append_only_guard(self):
         """Invariant 5 (docs/00): audit append-only."""
         src = (MODELS_DIR / "activity.py").read_text()
         guard = any(k in src for k in ("append_only", "before_delete", "DML", "event.listen"))
@@ -680,7 +680,7 @@ class TestSchemaVsDocs04:
 
 # ------------------------------------------------- cross-cutting: no real $ --
 class TestNoRealMoney:
-    def test_no_real_payment_or_bank_integration(self):
+    async def test_no_real_payment_or_bank_integration(self):
         """Invariant: chỉ cash_sim, không API ngân hàng/payment rail (docs/00/README)."""
         banned = ["stripe", "paypal", "vnpay", "zalopay", "momo", "solidgate", "adyen"]
         hits = []
@@ -703,7 +703,7 @@ class TestNoRealMoney:
         if hits:
             pytest.fail("Có dấu hiệu tích hợp tiền thật: " + ", ".join(hits), pytrace=False)
 
-    def test_demo_label_present_in_cash_responses(self):
+    async def test_demo_label_present_in_cash_responses(self):
         """Invariant 6 (docs/00): mọi response quỹ phải nói rõ DEMO/SIMULATED."""
         src = (ROUTES_DIR / "cash_sim.py").read_text()
         # phải là key JSON trả về, KHÔNG tính từ docstring "Cash simulation routes."
@@ -720,7 +720,7 @@ class TestNoRealMoney:
                 pytrace=False,
             )
 
-    def test_openapi_marks_login_public_and_health_public(self):
+    async def test_openapi_marks_login_public_and_health_public(self):
         """docs/06: auth/login public; docs/openapi không được bắt Bearer cho public routes."""
         src = (BACKEND_DIR / "app" / "api" / "openapi.py").read_text()
         if src.count("if spec.get") and "login" not in src:
@@ -739,7 +739,7 @@ class TestLiveContracts:
     khi agent sửa mã — không cần chờ login.
     """
 
-    def test_responses_carry_request_id_header(self, client):
+    async def test_responses_carry_request_id_header(self, client):
         """Mọi response phải có `X-Request-ID`.
 
         docs/06:3 yêu cầu mọi write mang `X-Request-ID`, envelope lỗi
@@ -749,7 +749,7 @@ class TestLiveContracts:
         **không bao giờ set response header**.
         """
         for path in ("/health/live", "/inventory/items"):
-            resp = client.get(path)
+            resp = await client.get(path)
             rid = resp.headers.get("x-request-id")
             if not rid:
                 pytest.fail(
@@ -764,7 +764,7 @@ class TestLiveContracts:
                     pytrace=False,
                 )
 
-    def test_deployed_cors_config_has_no_credentialed_wildcard_echo(self):
+    async def test_deployed_cors_config_has_no_credentialed_wildcard_echo(self):
         """Cấu hình CORS khi deploy không được echo origin lạ kèm credentials.
 
         `docker-compose.yml:32` đặt `ALLOWED_ORIGINS=*` trong khi
@@ -780,7 +780,6 @@ class TestLiveContracts:
 
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
-        from fastapi.testclient import TestClient
 
         compose = (REPO_DIR / "docker-compose.yml").read_text()
         m = re.search(r"ALLOWED_ORIGINS=(\S+)", compose)
@@ -805,12 +804,15 @@ class TestLiveContracts:
         )
 
         evil = "https://evil.example"
-        with TestClient(mini, raise_server_exceptions=False) as c:
-            pre = c.options(
+        async with AsyncClient(
+            transport=ASGITransport(app=mini, raise_app_exceptions=False),
+            base_url="http://testserver",
+        ) as c:
+            pre = await c.options(
                 "/probe",
                 headers={"Origin": evil, "Access-Control-Request-Method": "GET"},
             )
-            simple = c.get("/probe", headers={"Origin": evil})
+            simple = await c.get("/probe", headers={"Origin": evil})
 
         echoed = [
             f"preflight ACAO={pre.headers.get('access-control-allow-origin')!r}"
@@ -831,14 +833,14 @@ class TestLiveContracts:
                 pytrace=False,
             )
 
-    def test_unauthorized_errors_use_docs06_envelope(self, client):
+    async def test_unauthorized_errors_use_docs06_envelope(self, client):
         """Lỗi 401 phải theo envelope docs/06:44, không phải `{"detail": ...}`.
 
         docs/06:44: `{"error":{"code":"...","message":"...","request_id":"...","details":{}}}`.
         Thực tế: `{"detail":"Not authenticated"}` — client không có `code`
         ổn định để rẽ nhánh, không có `request_id` để đối chiếu log.
         """
-        resp = client.get("/inventory/items")
+        resp = await client.get("/inventory/items")
         assert resp.status_code == 401, f"mong đợi 401, được {resp.status_code}"
         try:
             body = resp.json()
@@ -854,7 +856,7 @@ class TestLiveContracts:
                 pytrace=False,
             )
 
-    def test_openapi_security_marks_only_protected_paths(self, app):
+    async def test_openapi_security_marks_only_protected_paths(self, app):
         """Schema OpenAPI: public path không `security`, protected path có BearerAuth.
 
         docs/06:9 xếp `POST /auth/login` + `/health/*` vào nhóm public/session,
@@ -908,7 +910,7 @@ class TestLiveContracts:
 class TestWorkerOutboxJobs:
     """docs/09: worker claim job bằng DB lock/lease + dispatch outbox sau commit."""
 
-    def test_worker_claims_jobs_with_lease_and_dispatches_outbox(self):
+    async def test_worker_claims_jobs_with_lease_and_dispatches_outbox(self):
         """`app/worker.py` hiện chỉ là `while True: sleep(30)` — placeholder.
 
         docs/09:26-28 yêu cầu: statuses queued/running/succeeded/failed/cancelled,
@@ -945,7 +947,7 @@ class TestWorkerOutboxJobs:
 
 # ---------------------------------------------------------- B04/B15: client --
 class TestFlutterAndQa:
-    def test_flutter_google_signin_wiring_exists(self):
+    async def test_flutter_google_signin_wiring_exists(self):
         """Google Sign-In Flutter: pubspec + plist + URL scheme + auth UI.
 
         Kiểm tĩnh (không có Flutter SDK để analyze): pubspec có
@@ -981,7 +983,7 @@ class TestFlutterAndQa:
                 "cần đồng bộ bundle ID trên Google Console hoặc Xcode."
             )
 
-    def test_flutter_shell_has_three_breakpoint_tiers(self):
+    async def test_flutter_shell_has_three_breakpoint_tiers(self):
         """docs/07: 3 tier <600 / 600-1199 / >=1200 với nav khác nhau.
 
         Hiện tại: `Breakpoints.medium=600` + `wide=1200` đã khai, shell đổi
@@ -1003,7 +1005,7 @@ class TestFlutterAndQa:
         if problems:
             pytest.fail("Flutter shell thiếu tier responsive: " + "; ".join(problems), pytrace=False)
 
-    def test_flutter_app_exists(self):
+    async def test_flutter_app_exists(self):
         """B04/B05/B15: Flutter shell + 3 breakpoint + E2E."""
         candidates = [
             REPO_DIR / "frontend",
@@ -1021,7 +1023,7 @@ class TestFlutterAndQa:
                 pytrace=False,
             )
 
-    def test_backend_has_tests(self):
+    async def test_backend_has_tests(self):
         """B01/B15 + docs/10 test pyramid: phải có test chạy được."""
         # NOTE (vòng 7): `test_google_auth.py` cũng do QA reviewer viết cho
         # tính năng Google Sign-In — không được tính là test của developer.
@@ -1037,7 +1039,7 @@ class TestFlutterAndQa:
                 pytrace=False,
             )
 
-    def test_openapi_snapshot_test_exists(self):
+    async def test_openapi_snapshot_test_exists(self):
         """docs/10: 'OpenAPI snapshot' trong API contract tier."""
         # Không được đếm file do QA reviewer viết (tránh "xanh giả" tự khớp).
         reviewer = {

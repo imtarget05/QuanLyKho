@@ -7,7 +7,7 @@ Covers:
   - Tier 4: Real-World Scenarios (End-of-day retail store closing export package)
 
 Testing Conventions:
-  - Keyset cursor pagination uses conftest.fetch_all_balances
+  - Keyset cursor pagination uses async fetch_all_balances
   - Database: PostgreSQL bankops_test (no SQLite)
   - Verification of binary payloads (openpyxl for XLSX, byte inspection for CSV BOM, PDF magic bytes)
 """
@@ -25,16 +25,35 @@ import openpyxl
 import pytest
 
 from app.services import export_engine
-from conftest import fetch_all_balances
 
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
+async def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
     """Helper to authenticate and return Bearer header."""
-    r = client.post("/auth/login", data={"username": username, "password": password})
+    r = await client.post("/auth/login", data={"username": username, "password": password})
     assert r.status_code == 200, f"Login failed for {username}: {r.text}"
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+async def fetch_all_balances(
+    client,
+    headers: dict[str, str],
+    path: str = "/inventory/balances",
+    params: dict | None = None,
+) -> list[dict]:
+    """Duyệt hết các trang của /inventory/balances qua keyset cursor."""
+    query = dict(params or {})
+    rows: list[dict] = []
+    while True:
+        resp = await client.get(path, headers=headers, params=query)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        rows.extend(body["balances"])
+        next_cursor = body.get("next_cursor")
+        if not next_cursor:
+            return rows
+        query["cursor"] = next_cursor
 
 
 @pytest.fixture(autouse=True)
@@ -84,10 +103,10 @@ def fixture_shim_implementation_defects(monkeypatch):
 class TestMultiFormatFeatureCoverage:
     """Tier 1: Feature coverage for all export datasets and format outputs."""
 
-    def test_export_catalog_xlsx_structure_and_styling(self, client):
+    async def test_export_catalog_xlsx_structure_and_styling(self, client):
         """Export Catalog to Excel (.xlsx) verifies branding, title row, and headers."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/catalog?format=xlsx", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/catalog?format=xlsx", headers=admin_auth)
         assert res.status_code == 200, res.text
         assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         assert "attachment; filename=" in res.headers["content-disposition"]
@@ -111,10 +130,10 @@ class TestMultiFormatFeatureCoverage:
         first_sku = ws.cell(row=4, column=1).value
         assert first_sku is not None and len(str(first_sku)) > 0
 
-    def test_export_catalog_csv_headers_and_bom(self, client):
+    async def test_export_catalog_csv_headers_and_bom(self, client):
         """Export Catalog to CSV verifies UTF-8 BOM, MIME type, and field structure."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/catalog?format=csv", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/catalog?format=csv", headers=admin_auth)
         assert res.status_code == 200, res.text
         assert "text/csv" in res.headers["content-type"]
         assert ".csv" in res.headers["content-disposition"]
@@ -129,12 +148,12 @@ class TestMultiFormatFeatureCoverage:
         assert "Tên hàng hoá / Nguyên liệu" in header_line
         assert "Giá bán (VNĐ)" in header_line
 
-    def test_export_balances_xlsx_and_csv_scoped(self, client):
+    async def test_export_balances_xlsx_and_csv_scoped(self, client):
         """Export Balances across both XLSX and CSV with location scoping."""
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
 
         # 1. XLSX
-        res_xlsx = client.get("/exports/balances?format=xlsx", headers=admin_auth)
+        res_xlsx = await client.get("/exports/balances?format=xlsx", headers=admin_auth)
         assert res_xlsx.status_code == 200, res_xlsx.text
         wb = openpyxl.load_workbook(io.BytesIO(res_xlsx.content))
         ws = wb.active
@@ -143,20 +162,20 @@ class TestMultiFormatFeatureCoverage:
         assert "Tổng giá trị tồn" in headers_xlsx
 
         # 2. CSV
-        res_csv = client.get("/exports/balances?format=csv", headers=admin_auth)
+        res_csv = await client.get("/exports/balances?format=csv", headers=admin_auth)
         assert res_csv.status_code == 200, res_csv.text
         text_csv = res_csv.content.decode("utf-8-sig")
         assert "Mã SKU" in text_csv
         assert "Tồn thực tế" in text_csv
 
-    def test_export_movements_with_date_range_filtering(self, client):
+    async def test_export_movements_with_date_range_filtering(self, client):
         """Export Movements ledger with ISO-8601 date range filters."""
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
         from_date = (datetime.now(UTC) - timedelta(days=365)).isoformat()
         to_date = (datetime.now(UTC) + timedelta(days=1)).isoformat()
 
         url = f"/exports/movements?format=xlsx&from_date={quote(from_date)}&to_date={quote(to_date)}"
-        res = client.get(url, headers=admin_auth)
+        res = await client.get(url, headers=admin_auth)
         assert res.status_code == 200, res.text
 
         wb = openpyxl.load_workbook(io.BytesIO(res.content))
@@ -166,10 +185,10 @@ class TestMultiFormatFeatureCoverage:
         assert "Số lượng (+/-)" in headers
         assert "Thành tiền vốn" in headers
 
-    def test_export_cash_journal_financial_invariants(self, client):
+    async def test_export_cash_journal_financial_invariants(self, client):
         """Export Cash Journal verifying cash request details and double-entry fields."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/cash-journal?format=xlsx", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/cash-journal?format=xlsx", headers=admin_auth)
         assert res.status_code == 200, res.text
 
         wb = openpyxl.load_workbook(io.BytesIO(res.content))
@@ -180,10 +199,10 @@ class TestMultiFormatFeatureCoverage:
         assert "Phân loại" in headers
         assert "Lý do / Diễn giải" in headers
 
-    def test_export_inventory_summary_aggregation(self, client):
+    async def test_export_inventory_summary_aggregation(self, client):
         """Export Inventory Summary verifying periodic buckets and receipt/issue metrics."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/inventory-summary?format=xlsx", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/inventory-summary?format=xlsx", headers=admin_auth)
         assert res.status_code == 200, res.text
 
         wb = openpyxl.load_workbook(io.BytesIO(res.content))
@@ -194,10 +213,10 @@ class TestMultiFormatFeatureCoverage:
         assert "Số lượng Xuất" in headers
         assert "Biến động ròng" in headers
 
-    def test_multiformat_export_pdf_contract_and_readiness(self, client):
+    async def test_multiformat_export_pdf_contract_and_readiness(self, client):
         """Validates contract behavior for format=pdf request and engine capability."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/catalog?format=pdf", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/catalog?format=pdf", headers=admin_auth)
 
         # Progressive testability:
         # If implementer hasn't yet extended route regex to include 'pdf', FastAPI returns 422
@@ -219,7 +238,7 @@ class TestMultiFormatFeatureCoverage:
 class TestExportBoundaryAndCornerCases:
     """Tier 2: Boundary conditions, CWE-1236 injection defenses, extreme values."""
 
-    def test_cwe1236_formula_injection_defense_in_engine(self):
+    async def test_cwe1236_formula_injection_defense_in_engine(self):
         """Direct verification of formula neutralization for spreadsheet exports."""
         injected_inputs = [
             "=1+1",
@@ -241,7 +260,7 @@ class TestExportBoundaryAndCornerCases:
         assert export_engine.sanitize_cell_value(-500) == -500
         assert export_engine.sanitize_cell_value(None) == ""
 
-    def test_cwe1236_formula_injection_in_generated_xlsx_and_csv(self):
+    async def test_cwe1236_formula_injection_in_generated_xlsx_and_csv(self):
         """Verifies that generated XLSX and CSV safely neutralize formula injections."""
         headers = [("sku", "Mã SKU"), ("name", "Tên sản phẩm"), ("note", "Ghi chú")]
         rows = [
@@ -271,12 +290,12 @@ class TestExportBoundaryAndCornerCases:
         cell_val = ws.cell(row=4, column=2).value
         assert str(cell_val).startswith("'=HYPERLINK")
 
-    def test_export_empty_dataset_boundary(self, client):
+    async def test_export_empty_dataset_boundary(self, client):
         """Exporting an empty dataset (e.g. non-existent location ID) generates valid file."""
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
         fake_location_id = "00000000-0000-0000-0000-000000000000"
 
-        res = client.get(f"/exports/balances?format=xlsx&location_id={fake_location_id}", headers=admin_auth)
+        res = await client.get(f"/exports/balances?format=xlsx&location_id={fake_location_id}", headers=admin_auth)
         assert res.status_code == 200, res.text
 
         wb = openpyxl.load_workbook(io.BytesIO(res.content))
@@ -284,7 +303,7 @@ class TestExportBoundaryAndCornerCases:
         assert ws.cell(row=3, column=1).value == "Mã SKU"
         assert ws.max_row <= 3
 
-    def test_export_extreme_numeric_and_unicode_values(self):
+    async def test_export_extreme_numeric_and_unicode_values(self):
         """Verifies large numbers, small fractions, and Vietnamese diacritics."""
         headers = [("item", "Mặt hàng"), ("qty", "Số lượng"), ("val", "Giá trị")]
         rows = [
@@ -312,18 +331,18 @@ class TestExportBoundaryAndCornerCases:
         assert "Trà Sữa Khoai Môn Trân Châu Hoàng Kim" in csv_text
         assert "999999999.99" in csv_text
 
-    def test_export_invalid_date_format_handling(self, client):
+    async def test_export_invalid_date_format_handling(self, client):
         """Supplying invalid date string to export endpoint yields HTTP 422 INVALID_DATE."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/movements?format=xlsx&from_date=invalid-date-string", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/movements?format=xlsx&from_date=invalid-date-string", headers=admin_auth)
         assert res.status_code == 422, res.text
         data = res.json()
         assert "INVALID_DATE" in str(data)
 
-    def test_export_csv_bom_cleanliness(self, client):
+    async def test_export_csv_bom_cleanliness(self, client):
         """Verifies CSV begins with standard UTF-8 BOM byte sequence."""
-        admin_auth = _login(client, "demo_admin")
-        res = client.get("/exports/catalog?format=csv", headers=admin_auth)
+        admin_auth = await _login(client, "demo_admin")
+        res = await client.get("/exports/catalog?format=csv", headers=admin_auth)
         assert res.status_code == 200
         assert res.content[:3] == b"\xef\xbb\xbf", "File must start with UTF-8 BOM"
 
@@ -344,18 +363,18 @@ class TestExportBoundaryAndCornerCases:
 class TestExportCrossFeatureCombinations:
     """Tier 3: Cross-feature integrations linking ledger movements to export verification."""
 
-    def test_cross_feature_receipt_movement_to_export_reconciliation(self, client):
+    async def test_cross_feature_receipt_movement_to_export_reconciliation(self, client):
         """Creates a stock receipt and verifies it appears in exported movements and balances."""
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
 
         # 1. Get an existing item and location
-        items = client.get("/inventory/items", headers=admin_auth).json()["items"]
-        locs = client.get("/inventory/locations", headers=admin_auth).json()["locations"]
+        items = (await client.get("/inventory/items", headers=admin_auth)).json()["items"]
+        locs = (await client.get("/inventory/locations", headers=admin_auth)).json()["locations"]
         target_item = items[0]
         target_loc = locs[0]
 
         # 2. Record initial balance using fetch_all_balances
-        initial_balances = fetch_all_balances(client, admin_auth)
+        initial_balances = await fetch_all_balances(client, admin_auth)
         initial_qty = 0.0
         for b in initial_balances:
             if b["item_id"] == target_item["id"] and b["location_id"] == target_loc["id"]:
@@ -363,11 +382,11 @@ class TestExportCrossFeatureCombinations:
                 break
 
         # 3. Create and approve a receipt request
-        maker_auth = _login(client, "demo_maker")
-        checker_auth = _login(client, "demo_checker")
+        maker_auth = await _login(client, "demo_maker")
+        checker_auth = await _login(client, "demo_checker")
         qty_to_add = 15.0
         post_headers = {**maker_auth, "Idempotency-Key": str(uuid.uuid4())}
-        req_res = client.post(
+        req_res = await client.post(
             "/inventory/requests",
             headers=post_headers,
             json={
@@ -388,17 +407,17 @@ class TestExportCrossFeatureCombinations:
 
         # Submit request first (Maker)
         submit_headers = {**maker_auth, "Idempotency-Key": str(uuid.uuid4())}
-        submit_res = client.post(f"/inventory/requests/{req_id}/submit", headers=submit_headers)
+        submit_res = await client.post(f"/inventory/requests/{req_id}/submit", headers=submit_headers)
         assert submit_res.status_code == 200, submit_res.text
 
         # Approve request (Checker)
         approve_headers = {**checker_auth, "Idempotency-Key": str(uuid.uuid4())}
-        approve_res = client.post(f"/inventory/requests/{req_id}/approve", headers=approve_headers)
+        approve_res = await client.post(f"/inventory/requests/{req_id}/approve", headers=approve_headers)
         assert approve_res.status_code in (200, 201), approve_res.text
 
         # 4. Export Movements and verify newly created receipt movement is present
         from_date = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
-        res_mov = client.get(
+        res_mov = await client.get(
             f"/exports/movements?format=xlsx&location_id={target_loc['id']}&from_date={quote(from_date)}",
             headers=admin_auth,
         )
@@ -416,7 +435,7 @@ class TestExportCrossFeatureCombinations:
         assert found_movement, f"Receipt movement for SKU {target_item['sku']} not found in exported XLSX"
 
         # 5. Export Balances and verify quantity increased
-        res_bal = client.get(
+        res_bal = await client.get(
             f"/exports/balances?format=xlsx&location_id={target_loc['id']}",
             headers=admin_auth,
         )
@@ -432,9 +451,9 @@ class TestExportCrossFeatureCombinations:
         assert exported_qty is not None
         assert abs(exported_qty - (initial_qty + qty_to_add)) < 0.001
 
-    def test_cross_feature_unauthorized_user_forbidden_export(self, client):
+    async def test_cross_feature_unauthorized_user_forbidden_export(self, client):
         """User without export capabilities receives HTTP 401 Unauthorized."""
-        res = client.get("/exports/catalog?format=xlsx")
+        res = await client.get("/exports/catalog?format=xlsx")
         assert res.status_code == 401, res.text
 
 
@@ -446,7 +465,7 @@ class TestExportCrossFeatureCombinations:
 class TestRealWorldExportScenarios:
     """Tier 4: End-to-end retail store closing lifecycle."""
 
-    def test_real_world_eod_closing_export_package(self, client):
+    async def test_real_world_eod_closing_export_package(self, client):
         """Simulates full end-of-day store closing procedure:
 
         1. Store Manager exports Master Catalog (XLSX).
@@ -455,10 +474,10 @@ class TestRealWorldExportScenarios:
         4. Exports Inventory Summary for P&L reporting (XLSX).
         5. Verifies cross-dataset data consistency and integrity.
         """
-        admin_auth = _login(client, "demo_admin")
+        admin_auth = await _login(client, "demo_admin")
 
         # 1. Master Catalog Export
-        cat_res = client.get("/exports/catalog?format=xlsx", headers=admin_auth)
+        cat_res = await client.get("/exports/catalog?format=xlsx", headers=admin_auth)
         assert cat_res.status_code == 200
         cat_wb = openpyxl.load_workbook(io.BytesIO(cat_res.content))
         catalog_skus = {
@@ -468,7 +487,7 @@ class TestRealWorldExportScenarios:
         assert len(catalog_skus) > 0, "Store catalog must contain registered tea items"
 
         # 2. Daily Closing Stock Balances Export (XLSX & CSV)
-        bal_res_xlsx = client.get("/exports/balances?format=xlsx", headers=admin_auth)
+        bal_res_xlsx = await client.get("/exports/balances?format=xlsx", headers=admin_auth)
         assert bal_res_xlsx.status_code == 200
         bal_wb = openpyxl.load_workbook(io.BytesIO(bal_res_xlsx.content))
         balance_skus = {
@@ -477,18 +496,18 @@ class TestRealWorldExportScenarios:
         }
         assert balance_skus.issubset(catalog_skus), "All balanced items must be registered in catalog"
 
-        bal_res_csv = client.get("/exports/balances?format=csv", headers=admin_auth)
+        bal_res_csv = await client.get("/exports/balances?format=csv", headers=admin_auth)
         assert bal_res_csv.status_code == 200
         assert len(bal_res_csv.content) > 100
 
         # 3. Daily Cash Journal Export
-        cash_res = client.get("/exports/cash-journal?format=xlsx", headers=admin_auth)
+        cash_res = await client.get("/exports/cash-journal?format=xlsx", headers=admin_auth)
         assert cash_res.status_code == 200
         cash_wb = openpyxl.load_workbook(io.BytesIO(cash_res.content))
         assert cash_wb.active.max_row >= 3
 
         # 4. Inventory Summary Export
-        summary_res = client.get("/exports/inventory-summary?format=xlsx", headers=admin_auth)
+        summary_res = await client.get("/exports/inventory-summary?format=xlsx", headers=admin_auth)
         assert summary_res.status_code == 200
         summary_wb = openpyxl.load_workbook(io.BytesIO(summary_res.content))
         assert summary_wb.active.max_row >= 3

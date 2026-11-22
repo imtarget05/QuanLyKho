@@ -23,22 +23,12 @@ from pydantic import BaseModel, field_validator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("model-serving")
 
-# MLflow configuration
-def _default_tracking_uri() -> str:
-    """Use the image data mount when writable, otherwise a local SQLite store."""
-    if os.path.isdir("/data") and os.access("/data", os.W_OK):
-        return "sqlite:////data/mlflow.db"
-    return "sqlite:///./mlflow.db"
+# MLflow configuration (local-only: SQLite tracking + ./mlruns artifacts)
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI") or "sqlite:///./mlflow.db"
+MLFLOW_ARTIFACT_ROOT = os.getenv("MLFLOW_ARTIFACT_ROOT", "./mlruns")
 
-
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI") or _default_tracking_uri()
-MLFLOW_ARTIFACT_ROOT = os.getenv(
-    "MLFLOW_ARTIFACT_ROOT",
-    "/data/mlruns" if os.path.exists("/data") else "./mlruns",
-)
-
-# Ensure writable directories exist for container runtime
-for d in (MLFLOW_ARTIFACT_ROOT, "/data", "/app/mlruns", "/tmp/artifacts"):
+# Ensure writable directories exist for local runtime
+for d in (MLFLOW_ARTIFACT_ROOT, "/tmp/artifacts"):
     try:
         os.makedirs(d, exist_ok=True)
     except Exception:

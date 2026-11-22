@@ -1,0 +1,24 @@
+{
+  "engine": "Qdrant",
+  "client_version": "1.20.0",
+  "mode": "in-memory-engine",
+  "status": "VERIFIED_PASS",
+  "collection": {
+    "name": "smartdoc_kc03",
+    "dimension": 768,
+    "distance_metric": "Cosine",
+    "indexed_points": 4,
+    "creation_time_ms": 0.15,
+    "upsert_time_ms": 0.38
+  },
+  "query_verification": {
+    "query_type": "semantic_similarity",
+    "latency_ms": 0.4,
+    "top_match_id": "SOP-04",
+    "top_match_title": "Dinh muc ton kho toi thieu Min/Max",
+    "top_match_score": 1.0,
+    "filtered_match_id": "SOP-04",
+    "filtered_match_category": "inventory"
+  },
+  "automated_tests": "tests/test_qdrant_vector_search.py (2 passed)"
+}

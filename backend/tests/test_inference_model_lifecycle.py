@@ -14,7 +14,7 @@ import os
 
 import mlflow
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.api import inference
 from app.api.inference import ModelNotAvailableError, app
@@ -45,12 +45,12 @@ def tracking_store(tmp_path):
         inference.reset_model_cache()
 
 
-def test_predict_returns_503_when_no_production_model(tracking_store, monkeypatch):
+async def test_predict_returns_503_when_no_production_model(tracking_store, monkeypatch):
     """Without a Production model the endpoint answers 503, not 500."""
     monkeypatch.setattr(inference, "AUTO_BOOTSTRAP", False)
 
-    with TestClient(app) as client:
-        response = client.post("/predict", json={"period": 10, "month": 6})
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.post("/predict", json={"period": 10, "month": 6})
 
     assert response.status_code == 503, response.text
     detail = response.json()["detail"]
@@ -58,12 +58,12 @@ def test_predict_returns_503_when_no_production_model(tracking_store, monkeypatc
     assert "Production" in detail["message"]
 
 
-def test_health_reports_degraded_when_no_production_model(tracking_store, monkeypatch):
+async def test_health_reports_degraded_when_no_production_model(tracking_store, monkeypatch):
     """Health check stays 200 but reports the missing model explicitly."""
     monkeypatch.setattr(inference, "AUTO_BOOTSTRAP", False)
 
-    with TestClient(app) as client:
-        response = client.get("/health")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.get("/health")
 
     assert response.status_code == 200
     body = response.json()
@@ -71,7 +71,7 @@ def test_health_reports_degraded_when_no_production_model(tracking_store, monkey
     assert body["code"] == "MODEL_NOT_AVAILABLE"
 
 
-def test_get_model_raises_typed_error_without_production_model(tracking_store, monkeypatch):
+async def test_get_model_raises_typed_error_without_production_model(tracking_store, monkeypatch):
     """The service layer raises a typed error, not a bare RuntimeError."""
     monkeypatch.setattr(inference, "AUTO_BOOTSTRAP", False)
 
@@ -81,7 +81,7 @@ def test_get_model_raises_typed_error_without_production_model(tracking_store, m
     assert excinfo.value.code == "MODEL_NOT_AVAILABLE"
 
 
-def test_train_register_promote_then_predict(tracking_store):
+async def test_train_register_promote_then_predict(tracking_store):
     """Real lifecycle: train -> register -> promote -> predict."""
     from app.services.ml_training import run_full_pipeline
 
@@ -97,8 +97,8 @@ def test_train_register_promote_then_predict(tracking_store):
 
     inference.reset_model_cache()
 
-    with TestClient(app) as client:
-        response = client.post("/predict", json={"period": 10, "month": 6})
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.post("/predict", json={"period": 10, "month": 6})
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -106,8 +106,8 @@ def test_train_register_promote_then_predict(tracking_store):
     assert body["predicted_demand"] > 0
     assert body["confidence_lower"] <= body["predicted_demand"] <= body["confidence_upper"]
 
-    with TestClient(app) as client:
-        health = client.get("/health")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        health = await client.get("/health")
 
     assert health.status_code == 200
     assert health.json()["status"] == "healthy"

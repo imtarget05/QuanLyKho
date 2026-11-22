@@ -18,8 +18,8 @@ import app.api.routes.admin_users  # noqa: F401
 DEMO_PASSWORD = "DemoPass123!"
 
 
-def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
-    r = client.post("/auth/login", data={"username": username, "password": password})
+async def _login(client, username: str, password: str = DEMO_PASSWORD) -> dict[str, str]:
+    r = await client.post("/auth/login", data={"username": username, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -29,7 +29,7 @@ def _idem(headers: dict[str, str]) -> dict[str, str]:
 
 
 class TestAdminRoleEmailNotification:
-    def _create_user(self, client, admin_auth, roles: list[str], email: str | None = None) -> tuple[str, str]:
+    async def _create_user(self, client, admin_auth, roles: list[str], email: str | None = None) -> tuple[str, str]:
         username = f"user_{uuid.uuid4().hex[:8]}"
         user_email = email if email is not None else f"{username}@bankops.vn"
         payload = {
@@ -41,20 +41,20 @@ class TestAdminRoleEmailNotification:
         if user_email:
             payload["email"] = user_email
 
-        r = client.post("/admin/users", headers=_idem(admin_auth), json=payload)
+        r = await client.post("/admin/users", headers=_idem(admin_auth), json=payload)
         assert r.status_code == 201, r.text
         return r.json()["user"]["id"], username
 
-    def test_role_update_enqueues_outbox_and_triggers_email(self, client):
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(
+    async def test_role_update_enqueues_outbox_and_triggers_email(self, client):
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(
             client, admin_auth, roles=["staff"], email=f"{uuid.uuid4().hex[:6]}@bankops.vn"
         )
 
         with patch("app.services.email_service.send_email", new_callable=AsyncMock, create=True) as mock_send_email:
             mock_send_email.return_value = True
 
-            r = client.put(
+            r = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -71,21 +71,21 @@ class TestAdminRoleEmailNotification:
             assert "admin" in call_kwargs["roles"]
 
             # 2. Verify persisted in database
-            verify = client.get(f"/admin/users?search={username}", headers=admin_auth)
+            verify = await client.get(f"/admin/users?search={username}", headers=admin_auth)
             assert verify.status_code == 200
             matched = [u for u in verify.json()["users"] if u["id"] == user_id]
             assert len(matched) == 1
             assert "admin" in matched[0]["roles"]
 
-    def test_database_resilience_when_email_fails(self, client):
+    async def test_database_resilience_when_email_fails(self, client):
         """Verify database commit succeeds even if email dispatch encounters network error."""
-        admin_auth = _login(client, "demo_admin")
-        user_id, username = self._create_user(client, admin_auth, roles=["staff"])
+        admin_auth = await _login(client, "demo_admin")
+        user_id, username = await self._create_user(client, admin_auth, roles=["staff"])
 
         with patch("app.services.email_service.send_email", new_callable=AsyncMock, create=True) as mock_send_email:
             mock_send_email.side_effect = ConnectionError("SMTP server unreachable")
 
-            r = client.put(
+            r = await client.put(
                 f"/admin/users/{user_id}/roles",
                 headers=_idem(admin_auth),
                 json={"roles": ["admin"]},
@@ -95,7 +95,7 @@ class TestAdminRoleEmailNotification:
             assert "admin" in r.json()["user"]["roles"]
 
             # Database persists the updated role
-            verify = client.get(f"/admin/users?search={username}", headers=admin_auth)
+            verify = await client.get(f"/admin/users?search={username}", headers=admin_auth)
             assert verify.status_code == 200
             matched = [u for u in verify.json()["users"] if u["id"] == user_id]
             assert len(matched) == 1

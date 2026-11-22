@@ -47,10 +47,12 @@ pyyaml = "^6.0.2"
 redis = "^5.0.0"
 aiokafka = "^0.12.0"
 google-auth = "^2.30.0"
+ariadne = "^0.20.0"
 requests = "^2.31.0"
 langfuse = "^2.53.0"
 openpyxl = "^3.1.5"
 reportlab = "^5.1.0"
+langgraph-checkpoint-postgres = "^3.2.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"

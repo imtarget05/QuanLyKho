@@ -103,7 +103,7 @@ def mlflow_tracking(tmp_path, monkeypatch: pytest.MonkeyPatch):
 # 1. Đọc nguồn
 # ---------------------------------------------------------------------------
 
-def test_read_source_reports_real_file_metadata() -> None:
+async def test_read_source_reports_real_file_metadata() -> None:
     """read_source trả size + sha256 thật của file nguồn."""
     result = qlk_tasks.read_source("inventory")
     assert result["dataset"] == "inventory"
@@ -113,7 +113,7 @@ def test_read_source_reports_real_file_metadata() -> None:
     assert Path(result["path"]).is_file()
 
 
-def test_read_source_fails_closed_when_file_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_read_source_fails_closed_when_file_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """Nguồn không tồn tại ⇒ task fail, không âm thầm trả dữ liệu rỗng."""
     monkeypatch.setenv("QLK_INGEST_INVENTORY_SOURCE", "/nonexistent/inventory.json")
     with pytest.raises(FileNotFoundError):
@@ -124,7 +124,7 @@ def test_read_source_fails_closed_when_file_missing(monkeypatch: pytest.MonkeyPa
 # 2. Parse
 # ---------------------------------------------------------------------------
 
-def test_parse_rows_extracts_inventory_items() -> None:
+async def test_parse_rows_extracts_inventory_items() -> None:
     """parse_rows dùng etl_engine thật và lấy collection `items`."""
     result = qlk_tasks.parse_rows("inventory")
     assert result["row_count"] == 30
@@ -137,7 +137,7 @@ def test_parse_rows_extracts_inventory_items() -> None:
     ("dataset", "expected_rows"),
     [("inventory", 30), ("expense", 8), ("supplier", 3)],
 )
-def test_parse_rows_for_every_dataset(dataset: str, expected_rows: int) -> None:
+async def test_parse_rows_for_every_dataset(dataset: str, expected_rows: int) -> None:
     """Cả 3 dataset đều parse được ra số dòng thật."""
     result = qlk_tasks.parse_rows(dataset)
     assert result["row_count"] == expected_rows
@@ -148,7 +148,7 @@ def test_parse_rows_for_every_dataset(dataset: str, expected_rows: int) -> None:
 # 3. Validate
 # ---------------------------------------------------------------------------
 
-def test_validate_rows_produces_stable_fingerprint() -> None:
+async def test_validate_rows_produces_stable_fingerprint() -> None:
     """Fingerprint ổn định giữa hai lần chạy (khóa idempotency)."""
     rows = qlk_tasks.parse_rows("inventory")["rows"]
     first = qlk_tasks.validate_rows("inventory", rows=rows)
@@ -159,7 +159,7 @@ def test_validate_rows_produces_stable_fingerprint() -> None:
     assert first["invalid_rows"] == 0
 
 
-def test_validate_rows_fails_closed_on_invalid_rows(
+async def test_validate_rows_fails_closed_on_invalid_rows(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Dòng thiếu trường bắt buộc ⇒ raise (không nạp dữ liệu bẩn)."""
@@ -180,7 +180,7 @@ def test_validate_rows_fails_closed_on_invalid_rows(
 # 4. Nạp staging (side effect thật vào DB)
 # ---------------------------------------------------------------------------
 
-def test_load_staging_writes_rows_to_database(staging_table) -> None:
+async def test_load_staging_writes_rows_to_database(staging_table) -> None:
     """load_staging ghi dòng thật vào bảng staging, đếm được số dòng."""
     result = qlk_tasks.load_staging("inventory")
     assert result["inserted"] == 30
@@ -192,7 +192,7 @@ def test_load_staging_writes_rows_to_database(staging_table) -> None:
     assert stored == 30
 
 
-def test_load_staging_is_idempotent(staging_table) -> None:
+async def test_load_staging_is_idempotent(staging_table) -> None:
     """Chạy lại cùng dữ liệu ⇒ không nạp trùng (skipped = toàn bộ)."""
     first = qlk_tasks.load_staging("inventory")
     second = qlk_tasks.load_staging("inventory")
@@ -202,7 +202,7 @@ def test_load_staging_is_idempotent(staging_table) -> None:
     assert qlk_staging.count_rows(staging_table, TEST_TABLE, "inventory") == 30
 
 
-def test_detect_drift_reads_staging_payload_without_invented_columns(staging_table) -> None:
+async def test_detect_drift_reads_staging_payload_without_invented_columns(staging_table) -> None:
     """A fresh ingest has no historical reference window, but the DAG must run."""
     qlk_tasks.load_staging("inventory")
 
@@ -216,7 +216,7 @@ def test_detect_drift_reads_staging_payload_without_invented_columns(staging_tab
     }
 
 
-def test_detect_drift_uses_both_time_windows(staging_table) -> None:
+async def test_detect_drift_uses_both_time_windows(staging_table) -> None:
     """Rows from both windows produce an actual distribution comparison."""
     from datetime import UTC, datetime, timedelta
 
@@ -240,7 +240,7 @@ def test_detect_drift_uses_both_time_windows(staging_table) -> None:
     }
 
 
-def test_load_staging_writes_expense_and_supplier(staging_table) -> None:
+async def test_load_staging_writes_expense_and_supplier(staging_table) -> None:
     """Các dataset còn lại cũng nạp được vào bảng staging."""
     expense = qlk_tasks.load_staging("expense")
     supplier = qlk_tasks.load_staging("supplier")
@@ -250,7 +250,7 @@ def test_load_staging_writes_expense_and_supplier(staging_table) -> None:
     assert qlk_staging.count_rows(staging_table, TEST_TABLE, "supplier") == 3
 
 
-def test_resolve_database_url_refuses_non_test_database(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_resolve_database_url_refuses_non_test_database(monkeypatch: pytest.MonkeyPatch) -> None:
     """Guard an toàn: không ghi staging vào database dev `bankops`."""
     monkeypatch.setenv("QLK_INGEST_DATABASE_URL", "postgresql+psycopg2://bankops:bankops@127.0.0.1:5432/bankops")
     monkeypatch.delenv("QLK_INGEST_ALLOW_ANY_DB", raising=False)
@@ -262,7 +262,7 @@ def test_resolve_database_url_refuses_non_test_database(monkeypatch: pytest.Monk
 # 5. MLflow: train + promote
 # ---------------------------------------------------------------------------
 
-def test_train_demand_model_logs_to_mlflow(mlflow_tracking: str) -> None:
+async def test_train_demand_model_logs_to_mlflow(mlflow_tracking: str) -> None:
     """Task train ghi run/params/metrics/artifact thật vào MLflow + đăng ký model."""
     import mlflow
 
@@ -284,7 +284,7 @@ def test_train_demand_model_logs_to_mlflow(mlflow_tracking: str) -> None:
     assert versions, "Model chưa được đăng ký vào registry"
 
 
-def test_promote_demand_model_blocks_low_r2(mlflow_tracking: str) -> None:
+async def test_promote_demand_model_blocks_low_r2(mlflow_tracking: str) -> None:
     """R² dưới ngưỡng ⇒ KHÔNG promote lên Production."""
     from app.services import ml_registry
 
@@ -295,7 +295,7 @@ def test_promote_demand_model_blocks_low_r2(mlflow_tracking: str) -> None:
     assert result["threshold"] == ml_registry.PROMOTION_THRESHOLD_R2
 
 
-def test_promote_demand_model_promotes_when_gate_passes(mlflow_tracking: str) -> None:
+async def test_promote_demand_model_promotes_when_gate_passes(mlflow_tracking: str) -> None:
     """R² đạt ngưỡng ⇒ promote lên Production (side effect thật trong registry)."""
     from app.services import ml_registry
 
