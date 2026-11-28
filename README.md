@@ -1,5 +1,11 @@
 # QuanLyKho — Enterprise Inventory & Treasury Operations Platform
 
+## Local verification — 2026-11-28
+
+In an Odoo Community 19 lab connected to a local FastAPI instance, a catalog sync through HTTP loaded 31 items. Repeating the sync left the Odoo row count at 31. This verifies the observed catalog projection and row-count stability on replay. The run used local addon changes. Write-level idempotency and the full purchase-to-posting reconciliation across Odoo and FastAPI remain separate acceptance checks.
+
+The backend inventory controls use maker–checker rules and PostgreSQL-backed ledger checks. The catalog drill measured integration behavior. Approval and ledger behavior are covered by their own tests.
+
 [![Python 3.11](https://img.shields.io/badge/Python-3.11.15-blue.svg?logo=python&logoColor=white)](backend/pyproject.toml)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16_tmpfs-4169E1.svg?logo=postgresql&logoColor=white)](docker-compose.yml)
